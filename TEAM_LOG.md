@@ -72,6 +72,26 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T17:28:52Z — Codex — Center and simplify Retention case details
+
+- **Workstream:** Frontend / QA
+- **Branch:** `member4`
+- **Commit subject:** `fix: center and simplify retention case details`
+- **Issue / task:** Open Retention case details in the center and reduce initial copy density.
+- **Files changed:** `src/app/AppShell.tsx`, `src/features/DecisionCaseDetailPage.tsx`, `src/index.css`, and this log.
+- **What changed:** The case detail route now uses a centered, responsive modal while prediction details retain their side drawer. The case summary is shorter; evidence, proposals, ROI, audit history, and outcome feedback are expandable sections. Decision and execution controls remain available.
+- **Why it changed:** The side drawer was too dense for the case workflow.
+- **Contract / database / API impact:** None. Demo decisions remain browser-session-only.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - Safari local Vite check (`/cases/demo_case_c02` on port 5180) — PASS — case opens centered from the queue; close button and Escape return to the queue.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** Demo fixture only; no prediction, outcome, or ROI claims changed.
+- **Known issues / blockers:** Connected decision APIs remain unavailable as previously logged.
+- **Next action / handoff:** Review on `member4`; do not push or merge without approval.
+- **Reviewer / pairing:** `N/A`
+
 ### 2026-10-10T17:23:15Z — Codex — Keep the Retention Actions workload strip to five cards
 
 - **Workstream:** Frontend / QA
