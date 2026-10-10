@@ -91,7 +91,9 @@ class DataFoundationTests(unittest.TestCase):
         initialize_database(self.db)
         create_tenant(self.db, "tenant-a")
         create_tenant(self.db, "tenant-b")
-        self.token_a = create_integration(self.db, "tenant-a", "product_app")
+        self.token_a = create_integration(
+            self.db, "tenant-a", "product_app", authorized_categories=("usage", "billing", "subscription"),
+        )
         self.token_b = create_integration(self.db, "tenant-b", "product_app")
         create_customer(self.db, "tenant-a", "customer-a")
         create_customer(self.db, "tenant-b", "customer-b")
@@ -124,6 +126,13 @@ class DataFoundationTests(unittest.TestCase):
                     "INSERT INTO customers(tenant_id, customer_id, account_status, created_at) "
                     "VALUES ('tenant-a', 'customer-a', 'active', ?)", (T0,),
                 )
+                for source in ("product_app", "idle_app"):
+                    connection.execute(
+                        "INSERT INTO integrations(integration_id, tenant_id, source, token_digest, "
+                        "authorized_purposes_json, schema_version, mapping_version, created_at) "
+                        "VALUES (?, 'tenant-a', ?, ?, '[\"retention_inference\"]', '1.0', 'canonical-v1', ?)",
+                        (f"legacy-{source}", source, f"digest-{source}", T0),
+                    )
                 connection.execute(
                     "INSERT INTO canonical_events(event_id, tenant_id, source, source_event_id, customer_id, "
                     "category, event_type, occurred_at, received_at, source_available_at, schema_version, "
@@ -136,6 +145,13 @@ class DataFoundationTests(unittest.TestCase):
                     "event_type, changed_fields_json, status, started_at, occurred_at, received_at) "
                     "VALUES ('tenant-a', 1, 'sub-legacy', 'customer-a', 'subscription_created', "
                     "'[\"status\",\"started_at\"]', 'active', ?, ?, ?)", (T0, T0, T0),
+                )
+                connection.execute(
+                    "INSERT INTO canonical_events(event_id, tenant_id, source, source_event_id, customer_id, "
+                    "category, event_type, occurred_at, received_at, source_available_at, schema_version, "
+                    "mapping_version, normalized_payload_sha256) VALUES (3, 'tenant-a', 'product_app', "
+                    "'legacy-usage', 'customer-a', 'usage', 'session_started', ?, ?, NULL, '1.0', "
+                    "'canonical-v1', 'hash-3')", (T0, T0),
                 )
                 connection.execute(
                     "INSERT INTO subscriptions(tenant_id, subscription_id, customer_id, status, started_at, updated_at) "
@@ -179,6 +195,28 @@ class DataFoundationTests(unittest.TestCase):
             self.assertIsNotNone(connection.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name='service_principals'",
             ).fetchone())
+            self.assertEqual(
+                {row[0] for row in connection.execute(
+                    "SELECT category FROM integration_event_categories "
+                    "WHERE tenant_id='tenant-a' AND source='product_app'",
+                )},
+                {"usage", "subscription"},
+            )
+            self.assertEqual(
+                [row[0] for row in connection.execute(
+                    "SELECT category FROM integration_event_categories "
+                    "WHERE tenant_id='tenant-a' AND source='idle_app'",
+                )],
+                ["usage"],
+            )
+            self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) FROM schema_migrations "
+                    "WHERE version='003_integration_event_categories'",
+                ).fetchone()[0],
+                1,
+            )
         finally:
             connection.close()
 
@@ -247,6 +285,7 @@ class DataFoundationTests(unittest.TestCase):
     def test_source_authorization_enforces_configured_purposes(self):
         token = create_integration(
             self.db, "tenant-b", "billing_app", authorized_purposes=("retention_inference",),
+            authorized_categories=("billing",),
         )
         map_customer_identity(self.db, "tenant-b", "billing_app", "acct-b", "customer-b")
         principal = authenticate_integration(self.db, token)
@@ -288,6 +327,231 @@ class DataFoundationTests(unittest.TestCase):
                 with self.assertRaises(DataFoundationError) as caught:
                     operation()
                 self.assertEqual(caught.exception.code, "purpose_not_authorized")
+
+    def test_integration_cannot_write_ml_artifacts_for_other_source_or_tenant_accounts(self):
+        create_customer(self.db, "tenant-a", "customer-billing-only")
+        map_customer_identity(
+            self.db, "tenant-a", "billing_app", "acct-billing-only", "customer-billing-only",
+        )
+
+        def operations(customer_id, suffix):
+            return (
+                lambda: store_feature_snapshot(
+                    self.db, self.principal_a, customer_id, T1, f"cross-source-{suffix}", T1,
+                    {"sessions_7d": 1}, "available",
+                ),
+                lambda: store_churn_label(
+                    self.db, self.principal_a, customer_id, T0, 7, "unknown", T1,
+                    f"cross-source-label-{suffix}",
+                ),
+                lambda: store_prediction(
+                    self.db, self.principal_a,
+                    {"prediction_id": f"cross-source-pred-{suffix}",
+                     "prediction_run_id": f"cross-source-run-{suffix}", "customer_id": customer_id,
+                     "as_of": T1, "generated_at": T2, "status": "abstained", "p_churn_7d": None,
+                     "p_churn_14d": None, "p_churn_30d": None, "feature_version": "features-v1",
+                     "model_version": "model-v1", "calibration_version": "cal-v1",
+                     "reliability_status": "insufficient_evidence", "data_freshness_status": "unknown"},
+                ),
+            )
+
+        for customer_id, suffix in (("customer-billing-only", "billing"), ("customer-b", "tenant")):
+            for index, operation in enumerate(operations(customer_id, suffix)):
+                with self.subTest(customer=customer_id, artifact=index):
+                    with self.assertRaises(DataFoundationError):
+                        operation()
+
+        from retaniq import data_foundation as foundation
+        writer_token = foundation.create_service_principal(
+            self.db, "tenant-a", role="analyst", authorized_sources=("product_app",),
+            authorized_purposes=("retention_inference", "model_artifact_write"),
+        )
+        writer = foundation.authenticate_service_principal(self.db, writer_token)
+        for customer_id in ("customer-billing-only", "customer-b"):
+            with self.subTest(service_customer=customer_id):
+                with self.assertRaises(DataFoundationError) as denied:
+                    store_feature_snapshot(
+                        self.db, writer, customer_id, T1, f"unauthorized-service-{customer_id}", T1,
+                        {"sessions_7d": 1}, "available",
+                    )
+                self.assertEqual(denied.exception.code, "not_found")
+
+    def test_model_artifact_write_requires_analyst_role_and_explicit_purpose(self):
+        from retaniq import data_foundation as foundation
+
+        principals = (
+            foundation.authenticate_service_principal(
+                self.db,
+                foundation.create_service_principal(
+                    self.db, "tenant-a", role="analyst", authorized_sources=("product_app",),
+                    authorized_purposes=("retention_inference",),
+                ),
+            ),
+            foundation.authenticate_service_principal(
+                self.db,
+                foundation.create_service_principal(
+                    self.db, "tenant-a", role="operator", authorized_sources=("product_app",),
+                    authorized_purposes=("retention_inference", "model_artifact_write"),
+                ),
+            ),
+        )
+        for index, principal in enumerate(principals):
+            with self.subTest(principal=index):
+                with self.assertRaises(DataFoundationError) as denied:
+                    store_feature_snapshot(
+                        self.db, principal, "customer-a", T1, f"unauthorized-writer-{index}", T1,
+                        {"sessions_7d": 1}, "available",
+                    )
+                expected_code = "purpose_not_authorized" if index == 0 else "unauthorized"
+                self.assertEqual(denied.exception.code, expected_code)
+
+    def test_authorized_model_writer_can_read_multiple_sources_and_persist_artifacts(self):
+        from retaniq import data_foundation as foundation
+
+        billing_token = create_integration(
+            self.db, "tenant-a", "billing_app", authorized_purposes=("retention_inference",),
+            authorized_categories=("billing",),
+        )
+        billing = authenticate_integration(self.db, billing_token)
+        map_customer_identity(self.db, "tenant-a", "billing_app", "acct-a-billing", "customer-a")
+        ingest_event(
+            self.db, self.principal_a, usage_event("evt-model-writer-usage"), received_at=T0,
+        )
+        ingest_event(
+            self.db, billing,
+            {"source": "billing_app", "source_event_id": "evt-model-writer-payment",
+             "external_customer_id": "acct-a-billing", "event_type": "payment_failed",
+             "occurred_at": T1, "attributes": {}, "schema_version": "1.0"},
+            received_at=T1,
+        )
+        writer_token = foundation.create_service_principal(
+            self.db, "tenant-a", role="analyst", authorized_sources=("product_app", "billing_app"),
+            authorized_purposes=("retention_inference", "model_artifact_write"),
+        )
+        writer = foundation.authenticate_service_principal(self.db, writer_token)
+        snapshot = get_account_snapshot_as_of(self.db, writer, "customer-a", T2)
+        self.assertEqual(len(snapshot["usage_events"]), 1)
+        self.assertEqual(len(snapshot["billing_events"]), 1)
+
+        feature_id = store_feature_snapshot(
+            self.db, writer, "customer-a", T2, "multi-source-features-v1", T2,
+            {"sessions_7d": len(snapshot["usage_events"]),
+             "failed_payments_30d": len(snapshot["billing_events"])}, "available",
+        )
+        store_churn_label(
+            self.db, writer, "customer-a", T0, 7, "unknown", T1, "multi-source-label-v1",
+        )
+        prediction_id = store_prediction(
+            self.db, writer,
+            {"prediction_id": "multi-source-prediction", "prediction_run_id": "multi-source-run",
+             "customer_id": "customer-a", "as_of": T2, "generated_at": T3, "status": "abstained",
+             "p_churn_7d": None, "p_churn_14d": None, "p_churn_30d": None,
+             "feature_version": "multi-source-features-v1", "model_version": "model-v1",
+             "calibration_version": "cal-v1", "reliability_status": "limited_evidence",
+             "data_freshness_status": "fresh", "feature_snapshot_id": feature_id,
+             "explanations_by_horizon": {"30d": [{"feature": "failed_payments_30d",
+                                                  "contribution": 0.25}]}},
+        )
+        self.assertEqual(prediction_id, "multi-source-prediction")
+
+    def test_usage_only_integration_cannot_submit_subscription_or_billing_categories(self):
+        token = create_integration(
+            self.db, "tenant-a", "usage_only", authorized_purposes=("retention_inference",),
+        )
+        map_customer_identity(self.db, "tenant-a", "usage_only", "acct-usage-only", "customer-a")
+        principal = authenticate_integration(self.db, token)
+        ingest_event(
+            self.db, principal,
+            {"source": "usage_only", "source_event_id": "evt-authorized-usage",
+             "external_customer_id": "acct-usage-only", "event_type": "feature_used",
+             "occurred_at": T0, "attributes": {"feature": "reports", "quantity": 1, "unit": "events"},
+             "schema_version": "1.0"},
+            received_at=T0,
+        )
+        prohibited = (
+            {"source": "usage_only", "source_event_id": "evt-unapproved-termination",
+             "external_customer_id": "acct-usage-only", "event_type": "subscription_cancelled_effective",
+             "occurred_at": T1, "attributes": {"subscription_id": "sub-usage-only-termination"},
+             "schema_version": "1.0"},
+            {"source": "usage_only", "source_event_id": "evt-unapproved-payment",
+             "external_customer_id": "acct-usage-only", "event_type": "payment_failed",
+             "occurred_at": T1, "attributes": {"amount_minor": 500, "currency": "MYR"},
+             "schema_version": "1.0"},
+        )
+        for payload in prohibited:
+            with self.subTest(event_type=payload["event_type"]):
+                with self.assertRaises(DataFoundationError) as caught:
+                    ingest_event(self.db, principal, payload, received_at=T1)
+                self.assertEqual(caught.exception.code, "event_category_not_authorized")
+        http_termination = {
+            **prohibited[0], "source_event_id": "evt-unapproved-http-termination",
+        }
+        response = post_wsgi(
+            create_app(self.db), "/v1/ingest/events", http_termination, token,
+        )
+        self.assertTrue(response["status"].startswith("403"))
+        self.assertEqual(response["body"]["error"], "event_category_not_authorized")
+        connection = sqlite3.connect(self.db)
+        try:
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) FROM canonical_events WHERE source='usage_only'",
+                ).fetchone()[0], 1,
+            )
+        finally:
+            connection.close()
+
+    def test_multicategory_integration_requires_explicit_category_grants(self):
+        token = create_integration(
+            self.db, "tenant-a", "multi_category", authorized_purposes=("retention_inference",),
+            authorized_categories=("usage", "subscription"),
+        )
+        map_customer_identity(self.db, "tenant-a", "multi_category", "acct-multi", "customer-a")
+        principal = authenticate_integration(self.db, token)
+        accepted = ingest_event(
+            self.db, principal,
+            {"source": "multi_category", "source_event_id": "evt-explicit-termination",
+             "external_customer_id": "acct-multi", "event_type": "subscription_cancelled_effective",
+             "occurred_at": T1, "attributes": {"subscription_id": "sub-explicit-termination"},
+             "schema_version": "1.0"},
+            received_at=T1,
+        )
+        self.assertEqual(accepted["status"], "accepted")
+        with self.assertRaises(DataFoundationError) as denied:
+            ingest_event(
+                self.db, principal,
+                {"source": "multi_category", "source_event_id": "evt-explicit-but-ungranted-payment",
+                 "external_customer_id": "acct-multi", "event_type": "payment_failed",
+                 "occurred_at": T1, "attributes": {"amount_minor": 500, "currency": "MYR"},
+                 "schema_version": "1.0"},
+                received_at=T1,
+            )
+        self.assertEqual(denied.exception.code, "event_category_not_authorized")
+
+    def test_operator_can_replace_event_category_grants_and_refresh_principal(self):
+        from retaniq.data_foundation import set_integration_event_categories
+
+        token = create_integration(
+            self.db, "tenant-a", "change_categories", authorized_purposes=("retention_inference",),
+        )
+        map_customer_identity(self.db, "tenant-a", "change_categories", "acct-change", "customer-a")
+        stale_principal = authenticate_integration(self.db, token)
+        set_integration_event_categories(
+            self.db, "tenant-a", "change_categories", ("usage", "subscription"),
+        )
+        termination = {
+            "source": "change_categories", "source_event_id": "evt-after-category-config",
+            "external_customer_id": "acct-change", "event_type": "subscription_cancelled_effective",
+            "occurred_at": T1, "attributes": {"subscription_id": "sub-after-config"},
+            "schema_version": "1.0",
+        }
+        with self.assertRaises(DataFoundationError) as stale:
+            ingest_event(self.db, stale_principal, termination, received_at=T1)
+        self.assertEqual(stale.exception.code, "unauthorized")
+        refreshed = authenticate_integration(self.db, token)
+        self.assertEqual(
+            ingest_event(self.db, refreshed, termination, received_at=T1)["status"], "accepted",
+        )
 
     def test_retention_only_reader_can_read_usage_but_not_valuation_data(self):
         ingest_event(self.db, self.principal_a, usage_event(), received_at=T0)
@@ -353,6 +617,7 @@ class DataFoundationTests(unittest.TestCase):
 
         billing_token = create_integration(
             self.db, "tenant-a", "billing_app", authorized_purposes=("retention_inference",),
+            authorized_categories=("subscription",),
         )
         excluded_token = create_integration(
             self.db, "tenant-a", "support_app", authorized_purposes=("retention_inference",),
@@ -421,6 +686,7 @@ class DataFoundationTests(unittest.TestCase):
 
         billing_token = create_integration(
             self.db, "tenant-a", "billing_app", authorized_purposes=("retention_inference",),
+            authorized_categories=("subscription",),
         )
         billing = authenticate_integration(self.db, billing_token)
         create_customer(self.db, "tenant-a", "billing-only-customer")
@@ -461,6 +727,8 @@ class DataFoundationTests(unittest.TestCase):
             "is_new_account": False,
             "subscription_status": "active",
             "plan_id": "growth-v2",
+            "plan_tier": "premium",
+            "usage_trend_category": "declining",
         }
         snapshot_id = store_feature_snapshot(
             self.db, self.principal_a, "customer-a", T1, "features-safe-v1", T1,
@@ -491,6 +759,12 @@ class DataFoundationTests(unittest.TestCase):
             {"card_number": "4111111111111111"},
             {"sessions_7d": 4111111111111111},
             {"support_comment": "call me at +60123456789"},
+            {"plan_tier": "4111-1111-1111-1111"},
+            {"feature": "6012.345.6789"},
+            {"feature": "acct.4111-1111-1111-1111"},
+            {"feature": "support-6012.345.6789"},
+            {"plan_tier": "custom premium tier"},
+            {"plan_tier": "platinum"},
         )
         for index, features in enumerate(unsafe_feature_values):
             with self.subTest(feature=features):
@@ -507,6 +781,10 @@ class DataFoundationTests(unittest.TestCase):
             {"30d": {"card_number": "4111111111111111"}},
             {"30d": {"sessions_7d": 4111111111111111}},
             {"30d": [{"feature": "60123456789", "contribution": 0.15}]},
+            {"30d": {"plan_tier": "4111-1111-1111-1111"}},
+            {"30d": [{"feature": "6012.345.6789", "contribution": 0.15}]},
+            {"30d": [{"feature": "acct.4111-1111-1111-1111", "contribution": 0.15}]},
+            {"30d": [{"feature": "support-6012.345.6789", "contribution": 0.15}]},
             {"30d": [{"feature": "user@example.invalid", "contribution": 0.15}]},
         )
         for index, explanations in enumerate(unsafe_explanations):
@@ -545,6 +823,7 @@ class DataFoundationTests(unittest.TestCase):
         create_customer(self.db, "tenant-a", "customer-other")
         billing_token = create_integration(
             self.db, "tenant-a", "billing_app", authorized_purposes=("retention_inference",),
+            authorized_categories=("subscription",),
         )
         map_customer_identity(self.db, "tenant-a", "billing_app", "acct-other", "customer-other")
         billing_principal = authenticate_integration(self.db, billing_token)
@@ -986,6 +1265,9 @@ class DataFoundationTests(unittest.TestCase):
     def test_prediction_rejects_feature_snapshot_for_wrong_account_cutoff_or_version(self):
         for customer_id in ("customer-other", "customer-cutoff", "customer-version"):
             create_customer(self.db, "tenant-a", customer_id)
+            map_customer_identity(
+                self.db, "tenant-a", "product_app", f"acct-{customer_id}", customer_id,
+            )
         other_account_snapshot = store_feature_snapshot(
             self.db, self.principal_a, "customer-other", T1, "features-v1", T1,
             {"sessions_7d": 1}, "available",

@@ -16,7 +16,7 @@ Run commands from this directory:
 ```powershell
 python -m retaniq init-db --db .\data\retaniq.sqlite3
 python -m retaniq create-tenant --db .\data\retaniq.sqlite3 --tenant-id tenant_demo
-python -m retaniq create-integration --db .\data\retaniq.sqlite3 --tenant-id tenant_demo --source product_app --purpose retention_inference --purpose billing_valuation
+python -m retaniq create-integration --db .\data\retaniq.sqlite3 --tenant-id tenant_demo --source product_app --purpose retention_inference --category usage
 python -m retaniq create-service-principal --db .\data\retaniq.sqlite3 --tenant-id tenant_demo --role analyst --source product_app --purpose retention_inference
 python -m retaniq create-customer --db .\data\retaniq.sqlite3 --tenant-id tenant_demo --customer-id customer_001
 python -m retaniq map-customer --db .\data\retaniq.sqlite3 --tenant-id tenant_demo --source product_app --external-customer-id acct_001 --customer-id customer_001
@@ -63,13 +63,17 @@ Allowlisted event types and attributes:
 
 Unknown event types, extra fields, raw contact/card data, malformed timestamps, non-allowlisted attributes, and schema versions other than `1.0` are rejected. Logs and errors expose stable error codes only. A generic login is not translated into `session_started` unless a source mapping explicitly defines that meaning.
 
+Every integration is also scoped to explicit event categories. New integrations default to `usage`; set one or more categories with repeated `--category` options when creating the token, for example `--category usage --category billing --category subscription`. The normalized event type determines its category, and ingestion rejects an ungranted category with HTTP 403 `event_category_not_authorized` before inserting a canonical event. For an existing source, a trusted local operator can replace grants with `python -m retaniq set-integration-categories --db .\data\retaniq.sqlite3 --tenant-id tenant_demo --source billing_app --category billing --category subscription`.
+
 Purpose grants are checked at data access as well as ingestion. Usage reads and feature/label/prediction writes require `retention_inference`; billing status is available to retention readers with amount and currency redacted. Pricing fields and MRR are returned only when the principal also has `billing_valuation`. Account snapshot and subscription helpers keep the lifecycle fields available to retention readers and omit the valuation for them.
+
+Multi-source Member 2 jobs use a dedicated service principal created by a trusted local operator with role `analyst`, only the exact source list, and both `retention_inference` and `model_artifact_write`. This separate purpose is required for service-principal writes; another analyst token without it and admin/operator tokens cannot persist features, labels, or predictions. A source integration may persist artifacts only for a customer explicitly mapped through its own source. It cannot write for an account mapped only through another source in the same tenant. Add `billing_valuation` to the internal principal only when monetary features or explanations are required.
 
 As-of query helpers enforce both tenant and source grants. An integration principal sees events only from its own source. An internal service principal may combine multiple sources only when each is explicitly listed in that principal's tenant-scoped grants; purpose redaction still applies.
 
 Account-specific snapshots and eligible-account enumeration also require an explicit customer identity mapping from at least one source granted to the principal. A caller cannot probe canonical customer IDs that are mapped only through another source in the same tenant. Silent accounts remain enumerable when their authorized source mapping exists and their dated subscription history establishes eligibility.
 
-Feature snapshots and prediction explanations accept numeric, boolean, null, and bounded categorical values under approved categorical fields. Arbitrary strings, free-form source errors, notes, contact details, credential values, and payment-card values are rejected before persistence. Reliability reasons are predefined codes such as `short_personal_usage_history`, `stale_source_data`, and `unknown_observation_coverage`; a client must translate these codes to approved display text. Financial value fields still require `billing_valuation`. Prediction `input_data_as_of` must be at or before its `as_of` cutoff.
+Feature snapshots and prediction explanations accept numeric, boolean, null, and bounded categorical values under approved categorical fields. Status, event type, direction/trend, currency, and tier fields have enums; categorical values with seven or more digits are rejected after punctuation normalization. Arbitrary strings, free-form source errors, notes, contact details, credential values, and payment-card values are rejected before persistence. Reliability reasons are predefined codes such as `short_personal_usage_history`, `stale_source_data`, and `unknown_observation_coverage`; a client must translate these codes to approved display text. Financial value fields still require `billing_valuation`. Prediction `input_data_as_of` must be at or before its `as_of` cutoff.
 
 ### `GET /v1/integrations`
 
@@ -113,7 +117,7 @@ The command reports accepted, duplicate, and rejected row counts and rejection c
 
 ## Part 2 data handoff
 
-Authenticated internal data helpers take an `IntegrationPrincipal` produced by token authentication and always use its tenant scope:
+Authenticated internal data helpers take an `IntegrationPrincipal` or a `ServicePrincipal` produced by token authentication and always use the authenticated tenant scope:
 
 - `get_account_snapshot_as_of(db, principal, customer_id, as_of)` returns tenant/customer IDs, cutoff, eligibility state, point-in-time subscription state, usage and billing event references, valuation, and the latest availability time actually used.
 - `get_events_as_of(...)` returns typed facts satisfying occurrence and availability cutoffs.
@@ -146,7 +150,7 @@ The 52-week and 365-day factors define the v1 average-month convention. `amount_
 
 ## Storage and implementation boundary
 
-`migrations/001_data_foundation.sql` creates the initial tenant-aware data tables. `migrations/002_authorized_services_and_subscription_owners.sql` adds separately scoped service principals and a tenant-scoped subscription-owner registry with composite foreign keys from billing events, subscription history, and the current projection. Initialization backfills owner records from existing data and refuses to guess if a subscription ID is already associated with multiple customers. Subscription current state remains a projection; historical state and price are rebuilt from available subscription events. Prediction storage keeps one `prediction_id` per account/cutoff, a separate `prediction_run_id`, and flat `p_churn_7d`, `p_churn_14d`, and `p_churn_30d` fields.
+`migrations/001_data_foundation.sql` creates the initial tenant-aware data tables. `migrations/002_authorized_services_and_subscription_owners.sql` adds separately scoped service principals and a tenant-scoped subscription-owner registry with composite foreign keys from billing events, subscription history, and the current projection. `migrations/003_integration_event_categories.sql` stores per-integration usage, billing, and subscription category grants. It backfills categories present in legacy canonical events; legacy integrations with no event history receive only the safe `usage` grant. Existing integration tokens remain valid for categories granted by that migration. A legacy integration that needs a category not represented in its prior event history must be explicitly updated by a trusted local operator with `set-integration-categories`. Initialization backfills owner records from existing data and refuses to guess if a subscription ID is already associated with multiple customers. Subscription current state remains a projection; historical state and price are rebuilt from available subscription events. Prediction storage keeps one `prediction_id` per account/cutoff, a separate `prediction_run_id`, and flat `p_churn_7d`, `p_churn_14d`, and `p_churn_30d` fields.
 
 This is a local reference implementation, not a deployed service. It has no scheduled daily worker, external identity provider, managed database, encryption-at-rest integration, production TLS, or PostgreSQL adapter. Those infrastructure capabilities remain unverified. No real dataset exists in this checkout, so imports/replay and tests can demonstrate engineering behavior only.
 

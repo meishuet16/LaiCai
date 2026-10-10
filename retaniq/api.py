@@ -45,6 +45,7 @@ def _status_for(error: DataFoundationError) -> HTTPStatus:
     return {
         "unauthorized": HTTPStatus.UNAUTHORIZED,
         "source_not_authorized": HTTPStatus.FORBIDDEN,
+        "event_category_not_authorized": HTTPStatus.FORBIDDEN,
         "purpose_not_authorized": HTTPStatus.FORBIDDEN,
         "identity_not_mapped": HTTPStatus.UNPROCESSABLE_ENTITY,
         "idempotency_conflict": HTTPStatus.CONFLICT,

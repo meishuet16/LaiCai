@@ -41,6 +41,7 @@ def load_example_history(as_of: str = SYNTHETIC_CUTOFF) -> dict[str, Any]:
             SYNTHETIC_TENANT_ID,
             SYNTHETIC_SOURCE,
             authorized_purposes=("retention_inference",),
+            authorized_categories=("usage", "subscription"),
         )
         create_customer(database_path, SYNTHETIC_TENANT_ID, SYNTHETIC_CUSTOMER_ID)
         map_customer_identity(

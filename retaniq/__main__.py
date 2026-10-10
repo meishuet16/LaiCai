@@ -18,6 +18,7 @@ from .data_foundation import (
     create_tenant,
     initialize_database,
     map_customer_identity,
+    set_integration_event_categories,
 )
 from .importer import import_csv, iter_replay_events
 
@@ -42,6 +43,21 @@ def _parser() -> argparse.ArgumentParser:
         choices=("retention_inference", "billing_valuation", "operational_contact", "identity_mapping"),
         help="explicitly grant one purpose; repeat to grant multiple purposes",
     )
+    integration.add_argument(
+        "--category", action="append", choices=("usage", "billing", "subscription"),
+        help="explicitly grant one event category; repeat to grant multiple categories (default: usage)",
+    )
+
+    category_grants = commands.add_parser(
+        "set-integration-categories", help="replace an existing integration's event category grants",
+    )
+    category_grants.add_argument("--db", required=True)
+    category_grants.add_argument("--tenant-id", required=True)
+    category_grants.add_argument("--source", required=True)
+    category_grants.add_argument(
+        "--category", action="append", required=True, choices=("usage", "billing", "subscription"),
+        help="explicitly grant one event category; repeat to grant multiple categories",
+    )
 
     service = commands.add_parser(
         "create-service-principal", help="provision an internal, tenant/source-scoped service credential",
@@ -53,7 +69,7 @@ def _parser() -> argparse.ArgumentParser:
                          help="explicitly grant one existing source; repeat for multiple sources")
     service.add_argument("--purpose", action="append", required=True,
                          choices=("retention_inference", "billing_valuation", "operational_contact",
-                                  "identity_mapping", "integration_health"),
+                                  "identity_mapping", "integration_health", "model_artifact_write"),
                          help="explicitly grant one purpose; repeat to grant multiple purposes")
 
     customer = commands.add_parser("create-customer", help="create a paying account (trusted local operator only)")
@@ -102,8 +118,19 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "create-integration":
             initialize_database(args.db)
             purposes = tuple(args.purpose) if args.purpose else ("retention_inference", "billing_valuation")
-            token = create_integration(args.db, args.tenant_id, args.source, authorized_purposes=purposes)
-            print(json.dumps({"source": args.source, "token": token, "store_this_token_securely": True}))
+            categories = tuple(args.category) if args.category else ("usage",)
+            token = create_integration(
+                args.db, args.tenant_id, args.source, authorized_purposes=purposes,
+                authorized_categories=categories,
+            )
+            print(json.dumps({"source": args.source, "authorized_categories": sorted(set(categories)),
+                              "token": token, "store_this_token_securely": True}))
+        elif args.command == "set-integration-categories":
+            initialize_database(args.db)
+            categories = tuple(args.category)
+            set_integration_event_categories(args.db, args.tenant_id, args.source, categories)
+            print(json.dumps({"status": "updated", "source": args.source,
+                              "authorized_categories": sorted(set(categories))}))
         elif args.command == "create-service-principal":
             initialize_database(args.db)
             token = create_service_principal(

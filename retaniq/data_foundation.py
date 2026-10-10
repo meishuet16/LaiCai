@@ -54,8 +54,9 @@ SAFE_RELIABILITY_REASON_CODES = frozenset({
 SERVICE_ROLES = frozenset({"analyst", "admin", "operator"})
 PURPOSES = frozenset({
     "retention_inference", "billing_valuation", "operational_contact", "identity_mapping",
-    "integration_health",
+    "integration_health", "model_artifact_write",
 })
+EVENT_CATEGORIES = frozenset({"usage", "billing", "subscription"})
 SAFE_CATEGORICAL_FIELDS = frozenset({
     "feature", "plan_id", "status", "subscription_status", "billing_interval", "currency",
     "source", "event_type", "unit", "direction", "trend", "cohort", "tier", "plan_tier",
@@ -64,6 +65,10 @@ SAFE_CATEGORICAL_FIELDS = frozenset({
 })
 SAFE_CATEGORY_SUFFIXES = ("_category",)
 SAFE_CATEGORY_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$")
+SAFE_TIER_VALUES = frozenset({
+    "basic", "business", "enterprise", "free", "growth", "premium", "professional",
+    "pro", "starter", "standard", "ultimate", "unknown",
+})
 SENSITIVE_CATEGORY_MARKERS = (
     "sk_live_", "sk_test_", "pk_live_", "pk_test_", "bearer", "authorization",
     "password", "secret", "token", "api_key", "api-key", "api_secret", "api-secret",
@@ -111,6 +116,7 @@ SAFE_MESSAGES = {
     "unauthorized": "Authentication is required.",
     "invalid_event": "The event is invalid or contains unsupported fields.",
     "source_not_authorized": "The authenticated integration is not authorized for this source.",
+    "event_category_not_authorized": "The authenticated integration is not authorized for this event category.",
     "purpose_not_authorized": "The integration is not authorized for this data purpose.",
     "identity_not_mapped": "The source customer ID has no explicit tenant mapping.",
     "idempotency_conflict": "The source event ID was already used for different normalized data.",
@@ -138,6 +144,7 @@ class IntegrationPrincipal:
     schema_version: str
     mapping_version: str
     authorized_purposes: tuple[str, ...]
+    authorized_categories: tuple[str, ...] = ("usage",)
 
 
 @dataclass(frozen=True)
@@ -204,6 +211,10 @@ def initialize_database(path: str | Path) -> None:
                 "002_authorized_services_and_subscription_owners",
                 migrations_dir / "002_authorized_services_and_subscription_owners.sql",
             ),
+            (
+                "003_integration_event_categories",
+                migrations_dir / "003_integration_event_categories.sql",
+            ),
         )
         for version, migration in migrations:
             applied = connection.execute(
@@ -257,6 +268,7 @@ def create_integration(
     schema_version: str = SCHEMA_VERSION,
     mapping_version: str = DEFAULT_MAPPING_VERSION,
     authorized_purposes: tuple[str, ...] = ("retention_inference", "billing_valuation"),
+    authorized_categories: tuple[str, ...] = ("usage",),
 ) -> str:
     tenant_id = _validate_id(tenant_id)
     source = _validate_id(source)
@@ -268,7 +280,12 @@ def create_integration(
         raise DataFoundationError("invalid_contract")
     if any(purpose not in allowed_purposes for purpose in authorized_purposes):
         raise DataFoundationError("invalid_contract")
+    if (not isinstance(authorized_categories, (tuple, list)) or not authorized_categories
+            or any(not isinstance(category, str) or category not in EVENT_CATEGORIES
+                   for category in authorized_categories)):
+        raise DataFoundationError("invalid_contract")
     purposes_json = json.dumps(sorted(set(authorized_purposes)), separators=(",", ":"))
+    categories = tuple(sorted(set(authorized_categories)))
     token = secrets.token_urlsafe(32)
     token_digest = hashlib.sha256(token.encode("ascii")).hexdigest()
     integration_id = secrets.token_urlsafe(18)
@@ -279,9 +296,44 @@ def create_integration(
                 "schema_version, mapping_version, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (integration_id, tenant_id, source, token_digest, purposes_json, schema_version, mapping_version, _utc_now()),
             )
+            connection.executemany(
+                "INSERT INTO integration_event_categories(tenant_id, source, category) VALUES (?, ?, ?)",
+                ((tenant_id, source, category) for category in categories),
+            )
         except sqlite3.IntegrityError:
             raise DataFoundationError("contract_conflict") from None
     return token
+
+
+def set_integration_event_categories(
+    path: str | Path,
+    tenant_id: str,
+    source: str,
+    authorized_categories: tuple[str, ...] | list[str],
+) -> None:
+    """Replace an integration's category grants as a trusted local operator action."""
+    tenant_id = _validate_id(tenant_id)
+    source = _validate_id(source)
+    if (not isinstance(authorized_categories, (tuple, list)) or not authorized_categories
+            or any(not isinstance(category, str) or category not in EVENT_CATEGORIES
+                   for category in authorized_categories)):
+        raise DataFoundationError("invalid_contract")
+    categories = tuple(sorted(set(authorized_categories)))
+    with _db(path) as connection:
+        exists = connection.execute(
+            "SELECT 1 FROM integrations WHERE tenant_id = ? AND source = ?",
+            (tenant_id, source),
+        ).fetchone()
+        if exists is None:
+            raise DataFoundationError("not_found")
+        connection.execute(
+            "DELETE FROM integration_event_categories WHERE tenant_id = ? AND source = ?",
+            (tenant_id, source),
+        )
+        connection.executemany(
+            "INSERT INTO integration_event_categories(tenant_id, source, category) VALUES (?, ?, ?)",
+            ((tenant_id, source, category) for category in categories),
+        )
 
 
 def create_customer(
@@ -347,11 +399,19 @@ def authenticate_integration(path: str | Path, token: str | None) -> Integration
             "FROM integrations WHERE token_digest = ?",
             (digest,),
         ).fetchone()
+        categories = () if row is None else tuple(
+            item["category"] for item in connection.execute(
+                "SELECT category FROM integration_event_categories "
+                "WHERE tenant_id = ? AND source = ? ORDER BY category",
+                (row["tenant_id"], row["source"]),
+            ).fetchall()
+        )
     if row is None:
         raise DataFoundationError("unauthorized")
     return IntegrationPrincipal(
         row["integration_id"], row["tenant_id"], row["source"],
         row["schema_version"], row["mapping_version"], tuple(json.loads(row["authorized_purposes_json"])),
+        categories,
     )
 
 
@@ -432,8 +492,16 @@ def _assert_principal(connection: sqlite3.Connection, principal: IntegrationPrin
     ).fetchone()
     if row is None:
         raise DataFoundationError("unauthorized")
+    categories = tuple(
+        item["category"] for item in connection.execute(
+            "SELECT category FROM integration_event_categories "
+            "WHERE tenant_id = ? AND source = ? ORDER BY category",
+            (principal.tenant_id, principal.source),
+        ).fetchall()
+    )
     if (principal.schema_version != row["schema_version"]
-            or principal.authorized_purposes != tuple(json.loads(row["authorized_purposes_json"]))):
+            or principal.authorized_purposes != tuple(json.loads(row["authorized_purposes_json"]))
+            or principal.authorized_categories != categories):
         raise DataFoundationError("unauthorized")
     return row
 
@@ -489,6 +557,7 @@ def update_mapping_version(
     return IntegrationPrincipal(
         principal.integration_id, principal.tenant_id, principal.source,
         principal.schema_version, mapping_version, principal.authorized_purposes,
+        principal.authorized_categories,
     )
 
 
@@ -781,14 +850,16 @@ def ingest_event(
         event = _normalize_envelope(
             principal, payload, trusted_source_available_at=trusted_source_available_at,
         )
-        required_purposes = {"retention_inference"}
-        if any(key in event["attributes"] for key in ("amount_minor", "discount_minor", "currency")):
-            required_purposes.add("billing_valuation")
-        if not required_purposes.issubset(principal.authorized_purposes):
-            raise DataFoundationError("source_not_authorized")
         digest = _event_hash(event)
         with _db(path) as connection:
             integration = _assert_principal(connection, principal)
+            if event["category"] not in principal.authorized_categories:
+                raise DataFoundationError("event_category_not_authorized")
+            required_purposes = {"retention_inference"}
+            if any(key in event["attributes"] for key in ("amount_minor", "discount_minor", "currency")):
+                required_purposes.add("billing_valuation")
+            if not required_purposes.issubset(principal.authorized_purposes):
+                raise DataFoundationError("source_not_authorized")
             connection.execute("BEGIN IMMEDIATE")
             identity = connection.execute(
                 "SELECT customer_id FROM customer_identities "
@@ -1138,10 +1209,19 @@ def list_eligible_accounts_as_of(
     return [snapshot for snapshot in snapshots if snapshot["eligible"]]
 
 
-def _assert_customer(connection: sqlite3.Connection, principal: IntegrationPrincipal, customer_id: str) -> None:
+def _assert_customer(connection: sqlite3.Connection, principal: ReadPrincipal, customer_id: str) -> None:
+    authorized_sources = _assert_read_principal(connection, principal)
+    if isinstance(principal, ServicePrincipal):
+        if principal.role != "analyst":
+            raise DataFoundationError("unauthorized")
+        _require_purposes(principal, "retention_inference", "model_artifact_write")
+    else:
+        _require_purposes(principal, "retention_inference")
+    source_placeholders = ",".join("?" for _ in authorized_sources)
     row = connection.execute(
-        "SELECT 1 FROM customers WHERE tenant_id = ? AND customer_id = ?",
-        (principal.tenant_id, customer_id),
+        "SELECT 1 FROM customer_identities WHERE tenant_id = ? AND customer_id = "
+        f"? AND source IN ({source_placeholders}) LIMIT 1",
+        (principal.tenant_id, customer_id, *authorized_sources),
     ).fetchone()
     if row is None:
         raise DataFoundationError("not_found")
@@ -1152,12 +1232,11 @@ def _has_sensitive_category_value(value: str) -> bool:
     if (EMAIL_VALUE_PATTERN.search(value) or SENSITIVE_VALUE_PATTERN.search(value)
             or any(marker in folded for marker in SENSITIVE_CATEGORY_MARKERS)):
         return True
+    # Categorical fields are identifiers, never numeric measurements. Count digits
+    # after removing punctuation so separators cannot disguise a card or phone value.
+    # Rejecting long digit-bearing categories also avoids storing account/contact IDs.
     digits = "".join(character for character in value if character.isdigit())
-    if digits == value and len(digits) >= 7:
-        # Numeric category strings have no useful distinction from phone/card values;
-        # numeric facts must be submitted as numbers under their typed feature field.
-        return True
-    return False
+    return len(digits) >= 7
 
 
 def _looks_like_payment_card_number(value: int) -> bool:
@@ -1222,6 +1301,10 @@ def _check_feature_tree(
             raise DataFoundationError("invalid_contract")
         if field_name == "payment_status" and value not in {"failed", "succeeded", "unknown"}:
             raise DataFoundationError("invalid_contract")
+        if field_name in {"tier", "plan_tier"} and value.casefold() not in SAFE_TIER_VALUES:
+            raise DataFoundationError("invalid_contract")
+        if field_name == "event_type" and value not in EVENT_TYPES:
+            raise DataFoundationError("invalid_contract")
         if field_name == "billing_interval" and value not in INTERVALS:
             raise DataFoundationError("invalid_contract")
         if field_name == "currency" and value not in ISO4217_CURRENT_CODES:
@@ -1262,7 +1345,7 @@ def _check_reliability_reasons(reasons: Any) -> None:
 
 def store_feature_snapshot(
     path: str | Path,
-    principal: IntegrationPrincipal,
+    principal: ReadPrincipal,
     customer_id: str,
     as_of: str,
     feature_version: str,
@@ -1285,8 +1368,6 @@ def store_feature_snapshot(
     feature_snapshot_id = secrets.token_urlsafe(18)
     encoded = json.dumps(features, sort_keys=True, separators=(",", ":"), allow_nan=False)
     with _db(path) as connection:
-        _assert_principal(connection, principal)
-        _require_purposes(principal, "retention_inference")
         _assert_customer(connection, principal, customer_id)
         try:
             connection.execute(
@@ -1302,7 +1383,7 @@ def store_feature_snapshot(
 
 def store_churn_label(
     path: str | Path,
-    principal: IntegrationPrincipal,
+    principal: ReadPrincipal,
     customer_id: str,
     as_of: str,
     horizon_days: int,
@@ -1344,8 +1425,6 @@ def store_churn_label(
     elif normalized_label == "unknown" and normalized_outcome is not None:
         raise DataFoundationError("invalid_contract")
     with _db(path) as connection:
-        _assert_principal(connection, principal)
-        _require_purposes(principal, "retention_inference")
         _assert_customer(connection, principal, customer_id)
         try:
             connection.execute(
@@ -1360,7 +1439,7 @@ def store_churn_label(
 
 def store_prediction(
     path: str | Path,
-    principal: IntegrationPrincipal,
+    principal: ReadPrincipal,
     prediction: dict[str, Any],
 ) -> str:
     required = {
@@ -1410,8 +1489,6 @@ def store_prediction(
     if feature_snapshot_id is not None:
         feature_snapshot_id = _validate_id(feature_snapshot_id)
     with _db(path) as connection:
-        _assert_principal(connection, principal)
-        _require_purposes(principal, "retention_inference")
         _assert_customer(connection, principal, customer_id)
         if feature_snapshot_id is not None:
             snapshot = connection.execute(
