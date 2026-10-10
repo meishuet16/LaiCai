@@ -40,6 +40,20 @@ from .feature_builder import (
     UsageCoverageProvider,
     UsageCoverageStatus,
 )
+from .label_builder import (
+    ChurnEventSemantics,
+    ChurnLabel,
+    ChurnLabelBuilder,
+    ChurnType,
+    InMemoryLifecycleOutcomeAdapter,
+    LabelBuilderConfig,
+    LabelReasonCode,
+    LabelStatus,
+    LifecycleOutcomeAdapter,
+    LifecycleOutcomeSnapshot,
+    OutcomeObservation,
+    SUPPORTED_HORIZONS,
+)
 from .point_in_time import (
     AvailabilityPolicy,
     BillingFact,
@@ -94,4 +108,16 @@ __all__ = [
     "UsageCoverage",
     "UsageCoverageProvider",
     "UsageCoverageStatus",
+    "ChurnEventSemantics",
+    "ChurnLabel",
+    "ChurnLabelBuilder",
+    "ChurnType",
+    "InMemoryLifecycleOutcomeAdapter",
+    "LabelBuilderConfig",
+    "LabelReasonCode",
+    "LabelStatus",
+    "LifecycleOutcomeAdapter",
+    "LifecycleOutcomeSnapshot",
+    "OutcomeObservation",
+    "SUPPORTED_HORIZONS",
 ]
