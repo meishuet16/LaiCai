@@ -18,7 +18,7 @@
 
 ## Presentation
 
-- **Live 3-minute pitch:** [Open the deployed HTML presentation](https://lai-cai-six.vercel.app/pitch/retainiq-3min-pitch.html)
+- **Live 3-minute pitch:** [Open the standalone presentation](https://lai-cai-pitch.vercel.app)
 - **PDF:** [Download the presentation](output/pdf/LaiCai_3min_Pitch.pdf)
 - **Source:** [`pitch/retainiq-3min-pitch.html`](pitch/retainiq-3min-pitch.html)
 
