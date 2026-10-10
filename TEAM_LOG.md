@@ -72,6 +72,29 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T18:50:03Z — Member 2 AI coding assistant — Fit synthetic-only STANDARD horizon demos
+
+- **Workstream:** Part 2 / ML / Integration / Docs / QA
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `feat(member2): train isolated synthetic horizon demos`
+- **Issue / task:** Member 2 Prompt 31; no ticket
+- **Files changed:** `examples/member2_standard_synthetic_demo_training.py`, `tests/test_member2_standard_synthetic_demo_training.py`, `docs/MEMBER2_PROMPT31_SYNTHETIC_DEMO_TRAINING.md`, `docs/MEMBER2_FINAL_PREDICTION_HANDOFF.md`, `docs/MEMBER2_TRAINING_READINESS_DECISION.md`, and this log.
+- **What changed:**
+  - Added a reproducible, fail-closed runner that verifies the immutable tenant-01 prep manifest and four TRAIN/VALIDATION checksums, loads only those stages, re-applies the existing temporal/maturity splitter, and writes model/prediction artifacts only outside Git.
+  - Actually fit and saved LightGBM 14d/30d demo models with seed 2026; reloaded each via the trusted artifact loader and produced mature VALIDATION raw scores. 7d was not fit because it fails the frozen 50-positive TRAIN/VALIDATION support gate. Calibration/TEST files were not opened; no calibration or threshold tuning was performed.
+  - Documented aggregate class/feature coverage, metrics, provenance, artifact checksums, reproducible command, and Member 3/4 restrictions. Added a superseding-status notice to the Prompt 30 handoff and readiness decision; production gates remain unchanged.
+- **Why it changed:** Prompt 31 requests an actual model-fitting attempt and a useful delivery while preserving frozen splits, TEST isolation, production readiness gates, and explicit synthetic provenance.
+- **Contract / database / API impact:** No PredictionOutput/status, database, API, dataset, or split contract changed. Scores are explicitly uncalibrated and synthetic-demo-only; no canonical scored payload or production bundle was created. Downstream owners must not serve/rank these scores as calibrated churn forecasts.
+- **Tests / verification:**
+  - `& .\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p31-focused tests\test_member2_standard_synthetic_demo_training.py tests\test_lightgbm_model.py tests\test_candidate_training.py tests\test_temporal_splits.py` — **PASS** — 47 passed.
+  - `& .\.venv\Scripts\python.exe -B -m examples.member2_standard_synthetic_demo_training --prepared-dir 'C:\Users\User\RetainIQ-private\synthetic_saas_v1_2\prepared\synthetic-saas-v1-2-standard-s2026-970a9d231e68\tenant-01\member2-prep-v4' --output-dir 'C:\Users\User\RetainIQ-private\synthetic_saas_v1_2\experiments\prompt31-standard-tenant01-demo-v1'` — **PASS** — actual 14d/30d fit, model reload, and 9,026 mature VALIDATION inferences; elapsed 39.37s; 7d skipped by gate; output manifest SHA-256 `cfbebcbc006f269121aed1fba56d7145af1425b517f2f5fd68c77f291ed6f93d`.
+  - TRAIN/VALIDATION artifact and prep-manifest checksums — **PASS**; TEST and CALIBRATION customer-level files were not opened. `python -B -c "import ast, pathlib; ...; import retainiq_prediction.lightgbm_model, retainiq_prediction.temporal_splits, examples.member2_standard_synthetic_demo_training"` — **PASS**; runner `--help` — **PASS**; `git diff --check` — **PASS** after final edits.
+  - No full-suite rerun; last complete suite remains Prompt 29's 463 passed, 0 failures/errors/skips, 24 known unsuppressed SHAP warnings.
+- **Data / model / ROI evidence:** `SYNTHETIC_DEMO_ONLY`, tenant-01 STANDARD v1.2 seed 2026. Validation results are development-only and uncalibrated: 14d PR-AUC 0.011252, ROC-AUC 0.430971, Brier 0.011158; 30d PR-AUC 0.025993, ROC-AUC 0.498498, Brier 0.026834. These do not establish real-world or production performance; no retention, causal, saved-revenue, or ROI claim.
+- **Known issues / blockers:** 7d fails frozen support; CALIBRATION fails at every horizon; all usage coverage in the prepared data is partial and no recent window is fully covered. Stored quality metadata predates the unknown-connectivity correction. No local KKBox/other authorized dataset was found. Full 7/14/30 calibration, operational scoring, independent TEST evaluation, and real-world readiness remain blocked.
+- **Next action / handoff:** Members 3/4 may use the typed contract only with an explicit not-ready state; do not ingest private uncalibrated files into production flows. Member 1/data owner must address source coverage/health and missing-history semantics. Future fitting requires adequate authorized TRAIN/VALIDATION/CALIBRATION support and independent evaluation; keep TEST sealed until the separate evaluation gate.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T18:39:45Z — Member 2 AI coding assistant — Final prediction readiness and downstream handoff
 
 - **Workstream:** Part 2 / Integration / Docs / QA

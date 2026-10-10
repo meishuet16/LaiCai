@@ -1,5 +1,7 @@
 # Member 2 — Final Prediction Readiness Handoff
 
+> **Prompt 31 update:** This file records the Prompt 30 delivery state. Prompt 31 subsequently fit separate, uncalibrated `SYNTHETIC_DEMO_ONLY` 14-day and 30-day LightGBM models and generated development-validation scores. This does not change the production `NOT_READY` state or create canonical predictions. See [the Prompt 31 training report](MEMBER2_PROMPT31_SYNTHETIC_DEMO_TRAINING.md) for the current model state and artifacts.
+
 ## Delivery decision
 
 **Model state: `NOT_READY`; do not emit scored forecasts.** No complete 7/14/30-day candidate was trained, calibrated, evaluated, or written as a model artifact. The frozen tenant-01 development evidence fails the predeclared class-support gates, the dataset is synthetic-only, and the bounded live pilot shows severe evidence/freshness limitations. There are no prediction probabilities or performance metrics to hand off.

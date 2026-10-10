@@ -1,5 +1,7 @@
 # Member 2 Training Readiness Decision
 
+> **Prompt 31 update:** This document records the frozen readiness decision before exploratory fitting. Prompt 31 has since fit separate uncalibrated synthetic-demo models for 14d and 30d using TRAIN and VALIDATION only. The original class-support/calibration gates remain unchanged; production and full-bundle readiness remain **BLOCKED**. See [the Prompt 31 training report](MEMBER2_PROMPT31_SYNTHETIC_DEMO_TRAINING.md).
+
 ## Decision
 
 The preserved tenant-01 STANDARD v1.2 preparation is not ready for synthetic
