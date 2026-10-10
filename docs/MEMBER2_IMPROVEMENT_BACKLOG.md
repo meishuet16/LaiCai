@@ -73,3 +73,33 @@ held-out historical cohorts.
 This requires an authorized real dataset and completed model/calibration
 artifacts. The empirical comparison is not implemented in the current
 milestone.
+
+## IMPROVEMENT-005: Historical Evaluation Test Coverage Audit
+
+Status: PENDING_FINAL_REGRESSION_REVIEW
+
+Background:
+
+Prompt 15 specified 23 historical evaluation test scenarios, but only 15
+dedicated historical evaluation tests were reported. This does not necessarily
+mean eight scenarios are missing; one test may cover multiple scenarios.
+
+Required follow-up:
+
+- Build a scenario-to-test coverage matrix for all 23 original scenarios.
+- Mark each scenario `DIRECTLY_TESTED`, `INDIRECTLY_TESTED` or `MISSING`.
+- Add focused regression tests for genuinely missing coverage.
+
+Pay special attention to:
+
+1. Abstained accounts remain represented in the correct evaluation coverage and
+   abstention denominators.
+2. Overlapping customer snapshots do not double-count churned MRR.
+3. Immature or incomplete outcome labels never become negative labels.
+4. Model comparisons use equivalent eligible, mature evaluation cohorts, with
+   scoring-coverage differences reported.
+
+Owner: Member 2.
+
+The full historical evaluation audit is intentionally not performed in this
+milestone.

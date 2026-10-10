@@ -456,6 +456,32 @@ Members may cover several workstreams. Update assignments through a logged commi
 - **Next action / handoff:** Review the feedback field names and revision semantics with Members 1, 3 and 4, then connect only authorized adapter records; keep candidate retraining behind the existing temporal/evaluation/release gates.
 - **Reviewer / pairing:** N/A
 
+### 2026-10-10T08:07:38Z — Member 2 AI coding assistant — Retraining readiness and model registry governance
+
+- **Workstream:** Part 2 / Prediction Engine learning governance
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; Prompt 16 checkpoint is `9a5b6c8`
+- **Issue / task:** Member 2 Prompt 17; no ticket
+- **Files changed:** `src/retainiq_prediction/retraining_readiness.py`, `src/retainiq_prediction/model_registry.py`, `src/retainiq_prediction/__init__.py`, `tests/test_retraining_readiness.py`, `tests/test_model_registry.py`, `docs/MEMBER2_RETRAINING_GOVERNANCE.md`, `docs/MEMBER2_IMPROVEMENT_BACKLOG.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added a conservative readiness assessor that gates future candidate training on PASS authorized-real dataset evidence, complete temporal split metadata, point-in-time feature validity, mature source-backed outcomes, compatible versions/policies, horizon-specific sample/class readiness, and explicit selection/intervention warnings.
+  - Added immutable metadata-only model bundle registry with one model/calibration version per 7/14/30-day horizon, provenance and artifact references, explicit lifecycle transitions, readiness/evidence gates, independent human approval, and immutable active-bundle registration.
+  - Added IMPROVEMENT-005 for the historical evaluation scenario-coverage audit; the audit itself was intentionally not performed in this milestone. Existing backlog items 001–004 were preserved.
+  - Added focused synthetic structural tests and governance documentation. No model was trained, retrained, promoted, deployed, scheduled, or persisted.
+- **Why it changed:** Establish controlled evidence and release gates for a future retraining workflow without making synthetic fixtures appear production-ready or mutating the existing inference path.
+- **Contract / database / API impact:** No database, API, prediction contract, label definition, temporal split policy, Decision Engine, dashboard, or production bundle was changed. The registry is an in-memory replaceable metadata boundary and does not load untrusted artifacts.
+- **Tests / verification:**
+  - `& .venv\Scripts\python.exe -m pytest tests/test_retraining_readiness.py -q` — PASS — 12 tests passed.
+  - `& .venv\Scripts\python.exe -m pytest tests/test_model_registry.py -q` — PASS — 8 tests passed.
+  - Focused readiness/registry/feedback/evaluation/label/split run — PASS — 89 tests passed.
+  - `& .venv\Scripts\python.exe -m pytest -q` — 265 passed, 5 setup errors because the default Windows pytest temp root was inaccessible (`WinError 5` on `C:\Users\User\AppData\Local\Temp\pytest-of-User`).
+  - `& .venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp-p17` — PASS — 270 tests passed; 24 known SHAP/LightGBM binary-output compatibility warnings.
+  - The temporary `.pytest-tmp-p17` directory was removed after verification. Package import and `git diff --check` were run after this log update.
+- **Data / model / ROI evidence:** Synthetic fixtures only; no authorized longitudinal dataset, real readiness result, trained artifact, performance metric, release decision, retention uplift, causal effect, saved revenue, or ROI claim.
+- **Known issues / blockers:** Real candidate training remains blocked until Member 1 supplies authorized longitudinal provenance, mature lifecycle/outcome coverage and correction semantics, stable tenant/account identity, complete source availability, and the agreed account-level multi-subscription churn policy. Independent evaluation, human approval, artifact storage/loading, deployment, rollback execution, scheduling, and population-selection coverage remain external governance/integration responsibilities.
+- **Next action / handoff:** Have Members 1, 3, and 4 review the readiness reason codes, registry metadata, selection-coverage limitations, and approval/rollback ownership before any authorized candidate run. Keep Prompt 17 changes uncommitted until review.
+- **Reviewer / pairing:** N/A
+
 ## 6. Shared integration agreements — verify before changing
 
 - **Prediction anchor:** `prediction_id` = unique account forecast snapshot; `prediction_run_id` = inference batch/job ID.

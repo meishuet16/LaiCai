@@ -203,6 +203,25 @@ from .outcome_reconciliation import (
     assess_learning_eligibility,
     feedback_labels_for_historical_evaluation,
 )
+from .retraining_readiness import (
+    HorizonReadiness,
+    HorizonReadinessStatus,
+    RetrainingReasonCode,
+    RetrainingReadinessAssessor,
+    RetrainingReadinessConfig,
+    RetrainingReadinessReport,
+    RetrainingReadinessStatus,
+    assess_retraining_readiness,
+)
+from .model_registry import (
+    HorizonVersion,
+    HumanApproval,
+    ModelBundleMetadata,
+    ModelLifecycleStatus,
+    ModelRegistry,
+    RegistryProvenanceStatus,
+    RegistryReasonCode,
+)
 
 __all__ = [
     "DataFreshness",
@@ -289,6 +308,21 @@ __all__ = [
     "UnknownPredictionError",
     "assess_learning_eligibility",
     "feedback_labels_for_historical_evaluation",
+    "HorizonReadiness",
+    "HorizonReadinessStatus",
+    "RetrainingReasonCode",
+    "RetrainingReadinessAssessor",
+    "RetrainingReadinessConfig",
+    "RetrainingReadinessReport",
+    "RetrainingReadinessStatus",
+    "assess_retraining_readiness",
+    "HorizonVersion",
+    "HumanApproval",
+    "ModelBundleMetadata",
+    "ModelLifecycleStatus",
+    "ModelRegistry",
+    "RegistryProvenanceStatus",
+    "RegistryReasonCode",
     "EligibilityPolicy",
     "EligibilityReasonCode",
     "EligibilityResult",
