@@ -222,6 +222,28 @@ class DataFoundationTests(unittest.TestCase):
         self.assertIsNone(snapshot["valuation"])
         self.assertNotIn("amount_minor", snapshot["subscriptions"][0])
         self.assertNotIn("mrr_minor", snapshot["subscriptions"][0])
+        financial_features = (
+            {"mrr_minor": 2500}, {"amount_minor": 2500}, {"currency": "MYR"},
+        )
+        for index, features in enumerate(financial_features):
+            with self.subTest(features=features):
+                with self.assertRaises(DataFoundationError) as caught:
+                    store_feature_snapshot(
+                        self.db, principal, "customer-a", T2, f"financial-{index}", T2,
+                        features, "available",
+                    )
+                self.assertEqual(caught.exception.code, "invalid_contract")
+        with self.assertRaises(DataFoundationError) as financial_explanation:
+            store_prediction(
+                self.db, principal,
+                {"prediction_id": "pred-financial-scope", "prediction_run_id": "run-financial-scope",
+                 "customer_id": "customer-a", "as_of": T2, "generated_at": T2, "status": "abstained",
+                 "p_churn_7d": None, "p_churn_14d": None, "p_churn_30d": None,
+                 "feature_version": "features-v1", "model_version": "model-v1",
+                 "calibration_version": "cal-v1", "reliability_status": "insufficient_evidence",
+                 "data_freshness_status": "unknown", "explanations_by_horizon": {"mrr_minor": 2500}},
+            )
+        self.assertEqual(financial_explanation.exception.code, "invalid_contract")
 
     def test_tenant_scopes_event_reads_and_identity_writes(self):
         ingest_event(self.db, self.principal_b, usage_event(), received_at=T1)
@@ -470,7 +492,7 @@ class DataFoundationTests(unittest.TestCase):
     def test_feature_label_prediction_storage_contracts(self):
         feature_id = store_feature_snapshot(
             self.db, self.principal_a, "customer-a", T1, "features-v1", T1,
-            {"sessions_7d": 3}, "available",
+            {"sessions_7d": 3, "mrr_minor": 2500, "currency": "MYR"}, "available",
         )
         self.assertTrue(feature_id)
         with self.assertRaises(DataFoundationError):
@@ -511,9 +533,40 @@ class DataFoundationTests(unittest.TestCase):
              "p_churn_14d": 0.2, "p_churn_30d": 0.3, "feature_version": "features-v1",
              "model_version": "model-v1", "calibration_version": "cal-v1",
               "reliability_status": "limited_evidence", "data_freshness_status": "unknown",
-              "feature_snapshot_id": feature_id},
+              "feature_snapshot_id": feature_id,
+              "explanations_by_horizon": {"mrr_minor": 2500}},
         )
         self.assertEqual(prediction_id, "pred-1")
+        with self.assertRaises(DataFoundationError) as future_input:
+            store_prediction(
+                self.db, self.principal_a,
+                {"prediction_id": "pred-future-input", "prediction_run_id": "run-future-input",
+                 "customer_id": "customer-a", "as_of": T0, "generated_at": T2, "status": "abstained",
+                 "p_churn_7d": None, "p_churn_14d": None, "p_churn_30d": None,
+                 "feature_version": "features-v1", "model_version": "model-v1",
+                 "calibration_version": "cal-v1", "reliability_status": "insufficient_evidence",
+                 "data_freshness_status": "fresh", "input_data_as_of": T2},
+            )
+        self.assertEqual(future_input.exception.code, "invalid_contract")
+        for index, unsafe_reason in enumerate((
+            "Source error for private@example.invalid", "Adapter error; phone number: +60123456789",
+            "Provider rejected API key: sk_live_123456789",
+            "Provider response Authorization: Bearer sk_live_123456789",
+        )):
+            with self.subTest(unsafe_reason=unsafe_reason):
+                with self.assertRaises(DataFoundationError) as caught:
+                    store_prediction(
+                        self.db, self.principal_a,
+                        {"prediction_id": f"pred-private-reason-{index}",
+                         "prediction_run_id": f"run-private-reason-{index}",
+                         "customer_id": "customer-a", "as_of": T0, "generated_at": T2,
+                         "status": "abstained", "p_churn_7d": None, "p_churn_14d": None,
+                         "p_churn_30d": None, "feature_version": "features-v1",
+                         "model_version": "model-v1", "calibration_version": "cal-v1",
+                         "reliability_status": "insufficient_evidence", "data_freshness_status": "unknown",
+                         "reliability_reasons": [unsafe_reason]},
+                    )
+                self.assertEqual(caught.exception.code, "invalid_contract")
         with self.assertRaises(DataFoundationError):
             store_prediction(
                 self.db, self.principal_a,

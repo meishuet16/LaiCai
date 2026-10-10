@@ -72,6 +72,29 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T07:28:13Z — Member 1 / Data & Backend Engineer — Enforce point-in-time and purpose data contracts
+
+- **Workstream:** Part 1 / Data Foundation & Core Backend
+- **Branch:** `feature/data-foundation`
+- **Commit subject:** `fix(data): enforce point-in-time and purpose data contracts`
+- **Issue / task:** Close additional findings from the read-only review of the Member 1 data foundation.
+- **Files changed:** `retaniq/data_foundation.py`, `tests/test_data_foundation.py`, `README.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Rejected predictions whose source-availability cutoff is later than the prediction's `as_of` time.
+  - Required `billing_valuation` scope to store financial valuation fields in feature snapshots and prediction explanations.
+  - Rejected contact and credential values, sensitive key/value fragments, control characters and overlong text in reliability reasons.
+- **Why it changed:** Review identified point-in-time leakage, financial data stored by retention-only integrations, and unsafe free-text reliability reasons; follow-up checks expanded contact and credential labels covered by sanitization.
+- **Contract / database / API impact:** Prediction and snapshot write contracts are stricter; retention-only consumers can still store non-financial features and explainers. No schema change.
+- **Tests / verification:**
+  - `python -m unittest discover -s tests -v` — PASS — 31 tests; synthetic fixtures only.
+  - `python -m compileall -q retaniq tests` — PASS.
+  - `python -m retaniq --help` — PASS.
+  - `git diff --check` — PASS — only Git line-ending normalization notices.
+- **Data / model / ROI evidence:** Synthetic engineering fixtures only. No real dataset, model, churn, or ROI evidence was used or generated; dataset gate remains `NOT_READY`.
+- **Known issues / blockers:** The local prototype still uses SQLite without production encryption/TLS/deployment controls or a PostgreSQL adapter; authorized historical data remains unavailable.
+- **Next action / handoff:** Member 2 may persist valuation-bearing features only through a principal with `billing_valuation`; prediction builders must use no source data later than the declared `as_of`.
+- **Reviewer / pairing:** Read-only code review; PIT, purpose-gating, and reliability-reason findings corrected.
+
 ### 2026-10-10T07:16:26Z — Member 1 / Data & Backend Engineer — Enforce purpose and valuation contracts
 
 - **Workstream:** Part 1 / Data Foundation & Core Backend

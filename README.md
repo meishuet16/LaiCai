@@ -64,6 +64,8 @@ Unknown event types, extra fields, raw contact/card data, malformed timestamps, 
 
 Purpose grants are checked at data access as well as ingestion. Usage reads and feature/label/prediction writes require `retention_inference`; billing status is available to retention readers with amount and currency redacted. Pricing fields and MRR are returned only when the principal also has `billing_valuation`. Account snapshot and subscription helpers keep the lifecycle fields available to retention readers and omit the valuation for them.
 
+Retention-only integrations cannot persist financial value fields inside feature snapshots or prediction explanations; billing-scoped integrations can. Prediction `input_data_as_of` must be at or before its `as_of` cutoff. Reliability reasons remain short explanatory text, but contact or credential values, sensitive key/value fragments, control characters, and overlong strings are rejected.
+
 ### `GET /v1/integrations`
 
 Returns only the authenticated integration's tenant/source, authorized purposes, schema/mapping versions, last successful ingestion, last safe failure code, and an evidence-based availability state. Freshness is reported as `unknown` until a source-specific freshness policy exists. Tokens and token digests are never returned.

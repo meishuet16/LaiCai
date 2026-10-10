@@ -31,7 +31,18 @@ SENSITIVE_KEY_PARTS = (
     "email", "phone", "address", "card", "cvv", "password", "secret",
     "token", "contact", "name", "private", "raw_payload",
 )
+FINANCIAL_KEY_PARTS = (
+    "mrr", "arr", "amount", "currency", "price", "discount", "revenue",
+    "contract_value", "billing_interval", "valuation", "subscription_fee",
+    "exposure_proxy", "lifetime_value", "lifetime_revenue", "monetary",
+    "arpu", "ltv", "acv",
+)
 EMAIL_VALUE_PATTERN = re.compile(r"(?i)\b[^\s@]+@[^\s@]+\.[a-z]{2,}\b")
+SENSITIVE_VALUE_PATTERN = re.compile(
+    r"(?i)\b(?:e-?mail|phone(?:\s+number)?|telephone(?:\s+number)?|mobile(?:\s+number)?|address|"
+    r"card(?:\s+number)?|cvv|password|secret|token|api[\s_-]+(?:key|secret|token)|authorization|bearer|"
+    r"contact|full\s+name|first\s+name|last\s+name|raw\s+payload)\b\s*[:=]\s*\S+"
+)
 
 EVENT_TYPES: dict[str, tuple[str, set[str]]] = {
     "session_started": ("usage", {"feature"}),
@@ -935,15 +946,23 @@ def _assert_customer(connection: sqlite3.Connection, principal: IntegrationPrinc
         raise DataFoundationError("not_found")
 
 
-def _check_feature_tree(value: Any) -> None:
+def _check_feature_tree(value: Any, *, allow_billing: bool = False) -> None:
     if isinstance(value, dict):
         for key, nested in value.items():
-            if not isinstance(key, str) or any(part in key.casefold() for part in SENSITIVE_KEY_PARTS):
+            if not isinstance(key, str):
                 raise DataFoundationError("invalid_contract")
-            _check_feature_tree(nested)
+            normalized_key = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", key).casefold()
+            if any(part in normalized_key for part in SENSITIVE_KEY_PARTS):
+                raise DataFoundationError("invalid_contract")
+            financial_key = re.sub(r"[^a-z0-9]+", "_", normalized_key).strip("_")
+            if not allow_billing and any(
+                f"_{part}_" in f"_{financial_key}_" for part in FINANCIAL_KEY_PARTS
+            ):
+                raise DataFoundationError("invalid_contract")
+            _check_feature_tree(nested, allow_billing=allow_billing)
     elif isinstance(value, list):
         for nested in value:
-            _check_feature_tree(nested)
+            _check_feature_tree(nested, allow_billing=allow_billing)
     elif isinstance(value, str):
         if EMAIL_VALUE_PATTERN.search(value):
             raise DataFoundationError("invalid_contract")
@@ -953,6 +972,17 @@ def _check_feature_tree(value: Any) -> None:
         return
     else:
         raise DataFoundationError("invalid_contract")
+
+
+def _check_reliability_reasons(reasons: Any) -> None:
+    if not isinstance(reasons, list):
+        raise DataFoundationError("invalid_contract")
+    for reason in reasons:
+        if (not isinstance(reason, str) or len(reason) > 200
+                or any(ord(character) < 32 for character in reason)
+                or EMAIL_VALUE_PATTERN.search(reason)
+                or SENSITIVE_VALUE_PATTERN.search(reason)):
+            raise DataFoundationError("invalid_contract")
 
 
 def store_feature_snapshot(
@@ -973,7 +1003,10 @@ def store_feature_snapshot(
         raise DataFoundationError("invalid_contract")
     if not isinstance(features, dict):
         raise DataFoundationError("invalid_contract")
-    _check_feature_tree(features)
+    _check_feature_tree(
+        features,
+        allow_billing="billing_valuation" in principal.authorized_purposes,
+    )
     feature_snapshot_id = secrets.token_urlsafe(18)
     encoded = json.dumps(features, sort_keys=True, separators=(",", ":"), allow_nan=False)
     with _db(path) as connection:
@@ -1087,13 +1120,17 @@ def store_prediction(
     label_policy = _validate_id(label_policy) if label_policy is not None else None
     reasons = prediction.get("reliability_reasons", [])
     explanations = prediction.get("explanations_by_horizon", {})
-    if not isinstance(reasons, list) or any(not isinstance(reason, str) for reason in reasons):
-        raise DataFoundationError("invalid_contract")
+    _check_reliability_reasons(reasons)
     if not isinstance(explanations, dict):
         raise DataFoundationError("invalid_contract")
-    _check_feature_tree(explanations)
+    _check_feature_tree(
+        explanations,
+        allow_billing="billing_valuation" in principal.authorized_purposes,
+    )
     input_data_as_of = prediction.get("input_data_as_of")
     input_data_as_of = normalize_timestamp(input_data_as_of) if input_data_as_of is not None else None
+    if input_data_as_of is not None and input_data_as_of > as_of:
+        raise DataFoundationError("invalid_contract")
     feature_snapshot_id = prediction.get("feature_snapshot_id")
     if feature_snapshot_id is not None:
         feature_snapshot_id = _validate_id(feature_snapshot_id)
