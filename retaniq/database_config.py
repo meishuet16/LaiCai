@@ -22,6 +22,7 @@ SQLITE_PATH_ENV = "RETAINIQ_SQLITE_PATH"
 SUPABASE_PROJECT_URL_ENV = "RETAINIQ_SUPABASE_PROJECT_URL"
 SUPABASE_EXPECTED_PROJECT_REF_ENV = "RETAINIQ_SUPABASE_EXPECTED_PROJECT_REF"
 SUPABASE_MIGRATION_DSN_ENV = "RETAINIQ_SUPABASE_DB_MIGRATION_DSN"
+SUPABASE_MAINTENANCE_DSN_ENV = "RETAINIQ_SUPABASE_DB_MAINTENANCE_DSN"
 SUPABASE_APP_DSN_ENV = "RETAINIQ_SUPABASE_DB_APP_DSN"
 SUPABASE_CONNECTION_MODE_ENV = "RETAINIQ_SUPABASE_CONNECTION_MODE"
 
@@ -221,6 +222,7 @@ class DatabaseConfig:
     expected_project_ref: str | None = None
     project_url: str | None = None
     migration_dsn: str | None = None
+    maintenance_dsn: str | None = None
 
     def __post_init__(self) -> None:
         backend = _normalize_backend(self.backend)
@@ -257,7 +259,14 @@ class DatabaseConfig:
                     migration_user = unquote(urlsplit(self.migration_dsn).username or "")
                     if self.migration_dsn == self.target or app_user == migration_user:
                         raise _configuration_error("Supabase application and migration database roles must be separate")
-            elif any((self.connection_mode, self.expected_project_ref, self.project_url, self.migration_dsn)):
+                if self.maintenance_dsn is not None:
+                    _supabase_migration_mode(self.maintenance_dsn, project_ref)
+                    app_user = unquote(urlsplit(self.target).username or "")
+                    maintenance_user = unquote(urlsplit(self.maintenance_dsn).username or "")
+                    if self.maintenance_dsn == self.target or app_user == maintenance_user:
+                        raise _configuration_error("Supabase application and maintenance database roles must be separate")
+            elif any((self.connection_mode, self.expected_project_ref, self.project_url,
+                      self.migration_dsn, self.maintenance_dsn)):
                 raise _configuration_error("Supabase metadata is not valid for a local PostgreSQL target")
 
     @classmethod
@@ -337,7 +346,6 @@ class DatabaseConfig:
             required = {
                 SUPABASE_PROJECT_URL_ENV: env.get(SUPABASE_PROJECT_URL_ENV),
                 SUPABASE_EXPECTED_PROJECT_REF_ENV: env.get(SUPABASE_EXPECTED_PROJECT_REF_ENV),
-                SUPABASE_MIGRATION_DSN_ENV: env.get(SUPABASE_MIGRATION_DSN_ENV),
                 SUPABASE_APP_DSN_ENV: env.get(SUPABASE_APP_DSN_ENV),
                 SUPABASE_CONNECTION_MODE_ENV: env.get(SUPABASE_CONNECTION_MODE_ENV),
             }
@@ -353,7 +361,8 @@ class DatabaseConfig:
                 connection_mode=mode,
                 expected_project_ref=ref,
                 project_url=required[SUPABASE_PROJECT_URL_ENV].strip(),
-                migration_dsn=required[SUPABASE_MIGRATION_DSN_ENV].strip(),
+                migration_dsn=(env.get(SUPABASE_MIGRATION_DSN_ENV) or "").strip() or None,
+                maintenance_dsn=(env.get(SUPABASE_MAINTENANCE_DSN_ENV) or "").strip() or None,
             )
         return cls.from_value(
             None,
@@ -399,6 +408,19 @@ class DatabaseConfig:
             self.migration_dsn,
             deployment_environment="supabase_demo",
             connection_mode=migration_mode,
+            expected_project_ref=self.expected_project_ref,
+            project_url=self.project_url,
+        )
+
+    def for_maintenance(self) -> "DatabaseConfig":
+        if not self.is_supabase or not self.maintenance_dsn:
+            raise _configuration_error("a separately configured Supabase maintenance DSN is required")
+        mode = _supabase_migration_mode(self.maintenance_dsn, self.expected_project_ref or "")
+        return DatabaseConfig(
+            POSTGRESQL_BACKEND,
+            self.maintenance_dsn,
+            deployment_environment="supabase_demo",
+            connection_mode=mode,
             expected_project_ref=self.expected_project_ref,
             project_url=self.project_url,
         )

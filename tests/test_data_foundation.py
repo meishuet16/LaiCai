@@ -4,6 +4,8 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 from retaniq.api import create_app
 from retaniq.data_foundation import (
@@ -236,6 +238,26 @@ class DataFoundationTests(unittest.TestCase):
         self.assertEqual((accepted["accepted"], accepted["duplicates"]), (2, 0))
         self.assertEqual((replay["accepted"], replay["duplicates"]), (0, 2))
         self.assertEqual(len(get_observation_coverage_as_of(database, reader, "customer-a", T3)), 3)
+
+    def test_supabase_first_identity_binding_fails_closed_under_tenant_rls(self):
+        config = SimpleNamespace(is_supabase=True)
+        connection = MagicMock()
+        connection.execute.return_value.fetchone.return_value = None
+        database_context = MagicMock()
+        database_context.__enter__.return_value = connection
+        identity = {
+            "dataset_id": "synthetic-saas-v1-2-quick-s2026-test",
+            "dataset_version": "1.2",
+            "dataset_type": "synthetic_saas",
+            "target_policy_version": "effective-account-churn-v1-2",
+            "generator_version": "synthetic-saas-v1-2",
+            "manifest_sha256": "a" * 64,
+        }
+        with patch("retaniq.data_foundation.resolve_database_config", return_value=config), \
+                patch("retaniq.data_foundation._db", return_value=database_context):
+            with self.assertRaisesRegex(ValueError, "privileged read-only preflight"):
+                bind_dataset_identity("supabase-config", **identity)
+        self.assertEqual(connection.execute.call_count, 1)
 
     def test_schema_001_upgrade_preserves_history_and_refuses_conflicting_owners(self):
         migration_001 = (Path(__file__).resolve().parents[1] / "migrations" / "001_data_foundation.sql").read_text(

@@ -10,6 +10,7 @@ from retaniq.database_config import (
     SUPABASE_CONNECTION_MODE_ENV,
     SUPABASE_EXPECTED_PROJECT_REF_ENV,
     SUPABASE_MIGRATION_DSN_ENV,
+    SUPABASE_MAINTENANCE_DSN_ENV,
     SUPABASE_PROJECT_URL_ENV,
     DatabaseConfig,
     DatabaseConfigurationError,
@@ -30,6 +31,9 @@ SESSION_APP_DSN = (
 )
 SESSION_MIGRATION_DSN = (
     f"postgresql://postgres.{PROJECT_REF}:migration-secret@fixture.pooler.supabase.com:5432/postgres?sslmode=require"
+)
+SESSION_MAINTENANCE_DSN = (
+    f"postgresql://retaniq_maintenance.{PROJECT_REF}:maintenance-secret@fixture.pooler.supabase.com:5432/postgres?sslmode=require"
 )
 TRANSACTION_APP_DSN = (
     f"postgresql://retainiq_app.{PROJECT_REF}:app-secret@fixture.pooler.supabase.com:6543/postgres?sslmode=require"
@@ -71,12 +75,20 @@ class SupabaseConfigurationTests(unittest.TestCase):
         for env in (
             {"RETAINIQ_DATABASE_BACKEND": SUPABASE_BACKEND},
             {**environment(), SUPABASE_APP_DSN_ENV: ""},
-            {**environment(), SUPABASE_MIGRATION_DSN_ENV: ""},
             {**environment(), "RETAINIQ_DATABASE_URL": "sqlite:///fallback.sqlite3"},
         ):
             with self.subTest(keys=tuple(env)):
                 with self.assertRaises(DatabaseConfigurationError):
                     DatabaseConfig.from_environment(env)
+
+    def test_runtime_configuration_does_not_require_migration_credentials(self):
+        runtime_env = environment()
+        runtime_env.pop(SUPABASE_MIGRATION_DSN_ENV)
+        config = DatabaseConfig.from_environment(runtime_env)
+        self.assertTrue(config.is_supabase)
+        self.assertIsNone(config.migration_dsn)
+        with self.assertRaises(DatabaseConfigurationError):
+            config.for_migrations()
 
     def test_project_url_and_expected_project_ref_must_match(self):
         with self.assertRaises(DatabaseConfigurationError):
@@ -127,6 +139,21 @@ class SupabaseConfigurationTests(unittest.TestCase):
         self.assertEqual(migration.connection_mode, "DIRECT")
         self.assertEqual(migration.target, DIRECT_MIGRATION_DSN)
         self.assertTrue(migration.is_supabase)
+
+    def test_maintenance_configuration_is_separate_session_capable_and_secret_safe(self):
+        config = DatabaseConfig.from_environment({
+            **environment(mode="SESSION_POOLER", app_dsn=SESSION_APP_DSN),
+            SUPABASE_MAINTENANCE_DSN_ENV: SESSION_MAINTENANCE_DSN,
+        })
+        maintenance = config.for_maintenance()
+        self.assertEqual(maintenance.connection_mode, "SESSION_POOLER")
+        self.assertTrue(maintenance.is_supabase)
+        self.assertNotIn("maintenance-secret", repr(config) + config.redacted_target)
+        with self.assertRaises(DatabaseConfigurationError):
+            DatabaseConfig.from_environment({
+                **environment(mode="SESSION_POOLER", app_dsn=SESSION_APP_DSN),
+                SUPABASE_MAINTENANCE_DSN_ENV: SESSION_APP_DSN,
+            })
 
     def test_session_pooler_is_accepted_as_a_session_locked_migration_target(self):
         config = DatabaseConfig.from_environment(

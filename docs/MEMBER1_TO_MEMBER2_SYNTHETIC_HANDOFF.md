@@ -24,6 +24,19 @@ The importer normalizes through `ingest_event`, checks tenant/source/category au
 
 The P0 reader is only for the approved STANDARD `tenant-01` pilot. It uses a protected working copy because the original imported database is immutable. Its role is `analyst`; its three exact sources are restricted by their existing usage, billing, and subscription category grants; its only purpose is `retention_inference`. It has no artifact-write or billing-valuation purpose. The token is written under the current Windows user to DPAPI-protected storage and is never printed:
 
+**Storage-scope correction (2026-10-11):** a read-only inspection of the named
+`member1-p0` SQLite working copy found the correct STANDARD manifest identity,
+but also found the full four-tenant import in that file. It is therefore an
+application-authorized tenant-01 reader over a multi-tenant local fixture, not
+a physically tenant-01-only database. Its cross-tenant read denial is useful
+API evidence, not protection against someone who can open the SQLite file.
+Do not distribute or describe this file as tenant-01-only at rest. The
+inspection reported 750 tenant-01 customers, 56,211 canonical events, and
+119,472 coverage rows; all tenant IDs other than tenant-01 accounted for
+752,669 rows across tenant-bearing tables. A separate, clean scoped working
+copy is required before claiming local storage segregation. No existing
+private database was changed.
+
 ```powershell
 $python = 'C:\Users\User\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
 $dataset = 'C:\Users\User\RetainIQ-private\synthetic_saas_v1_2\standard\synthetic-saas-v1-2-standard-s2026-970a9d231e68'

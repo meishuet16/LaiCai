@@ -1,5 +1,18 @@
 # Member 1 — 07B-2 Supabase security deployment readiness
 
+> **Current-state notice (2026-10-11):** This page is the earlier 07B-2
+> readiness snapshot and its findings below describe the state at that time.
+> It is superseded for current acceptance by
+> [`MEMBER1_FINAL_DATA_FOUNDATION_ACCEPTANCE.md`](MEMBER1_FINAL_DATA_FOUNDATION_ACCEPTANCE.md).
+> Since this snapshot, the owner supplied evidence of the dedicated project's
+> migration/RLS deployment and a 13-scenario temporary-login smoke. That
+> evidence was not re-run in the current task; cleanup was only reported as
+> attempted. The local code now has a separate maintenance DSN and import
+> routing plus tenant-01-scoped import and authenticated history routes, but
+> none of those PostgreSQL paths or the actual project were tested here. The
+> first Supabase dataset bind now fails closed pending privileged read-only
+> proof that the full destination is empty. No import occurred.
+
 **Status: BLOCKED pending owner decisions and approved project credentials.**
 07B-1 remains **PARTIALLY_VERIFIED**: local PostgreSQL 16.15 evidence only.
 No Supabase changes or STANDARD import were made.

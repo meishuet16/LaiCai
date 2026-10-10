@@ -19,6 +19,7 @@ from retaniq.data_foundation import (
     create_service_principal,
     get_dataset_identity,
     get_synthetic_import_checkpoint,
+    get_tenant_table_counts,
     get_account_snapshot_as_of,
     ingest_events_batch,
     initialize_database,
@@ -29,6 +30,7 @@ from retaniq.data_foundation import (
     get_observation_coverage_as_of,
 )
 from retaniq.database_config import DatabaseConfig, resolve_database_config
+from retaniq.postgresql_migrations import verify_postgresql_schema
 
 
 def _database_target(value: DatabaseConfig | Path | str) -> DatabaseConfig | str:
@@ -135,8 +137,10 @@ def import_dataset(
     database_path: DatabaseConfig | Path | str,
     *,
     verify_idempotency: bool = False,
+    tenant_id: str | None = None,
+    maintenance_database_path: DatabaseConfig | Path | str | None = None,
 ) -> dict[str, Any]:
-    """Provision synthetic identities and import every event via ``ingest_event``.
+    """Provision and import a full dataset or an explicitly scoped tenant subset.
 
     Credentials exist only in memory for this run and are never written to the
     generated dataset or returned in the result.
@@ -145,10 +149,36 @@ def import_dataset(
     database = _database_target(database_path)
     manifest = _load_manifest(dataset)
     database_config = resolve_database_config(database)
-    initialize_database(database_config, migrate_postgresql=database_config.is_postgresql)
+    if tenant_id is not None and (not isinstance(tenant_id, str) or not tenant_id.strip()):
+        raise ValueError("tenant scope must be a non-empty tenant ID")
+    if database_config.is_supabase and (
+        tenant_id != "tenant-01"
+        or (maintenance_database_path is None and not database_config.maintenance_dsn)
+    ):
+        raise ValueError("Supabase import requires explicit tenant-01 scope and a separate maintenance login")
+    if database_config.is_postgresql:
+        verify_postgresql_schema(database_config)
+    else:
+        initialize_database(database_config)
+    maintenance_database = (
+        _database_target(maintenance_database_path)
+        if maintenance_database_path is not None
+        else database_config.for_maintenance() if database_config.is_supabase
+        else database
+    )
+    maintenance_config = resolve_database_config(maintenance_database)
+    if database_config.is_postgresql and not maintenance_config.is_postgresql:
+        raise ValueError("PostgreSQL tenant writes require a PostgreSQL maintenance target")
+    if database_config.is_supabase:
+        if (not maintenance_config.is_supabase
+                or maintenance_config.expected_project_ref != database_config.expected_project_ref
+                or maintenance_config.connection_mode not in {"DIRECT", "SESSION_POOLER"}
+                or maintenance_config.postgresql_dsn == database_config.postgresql_dsn):
+            raise ValueError("maintenance connection must target the same Supabase project using a session-capable mode")
+    scope_tenant_id = tenant_id
     manifest_bytes = (dataset / "dataset_manifest.json").read_bytes()
     bind_dataset_identity(
-        database,
+        maintenance_database,
         dataset_id=manifest["dataset_id"],
         dataset_version=manifest["dataset_version"],
         dataset_type=manifest["dataset_type"],
@@ -158,18 +188,24 @@ def import_dataset(
     )
 
     customers_by_tenant: dict[str, list[str]] = defaultdict(list)
+    excluded_customer_ids: dict[str, str] = {}
     customer_rows: list[tuple[str, str]] = []
     with (dataset / "customers.csv").open(encoding="utf-8", newline="") as stream:
         for row in csv.DictReader(stream):
-            tenant_id = row["tenant_id"]
+            row_tenant_id = row["tenant_id"]
             customer_id = row["customer_id"]
-            customer_rows.append((tenant_id, customer_id))
-            customers_by_tenant[tenant_id].append(customer_id)
+            if scope_tenant_id is not None and row_tenant_id != scope_tenant_id:
+                excluded_customer_ids.setdefault(row_tenant_id, customer_id)
+                continue
+            customer_rows.append((row_tenant_id, customer_id))
+            customers_by_tenant[row_tenant_id].append(customer_id)
 
     source_categories: dict[tuple[str, str], str] = {}
     identity_tuples: list[tuple[str, str, str, str]] = []
     with (dataset / "customer_identities.csv").open(encoding="utf-8", newline="") as stream:
         for row in csv.DictReader(stream):
+            if scope_tenant_id is not None and row["tenant_id"] != scope_tenant_id:
+                continue
             identity_tuples.append((row["tenant_id"], row["source"], row["external_customer_id"], row["customer_id"]))
             key = (row["tenant_id"], row["source"])
             prior = source_categories.setdefault(key, row["source_category"])
@@ -178,22 +214,27 @@ def import_dataset(
 
     provision_synthetic_identities(
         database, dataset_id=manifest["dataset_id"], customers=customer_rows, identities=identity_tuples,
+        maintenance_path=maintenance_database,
     )
 
     principals = {}
     for (tenant_id, source), category in sorted(source_categories.items()):
         token = provision_synthetic_integration_token(
             database, dataset_id=manifest["dataset_id"], tenant_id=tenant_id,
-            source=source, category=category,
+            source=source, category=category, maintenance_path=maintenance_database,
         )
         principals[(tenant_id, source)] = authenticate_integration(database, token)
 
     counts: Counter[str] = Counter()
 
-    def import_once(*, repeat: bool) -> None:
-        stream_name = "canonical-replay" if repeat else "canonical-events"
+    stream_suffix = f"-{scope_tenant_id}" if scope_tenant_id is not None else ""
+    batch_checkpoint_path = maintenance_database if maintenance_config.is_postgresql else None
+
+    def import_once(*, repeat: bool) -> int:
+        stream_name = ("canonical-replay" if repeat else "canonical-events") + stream_suffix
         checkpoint = get_synthetic_import_checkpoint(
-            database, dataset_id=manifest["dataset_id"], stream_name=stream_name,
+            maintenance_database, dataset_id=manifest["dataset_id"], stream_name=stream_name,
+            tenant_id=scope_tenant_id,
         )["last_row_number"]
         batch: list[dict[str, Any]] = []
         batch_start = 0
@@ -206,6 +247,7 @@ def import_dataset(
             result = ingest_events_batch(
                 database, batch, dataset_id=manifest["dataset_id"], stream_name=stream_name,
                 first_row_number=batch_start, last_row_number=last_row_number,
+                checkpoint_path=batch_checkpoint_path,
             )
             key = "repeat_" if repeat else ""
             counts[f"{key}accepted"] += result["accepted"]
@@ -215,6 +257,8 @@ def import_dataset(
 
         with (dataset / "canonical_events.csv").open(encoding="utf-8", newline="") as stream:
             for row in csv.DictReader(stream):
+                if scope_tenant_id is not None and row["tenant_id"] != scope_tenant_id:
+                    continue
                 row_number += 1
                 if row_number <= checkpoint:
                     continue
@@ -238,11 +282,13 @@ def import_dataset(
                 if len(batch) >= 1000:
                     flush_batch(row_number)
             flush_batch(row_number)
+        return row_number
 
-    def import_coverage_once(*, repeat: bool) -> None:
-        stream_name = "observation-coverage-replay" if repeat else "observation-coverage"
+    def import_coverage_once(*, repeat: bool) -> int:
+        stream_name = ("observation-coverage-replay" if repeat else "observation-coverage") + stream_suffix
         checkpoint = get_synthetic_import_checkpoint(
-            database, dataset_id=manifest["dataset_id"], stream_name=stream_name,
+            maintenance_database, dataset_id=manifest["dataset_id"], stream_name=stream_name,
+            tenant_id=scope_tenant_id,
         )["last_row_number"]
         batch: list[dict[str, Any]] = []
         batch_start = 0
@@ -255,6 +301,7 @@ def import_dataset(
             result = record_observation_coverage_batch(
                 database, batch, dataset_id=manifest["dataset_id"], stream_name=stream_name,
                 first_row_number=batch_start, last_row_number=last_row_number,
+                checkpoint_path=batch_checkpoint_path,
             )
             key = "repeat_" if repeat else ""
             counts[f"{key}coverage_accepted"] += result["accepted"]
@@ -264,6 +311,8 @@ def import_dataset(
 
         with gzip.open(dataset / "observation_coverage.csv.gz", "rt", encoding="utf-8", newline="") as stream:
             for row in csv.DictReader(stream):
+                if scope_tenant_id is not None and row["tenant_id"] != scope_tenant_id:
+                    continue
                 row_number += 1
                 if row_number <= checkpoint:
                     continue
@@ -287,19 +336,22 @@ def import_dataset(
                 if len(batch) >= 1000:
                     flush_batch(row_number)
             flush_batch(row_number)
+        return row_number
 
-    import_once(repeat=False)
-    import_coverage_once(repeat=False)
+    expected_event_rows = import_once(repeat=False)
+    expected_coverage_rows = import_coverage_once(repeat=False)
     replay_checkpoint = None
     replay_coverage_checkpoint = None
     if verify_idempotency:
         import_once(repeat=True)
         import_coverage_once(repeat=True)
         replay_checkpoint = get_synthetic_import_checkpoint(
-            database, dataset_id=manifest["dataset_id"], stream_name="canonical-replay",
+            maintenance_database, dataset_id=manifest["dataset_id"],
+            stream_name="canonical-replay" + stream_suffix, tenant_id=scope_tenant_id,
         )
         replay_coverage_checkpoint = get_synthetic_import_checkpoint(
-            database, dataset_id=manifest["dataset_id"], stream_name="observation-coverage-replay",
+            maintenance_database, dataset_id=manifest["dataset_id"],
+            stream_name="observation-coverage-replay" + stream_suffix, tenant_id=scope_tenant_id,
         )
 
     service_principals = {}
@@ -321,7 +373,7 @@ def import_dataset(
             )
             snapshots_checked += 1
 
-    cross_tenant_denial = len(service_principals) < 2
+    cross_tenant_denial = False
     if len(service_principals) >= 2:
         first, second = sorted(service_principals)[:2]
         try:
@@ -330,16 +382,26 @@ def import_dataset(
             )
         except DataFoundationError as exc:
             cross_tenant_denial = exc.code == "not_found"
+    elif service_principals and excluded_customer_ids:
+        tenant = next(iter(service_principals))
+        try:
+            get_account_snapshot_as_of(
+                database, service_principals[tenant], next(iter(excluded_customer_ids.values())), cutoff,
+            )
+        except DataFoundationError as exc:
+            cross_tenant_denial = exc.code == "not_found"
 
-    expected = manifest["actual_counts"]["canonical_events"]
+    expected = expected_event_rows
     checkpoint = get_synthetic_import_checkpoint(
-        database, dataset_id=manifest["dataset_id"], stream_name="canonical-events",
+        maintenance_database, dataset_id=manifest["dataset_id"],
+        stream_name="canonical-events" + stream_suffix, tenant_id=scope_tenant_id,
     )
     coverage_checkpoint = get_synthetic_import_checkpoint(
-        database, dataset_id=manifest["dataset_id"], stream_name="observation-coverage",
+        maintenance_database, dataset_id=manifest["dataset_id"],
+        stream_name="observation-coverage" + stream_suffix, tenant_id=scope_tenant_id,
     )
     database_event_count = checkpoint["database_event_count"]
-    expected_coverage = manifest["actual_counts"]["observation_coverage"]
+    expected_coverage = expected_coverage_rows
     verified = (checkpoint["last_row_number"] == expected and database_event_count == expected
                 and coverage_checkpoint["last_row_number"] == expected_coverage
                 and coverage_checkpoint["database_coverage_count"] == expected_coverage
@@ -351,9 +413,17 @@ def import_dataset(
                     and replay_coverage_checkpoint is not None
                     and replay_coverage_checkpoint["last_row_number"] == expected_coverage
                     and replay_coverage_checkpoint["duplicate_count"] == expected_coverage)
+    tenant_table_counts = {
+        scoped_tenant: get_tenant_table_counts(database, scoped_tenant)
+        for scoped_tenant in customers_by_tenant
+    }
     return {
         "status": "VERIFIED" if verified else "PARTIAL",
         "dataset_id": manifest["dataset_id"],
+        "import_scope": scope_tenant_id or "all_dataset_tenants",
+        "imported_tenant_count": len(customers_by_tenant),
+        "source_manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+        "tenant_table_counts": tenant_table_counts,
         "database": str(database),
         "accepted": counts["accepted"],
         "duplicates": counts["duplicates"],
