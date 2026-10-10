@@ -2,14 +2,15 @@
 
 The generic connection layer can open SQLite and, when the optional psycopg 3
 dependency is installed, PostgreSQL. PostgreSQL schema migrations are
-implemented separately; the existing RetainIQ Data Foundation repository
-remains SQLite-query-only until 06D and must reject PostgreSQL rather than
-silently sending SQLite SQL to it.
+implemented separately. A deliberately limited set of Member 1 ingestion,
+identity and authorization operations supports both backends; other Data
+Foundation repository operations reject PostgreSQL until their parity work.
 """
 
 from __future__ import annotations
 
 import sqlite3
+import re
 from contextlib import contextmanager
 from typing import Any, Iterator
 
@@ -38,12 +39,109 @@ class DatabaseTransactionError(DatabaseError):
     """Raised when a transaction cannot be committed or rolled back."""
 
 
+class DatabaseIntegrityError(DatabaseError):
+    """Safe integrity failure metadata without the driver's SQL or payload."""
+
+    def __init__(self, sqlstate: str | None, constraint_name: str | None = None):
+        self.sqlstate = sqlstate
+        self.constraint_name = constraint_name
+        super().__init__("database integrity constraint failed")
+
+
 class UnsupportedDatabaseOperation(DatabaseError):
     """Raised when a requested operation is not implemented for a backend."""
 
 
 class PostgreSQLSchemaNotReady(UnsupportedDatabaseOperation):
     """The current SQLite repository operations are not PostgreSQL-compatible."""
+
+
+_DOLLAR_QUOTE = re.compile(r"\$(?:[A-Za-z_][A-Za-z_0-9]*)?\$")
+
+
+def _postgresql_placeholders(statement: str) -> str:
+    """Translate SQLite qmarks outside SQL strings/comments to psycopg markers."""
+    output: list[str] = []
+    index = 0
+    block_depth = 0
+    quote: str | None = None
+    escape_string = False
+    dollar_quote: str | None = None
+    line_comment = False
+    while index < len(statement):
+        char = statement[index]
+        next_char = statement[index + 1] if index + 1 < len(statement) else ""
+        if line_comment:
+            output.append(char)
+            if char in "\r\n":
+                line_comment = False
+            index += 1
+        elif dollar_quote is not None:
+            if statement.startswith(dollar_quote, index):
+                output.append(dollar_quote)
+                index += len(dollar_quote)
+                dollar_quote = None
+            else:
+                output.append(char)
+                index += 1
+        elif quote is not None:
+            output.append(char)
+            if quote == "'" and escape_string and char == "\\" and next_char:
+                output.append(next_char)
+                index += 2
+                continue
+            if char == quote:
+                if next_char == quote:
+                    output.append(next_char)
+                    index += 2
+                    continue
+                quote = None
+                escape_string = False
+            index += 1
+        elif block_depth:
+            if char == "/" and next_char == "*":
+                output.extend((char, next_char))
+                block_depth += 1
+                index += 2
+            elif char == "*" and next_char == "/":
+                output.extend((char, next_char))
+                block_depth -= 1
+                index += 2
+            else:
+                output.append(char)
+                index += 1
+        elif char == "-" and next_char == "-":
+            output.extend((char, next_char))
+            line_comment = True
+            index += 2
+        elif char == "/" and next_char == "*":
+            output.extend((char, next_char))
+            block_depth = 1
+            index += 2
+        elif char in {"'", '"'}:
+            output.append(char)
+            quote = char
+            escape_string = (
+                char == "'" and index > 0 and statement[index - 1] in "eE"
+                and (index < 2 or not (statement[index - 2].isalnum() or statement[index - 2] in "_$"))
+            )
+            index += 1
+        elif char == "$":
+            match = _DOLLAR_QUOTE.match(statement, index)
+            if match:
+                dollar_quote = match.group(0)
+                output.append(dollar_quote)
+                index = match.end()
+            else:
+                output.append(char)
+                index += 1
+        elif char == "?":
+            output.append("%s")
+            index += 1
+        else:
+            output.append(char)
+            index += 1
+    return "".join(output)
 
 
 def _safe_driver_error(message: str, error: BaseException | None = None) -> DatabaseError:
@@ -57,10 +155,9 @@ class DatabaseConnection:
     """Small lifecycle wrapper around a backend-native connection.
 
     SQLite preserves the existing ``sqlite3.Row`` behavior.  PostgreSQL uses
-    psycopg's ``dict_row`` policy for generic callers.  SQL placeholder syntax
-    is intentionally not rewritten: SQLite callers use ``?`` and PostgreSQL
-    callers use psycopg's native ``%s`` placeholders until the repository
-    compatibility work in 06D defines shared query helpers.
+    psycopg's ``dict_row`` policy for generic callers. PostgreSQL adapts qmark
+    placeholders outside literals and comments. Backend-specific conflict and
+    generated-key statements remain explicit in the repository.
     """
 
     def __init__(self, config: DatabaseConfig, raw_connection: Any):
@@ -135,9 +232,14 @@ class DatabaseConnection:
             return self._raw_connection.execute(statement, parameters)
         try:
             cursor = self._raw_connection.cursor()
-            cursor.execute(statement, parameters)
+            cursor.execute(_postgresql_placeholders(statement), parameters)
             return cursor
-        except Exception:
+        except Exception as error:
+            if getattr(error, "sqlstate", None) and str(error.sqlstate).startswith("23"):
+                diagnostic = getattr(error, "diag", None)
+                raise DatabaseIntegrityError(
+                    error.sqlstate, getattr(diagnostic, "constraint_name", None),
+                ) from None
             raise DatabaseError("database statement execution failed") from None
 
     def executemany(self, statement: str, parameters: Any) -> Any:
@@ -146,9 +248,14 @@ class DatabaseConnection:
             return self._raw_connection.executemany(statement, parameters)
         try:
             cursor = self._raw_connection.cursor()
-            cursor.executemany(statement, parameters)
+            cursor.executemany(_postgresql_placeholders(statement), parameters)
             return cursor
-        except Exception:
+        except Exception as error:
+            if getattr(error, "sqlstate", None) and str(error.sqlstate).startswith("23"):
+                diagnostic = getattr(error, "diag", None)
+                raise DatabaseIntegrityError(
+                    error.sqlstate, getattr(diagnostic, "constraint_name", None),
+                ) from None
             raise DatabaseError("database batch execution failed") from None
 
     def executescript(self, script: str) -> Any:

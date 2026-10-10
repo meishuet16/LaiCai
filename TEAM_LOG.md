@@ -72,6 +72,32 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T15:14:20Z — Member 1 / Data & Backend Engineer — PostgreSQL ingestion, identity and auth parity
+
+- **Workstream:** Part 1 / Data Foundation, PostgreSQL Ingestion Parity
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `feat(member1): add PostgreSQL ingestion and identity parity` (06D-1 remains uncommitted)
+- **Issue / task:** Prompt 06D-1 — PostgreSQL ingestion, identity, authorization and transaction parity; stop before 06D-2.
+- **Files changed:** `retaniq/database.py`, `retaniq/data_foundation.py`, `tests/test_database_connection.py`, new `tests/test_postgresql_ingestion.py`, new `docs/MEMBER1_POSTGRESQL_INGESTION_PARITY.md`, `docs/MEMBER1_DATABASE_BACKEND_CONFIGURATION.md`, `docs/MEMBER1_POSTGRESQL_SCHEMA_AND_MIGRATIONS.md`, `docs/MEMBER1_DATA_CONTRACT_COMPLIANCE.md`, `README.md`, and `TEAM_LOG.md`.
+- **What changed:**
+  - **06C checkpoint:** Prompt 06C was locally checkpointed at `4eeb2b303701f63b0d246aeca4a357b16ad0c55b` with subject `feat(member1): implement PostgreSQL schema and migration runner`; its staged-path audit included only the 06C files and this log. No push/merge.
+  - Added a quote/comment-aware PostgreSQL placeholder adapter and safe integrity metadata; enabled the existing shared setup/authz/authentication, tenant identity mapping, mapping-version/source health, canonical `ingest_event`, bounded batch/checkpoint, subtype, and CSV importer paths for PostgreSQL.
+  - Added PostgreSQL `ON CONFLICT ... RETURNING` for identity/event writes and database-enforced owner/event conflict handling; `FOR UPDATE` serializes subscription-owner claims/projection rebuilds and the batch dataset checkpoint. Normalization, minimization, event hashing, tenant binding, and grants stay shared with SQLite.
+  - Updated README/backend/compliance/schema notes and added a 30-scenario test coverage map. Historical queries, observation coverage, valuation, feature/label/prediction persistence, complete synthetic provisioning, and WSGI API startup remain explicitly unsupported on PostgreSQL.
+- **Why it changed:** Establish verified PostgreSQL parity for Member 1's core ingestion/auth/identity path without weakening the existing contract or overstating full backend parity.
+- **Contract / database / API impact:** Existing event/principal shapes and error codes are preserved. PostgreSQL `TIMESTAMPTZ` receives aware datetime parameters and health output returns normalized UTC strings. Payment failures do not end subscriptions; known cancellations remain distinct. Application authz is not RLS. No Supabase, production DB, cross-member work, or data copy.
+- **Tests / verification:**
+  - Pre-edit baseline on the disposable target — **PASS** — 104 tests, 0 failed/errors/skipped, 14.110 seconds.
+  - Live PostgreSQL ingestion — **PASS** — 11 tests, 0 failed/errors/skipped, 12.109 seconds. Actual concurrency: 8 identical-ingest workers; 2 conflicting-ingest workers; 8 same-owner identity workers; 2 conflicting-identity workers; 2 subscription-owner contenders.
+  - Existing PostgreSQL schema/migration tests — **PASS** — 20 tests, including all five live PostgreSQL integration tests, 2.189 seconds.
+  - SQLite Data Foundation regression — **PASS** — 48 tests, 6.939 seconds; focused five authorization tests passed in 0.673 seconds; four importer/batch/checkpoint tests passed in 0.401 seconds.
+  - Full suite on Python 3.12.14 + psycopg 3.3.6 against PostgreSQL 16.15 — **PASS** — 116 passed, 0 failed, 0 errors, 0 skipped, 0 Python warnings; unittest duration 28.529 seconds (28.859 seconds wall clock).
+  - `compileall`, package import checks, and `git diff --check` — **PASS**. Four expected safe request-rejection log lines came from negative tests; no credentials/restricted values were exposed. Git showed only LF/CRLF normalization notices.
+- **Data / model / ROI evidence:** Synthetic-only fixtures and task-created disposable PostgreSQL database; no customer dataset, model, or ROI results.
+- **Known issues / blockers:** Complete requirements and `AGENT.md`/`AGENTS.md` were absent; the cited `D:\dunno\dormathon` requirements path was unavailable. Integration/service token expiry is not an existing schema feature. Historical query and coverage parity, other persistence, production TLS/identity, and RLS remain unverified/out of scope.
+- **Next action / handoff:** The disposable `retaniq_test_06d1` database was dropped and its task-created cluster was stopped (`pg_ctl` confirms no server); the existing `postgresql-x64-16` Windows service remains Running and was not targeted. The known temporary cluster and isolated psycopg venv directories remain on disk for safe reuse; recursive deletion was rejected by the environment. Keep 06D-1 changes uncommitted. Next milestone is **06D-2 — Historical Queries and Coverage Parity**; do not begin it automatically.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T14:47:40Z — Member 1 / Data & Backend Engineer — PostgreSQL schema and migrations
 
 - **Workstream:** Part 1 / Data Foundation, PostgreSQL Schema & Migrations

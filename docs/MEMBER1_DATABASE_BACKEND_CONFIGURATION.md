@@ -1,8 +1,8 @@
 # Member 1 database backend configuration
 
-This document records the 06B database foundation. It covers target parsing,
-connection lifecycle, and transaction ownership. It does not claim PostgreSQL
-schema or feature parity.
+This document records the 06B database foundation and the bounded 06D-1
+PostgreSQL ingestion/identity/authentication support. It does not claim full
+PostgreSQL feature parity.
 
 ## Supported configuration
 
@@ -73,21 +73,26 @@ an approved secret store or runtime environment, and avoid printing it.
   rolls it back on an exception.
 - Nested transactions are rejected explicitly in 06B. Savepoints are not
   introduced here.
-- SQLite query parameters continue to use `?`; direct PostgreSQL calls use
-  psycopg's `%s` placeholders. Shared repository query adaptation belongs to
-  06D rather than an unsafe string-rewrite layer in 06B.
+- SQLite statements keep their `?` placeholders. PostgreSQL adapts qmarks
+  outside SQL literals/comments using a quote-aware scanner; conflict handling,
+  generated-key retrieval, and row locking remain explicit PostgreSQL SQL.
 - SQLite migration scripts are intentionally rejected for PostgreSQL. The
   PostgreSQL-specific schema and explicit migration runner were added in 06C;
   RLS and Supabase integration remain outside this milestone.
 
-The existing Data Foundation repository remains SQLite-query-only. The
-explicit `init-db` command applies PostgreSQL schema migrations, while other
-repository operations reject PostgreSQL until 06D rather than sending SQLite
-SQL to PostgreSQL or silently opening another backend.
+The explicit `init-db` command applies PostgreSQL schema migrations. As of
+06D-1, tenant/integration/customer setup, source/category grants, integration
+and service-principal authentication, identity mapping, mapping-version and
+health updates, canonical single/batch ingestion, usage/billing/subscription
+subtypes, subscription ownership, and import checkpoints run on both
+backends. Other operations still reject PostgreSQL explicitly; they do not
+send unsupported SQLite queries or silently fall back.
 
-`POSTGRESQL_CONNECTION_READY` and `POSTGRESQL_SCHEMA_VERIFIED` do not mean
-`POSTGRESQL_FEATURE_PARITY`. Query compatibility, tenant isolation, and
-application regression evidence remain planned for 06D.
+`POSTGRESQL_CONNECTION_READY`, `POSTGRESQL_SCHEMA_VERIFIED`, and the bounded
+06D-1 ingestion parity do not mean `POSTGRESQL_FEATURE_PARITY`. Historical
+queries, observation coverage, account valuation, feature/label/prediction
+storage, and the WSGI API remain SQLite-only. Application-level principal
+checks are not database RLS; RLS and production authentication remain deferred.
 
 ## Verification and limitations
 
@@ -100,8 +105,9 @@ git diff --check
 ```
 
 06B added parser, lifecycle, rollback, explicit PostgreSQL rejection, and
-missing-driver tests. In 06C, the PostgreSQL driver and local cluster were
-installed/created in temporary paths; the real disposable-server results are
-recorded in `docs/MEMBER1_POSTGRESQL_SCHEMA_AND_MIGRATIONS.md` and
-`TEAM_LOG.md`. Next work is 06D query and repository parity. Supabase remains
-deferred to the later infrastructure phase and is not configured here.
+missing-driver tests. 06C schema results are in
+[`MEMBER1_POSTGRESQL_SCHEMA_AND_MIGRATIONS.md`](MEMBER1_POSTGRESQL_SCHEMA_AND_MIGRATIONS.md).
+06D-1 behavior and limitations are in
+[`MEMBER1_POSTGRESQL_INGESTION_PARITY.md`](MEMBER1_POSTGRESQL_INGESTION_PARITY.md).
+Next work is 06D-2 historical queries and coverage. Supabase remains deferred
+to the later infrastructure phase and is not configured here.

@@ -11,6 +11,7 @@ from retaniq.database import (
     DatabaseTransactionError,
     PostgreSQLSchemaNotReady,
     UnsupportedDatabaseOperation,
+    _postgresql_placeholders,
     connect_database,
 )
 from retaniq.database_config import DatabaseConfig
@@ -18,6 +19,13 @@ from retaniq.data_foundation import initialize_database
 
 
 class DatabaseConnectionTests(unittest.TestCase):
+    def test_postgresql_placeholder_adapter_ignores_literals_and_nested_comments(self):
+        statement = "SELECT ?, '?' AS literal, \"?\" AS identifier /* ? /* ? */ ? */ -- ?\n, $$?$$, $tag$?$tag$, ?"
+        self.assertEqual(
+            _postgresql_placeholders(statement),
+            "SELECT %s, '?' AS literal, \"?\" AS identifier /* ? /* ? */ ? */ -- ?\n, $$?$$, $tag$?$tag$, %s",
+        )
+
     def test_sqlite_connection_opens_with_foreign_keys_and_closes(self):
         with tempfile.TemporaryDirectory() as directory:
             connection = connect_database(Path(directory) / "connection.sqlite3")
