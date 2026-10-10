@@ -162,6 +162,67 @@ class DataFoundationTests(unittest.TestCase):
             ingest_event(self.db, principal, payload, received_at=T2)
         self.assertEqual(caught.exception.code, "source_not_authorized")
 
+    def test_data_reads_and_writes_enforce_purpose_scope(self):
+        token = create_integration(
+            self.db, "tenant-a", "identity_bridge", authorized_purposes=("identity_mapping",),
+        )
+        principal = authenticate_integration(self.db, token)
+
+        restricted_operations = (
+            lambda: get_events_as_of(self.db, principal, "customer-a", T2, category="usage"),
+            lambda: get_account_snapshot_as_of(self.db, principal, "customer-a", T2),
+            lambda: store_feature_snapshot(
+                self.db, principal, "customer-a", T1, "features-v1", T1, {"sessions_7d": 1}, "available",
+            ),
+            lambda: store_churn_label(
+                self.db, principal, "customer-a", T0, 7, "unknown", T0, "label-v1",
+            ),
+            lambda: store_prediction(
+                self.db, principal,
+                {"prediction_id": "pred-scope", "prediction_run_id": "run-scope", "customer_id": "customer-a",
+                 "as_of": T1, "generated_at": T2, "status": "abstained", "p_churn_7d": None,
+                 "p_churn_14d": None, "p_churn_30d": None, "feature_version": "features-v1",
+                 "model_version": "model-v1", "calibration_version": "cal-v1",
+                 "reliability_status": "insufficient_evidence", "data_freshness_status": "unknown"},
+            ),
+        )
+        for index, operation in enumerate(restricted_operations):
+            with self.subTest(operation=index):
+                with self.assertRaises(DataFoundationError) as caught:
+                    operation()
+                self.assertEqual(caught.exception.code, "purpose_not_authorized")
+
+    def test_retention_only_reader_can_read_usage_but_not_valuation_data(self):
+        token = create_integration(
+            self.db, "tenant-a", "retention_reader", authorized_purposes=("retention_inference",),
+        )
+        principal = authenticate_integration(self.db, token)
+        ingest_event(self.db, self.principal_a, usage_event(), received_at=T1)
+        self.add_subscription(
+            "evt-retention-reader-sub", "subscription_created", T0,
+            {"subscription_id": "sub-retention-reader", "status": "active", "started_at": T0,
+             "billing_interval": "month", "billing_interval_count": 1,
+             "amount_minor": 2500, "currency": "MYR"},
+        )
+        payment = {
+            "source": "product_app", "source_event_id": "evt-retention-reader-payment",
+            "external_customer_id": "acct-a", "event_type": "payment_failed", "occurred_at": T1,
+            "attributes": {"subscription_id": "sub-retention-reader", "amount_minor": 2500, "currency": "MYR"},
+            "schema_version": "1.0",
+        }
+        ingest_event(self.db, self.principal_a, payment, received_at=T1)
+
+        usage = get_events_as_of(self.db, principal, "customer-a", T2, category="usage")
+        self.assertEqual(len(usage), 1)
+        billing = get_events_as_of(self.db, principal, "customer-a", T2, category="billing")
+        self.assertEqual(billing[0]["payment_status"], "failed")
+        self.assertNotIn("amount_minor", billing[0])
+        self.assertNotIn("currency", billing[0])
+        snapshot = get_account_snapshot_as_of(self.db, principal, "customer-a", T2)
+        self.assertIsNone(snapshot["valuation"])
+        self.assertNotIn("amount_minor", snapshot["subscriptions"][0])
+        self.assertNotIn("mrr_minor", snapshot["subscriptions"][0])
+
     def test_tenant_scopes_event_reads_and_identity_writes(self):
         ingest_event(self.db, self.principal_b, usage_event(), received_at=T1)
         visible = get_events_as_of(self.db, self.principal_a, "customer-b", T2)
@@ -356,6 +417,16 @@ class DataFoundationTests(unittest.TestCase):
         self.assertEqual(snapshot["valuation"]["currency"], "JPY")
         self.assertEqual(snapshot["valuation"]["mrr_minor"], 600)
 
+    def test_non_iso_currency_code_is_rejected_before_valuation(self):
+        with self.assertRaises(DataFoundationError) as caught:
+            self.add_subscription(
+                "evt-unsupported-currency", "subscription_created", T0,
+                {"subscription_id": "sub-bad-currency", "status": "active", "started_at": T0,
+                 "billing_interval": "month", "billing_interval_count": 1,
+                 "amount_minor": 1000, "currency": "ZZZ"},
+            )
+        self.assertEqual(caught.exception.code, "invalid_event")
+
     def test_price_change_is_reconstructed_at_historical_cutoff(self):
         self.add_subscription(
             "evt-sub-create", "subscription_created", T0,
@@ -427,13 +498,20 @@ class DataFoundationTests(unittest.TestCase):
                 self.db, self.principal_a, "customer-a", T1, 30, 0, T1,
                 "churn-label-v1",
             )
+        with self.assertRaises(DataFoundationError) as insufficient_positive_coverage:
+            store_churn_label(
+                self.db, self.principal_a, "customer-a", T0, 7, 1, T0,
+                "churn-label-positive-v1", outcome_at=T1,
+            )
+        self.assertEqual(insufficient_positive_coverage.exception.code, "invalid_contract")
         prediction_id = store_prediction(
             self.db, self.principal_a,
             {"prediction_id": "pred-1", "prediction_run_id": "run-1", "customer_id": "customer-a",
              "as_of": T1, "generated_at": T2, "status": "scored", "p_churn_7d": 0.1,
              "p_churn_14d": 0.2, "p_churn_30d": 0.3, "feature_version": "features-v1",
              "model_version": "model-v1", "calibration_version": "cal-v1",
-             "reliability_status": "limited_evidence", "data_freshness_status": "unknown"},
+              "reliability_status": "limited_evidence", "data_freshness_status": "unknown",
+              "feature_snapshot_id": feature_id},
         )
         self.assertEqual(prediction_id, "pred-1")
         with self.assertRaises(DataFoundationError):
@@ -445,6 +523,43 @@ class DataFoundationTests(unittest.TestCase):
                  "model_version": "model-v1", "calibration_version": "cal-v1",
                  "reliability_status": "limited_evidence", "data_freshness_status": "unknown"},
             )
+
+    def test_prediction_rejects_feature_snapshot_for_wrong_account_cutoff_or_version(self):
+        for customer_id in ("customer-other", "customer-cutoff", "customer-version"):
+            create_customer(self.db, "tenant-a", customer_id)
+        other_account_snapshot = store_feature_snapshot(
+            self.db, self.principal_a, "customer-other", T1, "features-v1", T1,
+            {"sessions_7d": 1}, "available",
+        )
+        other_cutoff_snapshot = store_feature_snapshot(
+            self.db, self.principal_a, "customer-cutoff", T2, "features-v1", T2,
+            {"sessions_7d": 2}, "available",
+        )
+        other_version_snapshot = store_feature_snapshot(
+            self.db, self.principal_a, "customer-version", T1, "features-v2", T1,
+            {"sessions_7d": 3}, "available",
+        )
+        base = {
+            "prediction_run_id": "run-mismatch",
+            "as_of": T1, "generated_at": T2, "status": "abstained", "p_churn_7d": None,
+            "p_churn_14d": None, "p_churn_30d": None, "feature_version": "features-v1",
+            "model_version": "model-v1", "calibration_version": "cal-v1",
+            "reliability_status": "insufficient_evidence", "data_freshness_status": "unknown",
+        }
+        mismatches = (
+            ("customer-a", other_account_snapshot),
+            ("customer-cutoff", other_cutoff_snapshot),
+            ("customer-version", other_version_snapshot),
+        )
+        for index, (customer_id, feature_id) in enumerate(mismatches):
+            with self.subTest(feature_snapshot_id=feature_id):
+                with self.assertRaises(DataFoundationError) as caught:
+                    store_prediction(
+                        self.db, self.principal_a,
+                        {**base, "customer_id": customer_id, "prediction_id": f"pred-mismatch-{index}",
+                         "feature_snapshot_id": feature_id},
+                    )
+                self.assertEqual(caught.exception.code, "invalid_contract")
 
     def test_csv_import_counts_invalid_and_duplicate_rows_and_replay_preserves_times(self):
         csv_path = Path(self.temp.name) / "history.csv"

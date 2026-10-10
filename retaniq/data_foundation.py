@@ -18,6 +18,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any, Iterable
 from contextlib import contextmanager
+from .currency_codes import ISO4217_CURRENT_CODES
 
 
 SCHEMA_VERSION = "1.0"
@@ -73,6 +74,7 @@ SAFE_MESSAGES = {
     "unauthorized": "Authentication is required.",
     "invalid_event": "The event is invalid or contains unsupported fields.",
     "source_not_authorized": "The authenticated integration is not authorized for this source.",
+    "purpose_not_authorized": "The integration is not authorized for this data purpose.",
     "identity_not_mapped": "The source customer ID has no explicit tenant mapping.",
     "idempotency_conflict": "The source event ID was already used for different normalized data.",
     "not_found": "The requested tenant-scoped record was not found.",
@@ -338,9 +340,16 @@ def _integer(value: Any, *, minimum: int = 0, maximum: int = 2**62) -> int:
 
 
 def _currency(value: Any) -> str:
-    if not isinstance(value, str) or not CURRENCY_PATTERN.fullmatch(value):
+    if not isinstance(value, str) or not CURRENCY_PATTERN.fullmatch(value) or value not in ISO4217_CURRENT_CODES:
         raise DataFoundationError("invalid_event")
     return value
+
+
+def _require_purposes(principal: IntegrationPrincipal, *purposes: str) -> None:
+    if not isinstance(principal, IntegrationPrincipal) or any(
+        purpose not in principal.authorized_purposes for purpose in purposes
+    ):
+        raise DataFoundationError("purpose_not_authorized")
 
 
 def _normalize_attributes(event_type: str, attributes: Any, occurred_at: str) -> tuple[str, dict[str, Any]]:
@@ -575,12 +584,8 @@ def ingest_event(
         event = _normalize_envelope(
             principal, payload, trusted_source_available_at=trusted_source_available_at,
         )
-        required_purposes = {"retention_inference"} if event["category"] != "billing" else {
-            "retention_inference", "billing_valuation",
-        }
-        if event["category"] == "subscription" and any(
-            key in event["attributes"] for key in ("amount_minor", "discount_minor", "currency")
-        ):
+        required_purposes = {"retention_inference"}
+        if any(key in event["attributes"] for key in ("amount_minor", "discount_minor", "currency")):
             required_purposes.add("billing_valuation")
         if not required_purposes.issubset(principal.authorized_purposes):
             raise DataFoundationError("source_not_authorized")
@@ -678,6 +683,10 @@ def get_events_as_of(
 ) -> list[dict[str, Any]]:
     customer_id = _validate_id(customer_id)
     cutoff = normalize_timestamp(as_of)
+    if category not in {None, "usage", "billing", "subscription"}:
+        raise DataFoundationError("invalid_contract")
+    _require_purposes(principal, "retention_inference")
+    include_billing = "billing_valuation" in principal.authorized_purposes
     with _db(path) as connection:
         _assert_principal(connection, principal)
         sql = (
@@ -718,7 +727,7 @@ def get_events_as_of(
                     ("subscription_id", row["billing_subscription_id"]),
                     ("payment_status", row["payment_status"]),
                     ("amount_minor", row["billing_amount_minor"]), ("currency", row["billing_currency"]),
-                ) if value is not None
+                ) if value is not None and (include_billing or key not in {"amount_minor", "currency"})
             }
         else:
             item["attributes"] = {
@@ -729,15 +738,19 @@ def get_events_as_of(
                         ("changed_status", "plan_id", "started_at", "current_period_end", "ended_at",
                          "cancellation_requested_at", "billing_interval", "billing_interval_count",
                          "subscription_amount_minor", "discount_minor", "subscription_currency"),
-                    ) if field in json.loads(row["changed_fields_json"])
+                     ) if field in json.loads(row["changed_fields_json"])
+                     and (include_billing or field not in {
+                         "billing_interval", "billing_interval_count", "amount_minor", "discount_minor", "currency",
+                     })
                 },
             }
             item["subscription_id"] = row["changed_subscription_id"]
         if row["category"] == "billing":
             item["payment_status"] = row["payment_status"]
-            item["amount_minor"] = row["billing_amount_minor"]
-            item["currency"] = row["billing_currency"]
             item["subscription_id"] = row["billing_subscription_id"]
+            if include_billing:
+                item["amount_minor"] = row["billing_amount_minor"]
+                item["currency"] = row["billing_currency"]
         result.append(item)
     return result
 
@@ -771,6 +784,7 @@ def get_subscriptions_as_of(
     cutoff = normalize_timestamp(as_of)
     with _db(path) as connection:
         _assert_principal(connection, principal)
+        _require_purposes(principal, "retention_inference")
         rows = connection.execute(
             "SELECT se.*, ce.occurred_at AS parent_occurred_at, ce.received_at AS parent_received_at, "
             "ce.source_available_at AS parent_source_available_at, ce.event_id AS parent_event_id "
@@ -796,6 +810,12 @@ def get_subscriptions_as_of(
         state["last_event_available_at"] = max(
             row["parent_source_available_at"] or row["parent_received_at"] for row in history
         )
+        if "billing_valuation" not in principal.authorized_purposes:
+            for field in (
+                "billing_interval", "billing_interval_count", "amount_minor", "discount_minor", "currency",
+                "mrr_minor", "valuation_policy_version",
+            ):
+                state.pop(field, None)
         subscriptions.append(state)
     subscriptions.sort(key=lambda value: value["subscription_id"])
     return subscriptions
@@ -841,6 +861,7 @@ def get_account_snapshot_as_of(
     cutoff = normalize_timestamp(as_of)
     with _db(path) as connection:
         _assert_principal(connection, principal)
+        _require_purposes(principal, "retention_inference")
         customer = connection.execute(
             "SELECT account_status FROM customers WHERE tenant_id = ? AND customer_id = ?",
             (principal.tenant_id, customer_id),
@@ -864,8 +885,10 @@ def get_account_snapshot_as_of(
         status = "known_cancellation"
     else:
         status = "eligible"
-    valuation = _account_valuation(subscriptions)
-    valuation["valuation_as_of"] = cutoff if valuation["status"] == "available" else None
+    valuation = None
+    if "billing_valuation" in principal.authorized_purposes:
+        valuation = _account_valuation(subscriptions)
+        valuation["valuation_as_of"] = cutoff if valuation["status"] == "available" else None
     availability = [event["available_at"] for event in events]
     return {
         "tenant_id": principal.tenant_id,
@@ -890,6 +913,7 @@ def list_eligible_accounts_as_of(
     cutoff = normalize_timestamp(as_of)
     with _db(path) as connection:
         _assert_principal(connection, principal)
+        _require_purposes(principal, "retention_inference")
         customers = connection.execute(
             "SELECT customer_id FROM customers WHERE tenant_id = ? AND account_status = 'active' "
             "ORDER BY customer_id",
@@ -954,6 +978,7 @@ def store_feature_snapshot(
     encoded = json.dumps(features, sort_keys=True, separators=(",", ":"), allow_nan=False)
     with _db(path) as connection:
         _assert_principal(connection, principal)
+        _require_purposes(principal, "retention_inference")
         _assert_customer(connection, principal, customer_id)
         try:
             connection.execute(
@@ -1004,7 +1029,7 @@ def store_churn_label(
         if normalized_outcome is None:
             raise DataFoundationError("invalid_contract")
         outcome_dt = datetime.fromisoformat(normalized_outcome[:-1] + "+00:00")
-        if not (as_of_dt < outcome_dt <= end_dt):
+        if not (as_of_dt < outcome_dt <= end_dt) or outcome_dt > observed_dt:
             raise DataFoundationError("invalid_contract")
     elif normalized_label == "0" and observed_dt < end_dt:
         raise DataFoundationError("invalid_contract")
@@ -1012,6 +1037,7 @@ def store_churn_label(
         raise DataFoundationError("invalid_contract")
     with _db(path) as connection:
         _assert_principal(connection, principal)
+        _require_purposes(principal, "retention_inference")
         _assert_customer(connection, principal, customer_id)
         try:
             connection.execute(
@@ -1073,7 +1099,17 @@ def store_prediction(
         feature_snapshot_id = _validate_id(feature_snapshot_id)
     with _db(path) as connection:
         _assert_principal(connection, principal)
+        _require_purposes(principal, "retention_inference")
         _assert_customer(connection, principal, customer_id)
+        if feature_snapshot_id is not None:
+            snapshot = connection.execute(
+                "SELECT customer_id, as_of, feature_version FROM feature_snapshots "
+                "WHERE tenant_id = ? AND feature_snapshot_id = ?",
+                (principal.tenant_id, feature_snapshot_id),
+            ).fetchone()
+            if (snapshot is None or snapshot["customer_id"] != customer_id
+                    or snapshot["as_of"] != as_of or snapshot["feature_version"] != feature_version):
+                raise DataFoundationError("invalid_contract")
         try:
             connection.execute(
                 "INSERT INTO predictions(tenant_id, prediction_id, prediction_run_id, customer_id, as_of, generated_at, "

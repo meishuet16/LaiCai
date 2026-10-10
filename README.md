@@ -62,6 +62,8 @@ Allowlisted event types and attributes:
 
 Unknown event types, extra fields, raw contact/card data, malformed timestamps, non-allowlisted attributes, and schema versions other than `1.0` are rejected. Logs and errors expose stable error codes only. A generic login is not translated into `session_started` unless a source mapping explicitly defines that meaning.
 
+Purpose grants are checked at data access as well as ingestion. Usage reads and feature/label/prediction writes require `retention_inference`; billing status is available to retention readers with amount and currency redacted. Pricing fields and MRR are returned only when the principal also has `billing_valuation`. Account snapshot and subscription helpers keep the lifecycle fields available to retention readers and omit the valuation for them.
+
 ### `GET /v1/integrations`
 
 Returns only the authenticated integration's tenant/source, authorized purposes, schema/mapping versions, last successful ingestion, last safe failure code, and an evidence-based availability state. Freshness is reported as `unknown` until a source-specific freshness policy exists. Tokens and token digests are never returned.
@@ -121,7 +123,7 @@ Source prices and discounts are integer minor units. The recurring discount is a
 - quarter: `net_minor / (3 × interval_count)`
 - year: `net_minor / (12 × interval_count)`
 
-The 52-week and 365-day factors define the v1 average-month convention. `amount_minor`, currency, interval, or interval count missing from an active subscription makes account MRR unavailable. A payment failure does not end an entitlement. Zero-decimal currencies remain in their source minor units; no major-unit conversion is performed. Currency syntax is checked as three uppercase letters, but this prototype does not verify membership against a complete ISO 4217 registry.
+The 52-week and 365-day factors define the v1 average-month convention. `amount_minor`, currency, interval, or interval count missing from an active subscription makes account MRR unavailable. A payment failure does not end an entitlement. Zero-decimal currencies remain in their source minor units; no major-unit conversion is performed. Currency codes are checked against the bundled [SIX ISO 4217 List One currency-and-funds codes](https://www.six-group.com/en/products-services/financial-information/market-reference-data/data-standards.html), snapshot published 2026-09-17 in `retaniq/currency_codes.py`; reserved test/no-currency codes `XTS` and `XXX` are excluded. Refresh the checked-in code set when the official list changes.
 
 ## Storage and implementation boundary
 
