@@ -105,7 +105,7 @@ export function IntegrationHealthPage() {
   };
 
   return <>
-    <div className="integration-page-meta"><p className="muted page-intro">Source status, data coverage and quality signals from the selected data mode.</p><span className={`pill ${data.evidence_kind === 'demo_fixture' ? 'amber' : 'good'}`}>{data.evidence_kind === 'demo_fixture' ? 'DEMO FIXTURE — SAMPLE DATA' : 'Source-backed data'}</span></div>
+    <div className="integration-page-meta"><p className="muted page-intro">Source status, data coverage and quality signals from the selected data source.</p></div>
     <div className="notice bluenote"><b>Canonical event semantics</b><span>Usage v1.2 primarily emits daily <code>usage_aggregate_updated</code> records; each aggregate describes that day’s session quantity, not one session. Payment failure is not churn, a cancellation request is not an effective cancellation, and an event-level cancellation is not automatically account-level churn.</span></div>
     <section className="metrics integration-metrics" aria-label="Source summary">
       <article className="quick"><small>Configured sources</small><strong>{data.sources.length}</strong><span>Fixture records; connection is not verified</span></article>

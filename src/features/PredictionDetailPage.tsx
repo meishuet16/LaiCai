@@ -21,7 +21,7 @@ export function PredictionDetailPage({ predictionId }: { predictionId: string })
 
   return <div className="prediction-detail-content">
     <div className="detail-title"><div><h2>{account.name ?? account.customer_id}</h2><p className="muted">Account {account.customer_id} · {account.segment ?? 'Segment unavailable'} · {account.plan ?? 'Plan unavailable'}</p></div><span className={`pill ${prediction.status === 'scored' ? 'good' : 'amber'}`}>{prediction.status.replaceAll('_', ' ')}</span></div>
-    <div className="radar-meta"><span>Evidence: <b>{account.evidence_kind === 'demo_fixture' ? 'DEMO FIXTURE — SAMPLE DATA' : 'Source-backed'}</b></span><span>Score cutoff: <b>{formatDateTime(prediction.as_of)}</b></span><span>Generated: <b>{formatDateTime(prediction.generated_at)}</b></span></div>
+    <div className="radar-meta"><span>Score cutoff: <b>{formatDateTime(prediction.as_of)}</b></span><span>Generated: <b>{formatDateTime(prediction.generated_at)}</b></span></div>
 
     <section className="probability-grid" aria-label="Forecast horizons">{([7, 14, 30] as const).map(days => <article className="card probability" key={days}><span>{days}-day cumulative churn risk</span><strong>{formatRisk(prediction, days)}</strong><small>{prediction.status !== 'scored' ? 'Not scored — no numeric forecast' : `Prediction cutoff ${formatDateTime(prediction.as_of)}`}</small></article>)}</section>
 

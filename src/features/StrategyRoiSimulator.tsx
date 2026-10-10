@@ -115,7 +115,6 @@ export function StrategyRoiSimulator({ accounts, cases, capacity }: { accounts: 
   return <div className="simulator-page">
     <section className="simulator-heading">
       <div><span className="pill amber">SCENARIO ONLY</span><h2>Strategy &amp; ROI simulator</h2><p className="muted">Move the sliders to explore a hypothetical review plan and one-month break-even case.</p></div>
-      <span className="pill neutral">Demo fixture · no backend allocation</span>
     </section>
 
     <div className="simulator-layout">

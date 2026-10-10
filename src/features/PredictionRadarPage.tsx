@@ -133,7 +133,7 @@ export function PredictionRadarPage() {
 
   return <>
     <p className="muted page-intro">Reliability describes evidence sufficiency, not a probability that a score is correct. In Demo Fixture mode, probability values are illustrative and are not trained-model outputs.</p>
-    <div className="radar-meta"><span>Selected horizon: <b>{horizon} days</b></span><span>As of <b>{formatDateTime(latestAsOf)}</b></span><span>Model: <b>{modelLabel}</b></span><span className="pill neutral">Synthetic demo data</span></div>
+    <div className="radar-meta"><span>Selected horizon: <b>{horizon} days</b></span><span>As of <b>{formatDateTime(latestAsOf)}</b></span><span>Model: <b>{modelLabel}</b></span></div>
 
     <section className="metrics prediction-metrics" aria-label="Prediction coverage">
       <article className="quick"><small>Eligible accounts</small><strong>{eligible.length}</strong><span>Excludes known cancellations and ineligible accounts</span></article>

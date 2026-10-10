@@ -72,6 +72,26 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T17:54:55Z — Codex — Remove repeated demo indicators across pages
+
+- **Workstream:** Frontend / QA
+- **Branch:** `member4`
+- **Commit subject:** `fix: remove repeated demo indicators from dashboard`
+- **Issue / task:** Remove prominent demo badges and banners from all five primary pages.
+- **Files changed:** `src/app/AppShell.tsx`, `src/features/IntegrationHealthPage.tsx`, `src/features/PredictionRadarPage.tsx`, `src/features/PredictionDetailPage.tsx`, `src/features/StrategyRoiSimulator.tsx`, `src/features/TimelinePage.tsx`, and this log.
+- **What changed:** Removed the global notice and sidebar footer; removed per-page fixture badges from Data Integration, Churn Prediction, Customer Insights, prediction details, and the ROI simulator. The functional Data source selector now says `Sample data` for fixture mode, and the non-authenticated role control says `Role preview`. Scenario-only and unavailable-state labels remain where they describe real limitations.
+- **Why it changed:** Repeated visual indicators cluttered the five-page dashboard.
+- **Contract / database / API impact:** None; fixture/connected separation and unavailable states are unchanged.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - Safari local Vite check (all five primary pages on port 5180) — PASS — repeated demo badges absent; Sample data selector visible.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** Fixtures remain selected by default and are labelled Sample data in the selector; no real model or backend integration is implied. Scenario-only calculations remain labelled.
+- **Known issues / blockers:** Connected prediction and decision APIs remain unavailable as previously logged.
+- **Next action / handoff:** Review on `member4`; do not push or merge without approval.
+- **Reviewer / pairing:** `N/A`
+
 ### 2026-10-10T17:50:10Z — Codex — Remove duplicate Customer Insights fixture notices
 
 - **Workstream:** Frontend / QA

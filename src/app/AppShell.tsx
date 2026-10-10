@@ -98,23 +98,21 @@ export function AppShell() {
           return <a key={item.section} href={href} aria-current={active ? 'page' : undefined} className={`nav-link${active ? ' active' : ''}`} onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navigate(href); } }}><NavGlyph section={item.section} /><span>{item.label}</span></a>;
         })}
       </nav>
-      <div className="sidefoot"><small>{dataMode === 'demo_fixture' ? 'DEMO FIXTURE' : 'CONNECTED MODE'}</small><b>{dataMode === 'demo_fixture' ? 'Sample only' : 'Tenant unavailable'}</b><span>{dataMode === 'demo_fixture' ? 'Not source-backed · not a model' : 'Requires authorized backend context'}</span></div>
     </aside>
     <div className="main">
       <header className="topbar">
         <div className="page-heading"><h1>{title}</h1>{subtitles[activePage] && <p className="subtitle">{subtitles[activePage]}</p>}</div>
         <div className="topbar-tools">
           <div className="search"><span aria-hidden="true">⌕</span><input aria-label="Search account ID" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search account ID" /></div>
-          <label className="header-control">Data mode<select value={dataMode} onChange={event => setDataMode(event.target.value as DataMode)}><option value="connected">Connected · unavailable</option><option value="demo_fixture">Demo fixture · sample</option></select></label>
+          <label className="header-control">Data source<select value={dataMode} onChange={event => setDataMode(event.target.value as DataMode)}><option value="connected">Connected · unavailable</option><option value="demo_fixture">Sample data</option></select></label>
           <span className="demo-tag tenant-tag">Tenant <b>{dataMode === 'connected' ? 'Server context required' : 'Not supplied'}</b></span>
-          <label className="header-control">Demo role<select aria-label="Demo role (not authentication)" value={role} onChange={event => setRole(event.target.value as Role)}><option>Manager</option><option>CSM</option><option>Admin</option><option>Viewer</option></select></label>
+          <label className="header-control">Role preview<select aria-label="Role preview (not authentication)" value={role} onChange={event => setRole(event.target.value as Role)}><option>Manager</option><option>CSM</option><option>Admin</option><option>Viewer</option></select></label>
           <span className="demo-tag asof-tag">As-of / model <b>Not connected</b></span>
           {activePage !== 'command-center' && <label className="header-control">Currency<select value={currency} onChange={event => setCurrency(event.target.value as Currency | 'All')}><option>All</option><option>MYR</option><option>USD</option><option>SGD</option></select></label>}
           {activePage !== 'command-center' && <div className="horizon-control"><span>Horizon</span><div className="seg" aria-label="Prediction horizon">{([7, 14, 30] as Horizon[]).map(days => <button aria-pressed={horizon === days} className={horizon === days ? 'on' : ''} onClick={() => setHorizon(days)} key={days}>{days}d</button>)}</div></div>}
         </div>
       </header>
       <main ref={mainRef}>
-        {activePage === 'timeline' ? null : <div className={`notice ${dataMode === 'demo_fixture' ? 'ambernote' : 'bluenote'} global-demo-notice`}><b>{dataMode === 'demo_fixture' ? 'DEMO FIXTURE — SAMPLE DATA' : 'Connected mode · not connected'}</b><span>{dataMode === 'demo_fixture' ? 'Illustrative local fixtures only. They are not Synthetic SaaS v1.2 records, trained model outputs, observed outcomes, or persisted decisions.' : 'No browser-safe authenticated customer, prediction, decision, or timeline read APIs are connected. Pages show unavailable states; fixtures are not substituted.'}</span></div>}
         <div className="page-stack">
           {pages.map(page => <section key={page.section} className="page-view" hidden={activePage !== page.section} aria-hidden={activePage !== page.section} inert={activePage !== page.section || drawerOpen} aria-label={navItems.find(item => item.section === page.section)?.label}>{page.content}</section>)}
         </div>
