@@ -341,6 +341,10 @@ class BudgetConfigRecord(BaseModel):
 # Human approval request / response (Phase 3 — stub types here)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Human approval request / response (Phase 3 — §7.5, §7.7)
+# ---------------------------------------------------------------------------
+
 class ApprovalRequest(BaseModel):
     proposal_id: str
     decision_type: HumanDecisionType
@@ -348,10 +352,12 @@ class ApprovalRequest(BaseModel):
     actor: str
     assigned_owner: Optional[str] = None
     modified_action_code: Optional[ActionCode] = None  # for MODIFY
+    override_applied: bool = False
+    override_reason: Optional[str] = None
 
 
 class ApprovalResponse(BaseModel):
-    human_decision_id: UUID
+    human_decision_id: str
     case_id: str
     case_status: CaseStatus
     original_proposal_action: ActionCode
@@ -363,10 +369,29 @@ class ApprovalResponse(BaseModel):
     budget_remaining_minor: Optional[int] = None
     staff_minutes_remaining: Optional[int] = None
     follow_up_anchor: Optional[datetime] = None
+    follow_up_due_at: Optional[dict[str, str]] = None
 
 
 # ---------------------------------------------------------------------------
-# Outcome observation request / response (Phase 3 — stub types here)
+# Case history (audit trail — §7.7)
+# ---------------------------------------------------------------------------
+
+class HistoryEvent(BaseModel):
+    event_id: str
+    case_id: str
+    event_type: str  # CASE_OPENED, PROPOSAL_GENERATED, HUMAN_DECISION, CASE_STATUS_CHANGED, OUTCOME_OBSERVED
+    occurred_at: datetime
+    actor: str
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class CaseHistoryResponse(BaseModel):
+    case_id: str
+    events: list[HistoryEvent] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Outcome observation request / response (Phase 3 — §7.7)
 # ---------------------------------------------------------------------------
 
 class OutcomeObservationRequest(BaseModel):
@@ -378,10 +403,45 @@ class OutcomeObservationRequest(BaseModel):
 
 
 class OutcomeObservationResponse(BaseModel):
-    observation_id: UUID
+    observation_id: str
     case_id: str
     horizon_days: int
     observed_status: ObservedStatus
     observation_coverage: str
     observed_at: datetime
-    note: str = "active_status_is_not_proof_of_retention_effectiveness"
+    note: str = "active_is_not_proof_of_retention_effectiveness"
+
+
+# ---------------------------------------------------------------------------
+# Decision-quality evaluation models (Phase 3 — §7.8)
+# ---------------------------------------------------------------------------
+
+class EvaluationCohortAccount(BaseModel):
+    customer_id: str
+    as_of_mrr_minor: int
+    p_churn_30d: float
+    p_churn_7d: float = 0.0
+    case_opened_at: Optional[datetime] = None
+    reliability_status: str = "sufficient_evidence"
+    cooldown_active: bool = False
+    actually_churned_30d: bool
+
+
+class EvaluationResponse(BaseModel):
+    strategy: str  # "A" | "B" | "C"
+    strategy_description: str
+    currency: str
+    as_of: datetime
+    k_slots: int
+    revenue_captured_at_k: Optional[float] = None
+    subsequently_churned_mrr_identified_minor: Optional[int] = None
+    total_churned_mrr_cohort_minor: Optional[int] = None
+    recall_at_k: Optional[float] = None
+    revenue_captured_label: str = "Subsequently Churned MRR Identified@K"
+    evaluation_label: str = "historical_identification_coverage — NOT saved revenue"
+    note: Optional[str] = None
+    strategies_available: list[str] = Field(default_factory=lambda: ["A", "B", "C"])
+    strategy_a_description: str = "Descending calibrated p30 only"
+    strategy_b_description: str = "Descending p30 * MRR"
+    strategy_c_description: str = "Full RetainIQ: reliability gate + cooldown + top-K + p30xMRR + p7 tie-break"
+

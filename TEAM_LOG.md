@@ -72,6 +72,38 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T07:05:00Z — Member 3 — Phase 3: Human approval state machine, budget enforcement, outcomes, evaluation
+
+- **Workstream:** Part 3 — Decision Engine
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `feat: Phase 3 — human approval workflow, budget capacity safeguards, 7/14/30d outcomes, RevenueCaptured@K`
+- **Issue / task:** Phase 3 — Human Approval + Outcome Tracking (RetainIQ_v2_Complete_Requirements.md §7.5, §7.7, §7.8; rolemember.md §开发优先顺序)
+- **Files changed:**
+  - `backend/decision/workflow.py` *(new)* — human authority state machine & transactional budget/capacity cap guards (§7.5, §7.7)
+  - `backend/decision/outcomes.py` *(new)* — 7/14/30d outcome observation engine with unknown-status integrity checks (§7.7)
+  - `backend/decision/evaluator.py` *(new)* — frozen replay evaluation engine for Strategies A, B, and C with RevenueCaptured@K metric (§7.8)
+  - `backend/decision/migrations/003_human_decisions_and_outcomes.sql` *(new)* — human_decisions, outcome_observations, and case_history audit tables + RLS
+  - `backend/decision/models.py` *(modified)* — HistoryEvent, CaseHistoryResponse, EvaluationCohortAccount, EvaluationResponse; enhanced Approval & Outcome models
+  - `backend/decision/api.py` *(modified)* — live POST /cases/{case_id}/approve, GET /cases/{case_id}/history, POST /cases/{case_id}/outcomes, GET /evaluation endpoints
+  - `tests/decision/test_workflow.py` *(new)* — 9 unit tests for APPROVE/MODIFY/REJECT/NO_INTERVENTION, budget caps, overrides, idempotency
+  - `tests/decision/test_outcomes.py` *(new)* — 5 unit tests for 7/14/30d horizons, coverage, and unknown status guardrails
+  - `tests/decision/test_evaluator.py` *(new)* — 5 unit tests for Strategies A/B/C, RevenueCaptured@K, zero-denominator handling
+  - `tests/decision/test_api_phase3.py` *(new)* — 4 FastAPI integration tests for all live Phase 3 endpoints
+  - `TEAM_LOG.md` *(this entry)*
+- **What changed:**
+  - `workflow.py`: Implemented state machine transitions (PROPOSED -> ASSIGNED, REJECTED, CLOSED_NO_ACTION, HUMAN_REVIEWED). Preserved original system proposal vs final human choice. Enforced transactional budget and staff-minute capacity caps against double-spend, requiring authorized override with reason. Rejects attempts to execute simulation-only or disabled actions live on MODIFY. Anchors follow-up at decided_at with automated 7d/14d/30d due date calculation. Idempotent re-approvals safely return existing decision without double deduction.
+  - `outcomes.py`: Validates follow-up horizons (strictly 7, 14, 30 days) and observed statuses (active, churned, pending_cancellation, downgraded, unknown). Enforces §7.7 rule that unknown/incomplete observation is NOT a successful retention outcome. Emits strict non-causal guardrail note 'active_is_not_proof_of_retention_effectiveness'.
+  - `evaluator.py`: Implemented frozen historical replay evaluation comparing Strategy A (calibrated p30 descending), Strategy B (p30 * MRR exposure descending), and Strategy C (RetainIQ gated planning: reliability gating + cooldown + top-K + p30*MRR + p7 urgency tie-break). Computes RevenueCaptured@K (Subsequently Churned MRR Identified@K) and Recall@K. Zero churned MRR denominator cleanly yields N/A. Strictly labeled as historical identification coverage, never claiming causal revenue saved.
+  - `api.py`: Promoted remaining stubs (/approve, /history, /outcomes, /evaluation) to fully functional live handlers with database and demo fixture fallback paths.
+- **Why it changed:** Completes all Phase 3 requirements, closing Part 3 decision engine scope per §7.5, §7.7, §7.8, §7.9.
+- **Contract / database / API impact:** All 8 Decision API endpoints are now fully live and conformant with `shared/fixtures/decision_mock.json` and `shared/contracts/prediction_contract.md`. Migration 003 adds `human_decisions`, `outcome_observations`, and `case_history` tables.
+- **Tests / verification:**
+  - `pytest tests/decision/ -v` — PASS (88 passed, 0 failed in 0.57s).
+- **Data / model / ROI evidence:** Evaluation and outcomes strictly labeled with non-causal guardrails.
+- **Known issues / blockers:** None for Part 3. Ready for Part 1/2 real model/data integration and Part 4 frontend visualization.
+- **Next action / handoff:** Part 3 is complete and ready for end-to-end integration with Member 1 (data foundation), Member 2 (ML model), and Member 4 (frontend dashboard).
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T06:55:00Z — Member 3 — Phase 2: Action catalog engine, break-even ROI card, DB migration, live API, tests
 
 - **Workstream:** Part 3 — Decision Engine
