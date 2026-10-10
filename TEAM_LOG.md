@@ -73,6 +73,25 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T22:23:20Z — Codex — Add environment-configured Render WSGI entry point
+
+- **Workstream:** Part 1 / Data Foundation / Integration
+- **Branch:** `codex/render-data-foundation-deploy`
+- **Commit subject:** `feat: add environment-configured Render WSGI entry point`
+- **Issue / task:** Render Data Foundation deployment plan, Task 2
+- **Files changed:** `render_wsgi.py`, `tests/test_render_deployment.py`, and `TEAM_LOG.md`.
+- **What changed:** Added module-level `application` built by passing `DatabaseConfig.from_environment()` to the existing `create_app()`; added import-time startup tests for a real temporary SQLite file and a fake Supabase configuration with the app factory patched to avoid a connection.
+- **Why it changed:** Gunicorn needs an importable WSGI application that selects the configured database target at process startup.
+- **Contract / database / API impact:** Adds `render_wsgi.application` as a deployment import target. SQLite startup initializes its configured file through the existing factory; PostgreSQL startup retains the existing schema verification behavior. No route, schema, migration, or authentication contract changed.
+- **Tests / verification:**
+  - `python -m pytest tests/test_render_deployment.py -q --basetemp .pytest-tmp-task2` before adding `render_wsgi.py` — **FAIL as expected** — 2 startup tests failed with `ModuleNotFoundError: No module named 'render_wsgi'`; 1 health test passed.
+  - The same command after adding `render_wsgi.py` — **PASS** — 3 tests passed.
+  - `python -m pytest tests/test_render_deployment.py tests/test_database_config.py -q --basetemp .pytest-tmp-task2` after fixture isolation — **PASS** — 15 tests and 3 subtests passed.
+- **Data / model / ROI evidence:** Synthetic configuration values only; the SQLite file is a local test fixture. No remote database, production data, model evidence, or ROI claim.
+- **Known issues / blockers:** Supabase startup was verified only through configuration selection; the real app factory's PostgreSQL schema check requires an actual prepared database and was not run here.
+- **Next action / handoff:** Continue with the planned Render dependency and service configuration tasks; operator-run migration and deployment remain separate.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T22:20:51Z — Codex — Add Data Foundation health check
 
 - **Workstream:** Part 1 / Data Foundation
