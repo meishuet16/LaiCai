@@ -65,6 +65,21 @@ Copy the block below **for each commit** and replace every bracketed placeholder
 
 ## 4. Commit history — newest first
 
+### 2026-10-10T19:25:00Z — Florence / Member 4 — increase sidebar navigation icon contrast
+- Workstream: Part 4 / Frontend
+- Branch: main
+- Commit subject: `fix: increase sidebar navigation icon contrast`
+- Issue/task: N/A
+- Files changed: `src/index.css`
+- What changed: Applied green navigation surfaces with white icon and label contrast for all five sidebar links; active and hover states remain distinct.
+- Why: Make the five navigation icons readable against the green sidebar controls.
+- Contract/API: None.
+- Tests: `npm run build` — PASS.
+- Data/model: No changes.
+- Known issues: None introduced.
+- Next: Review the sidebar at expanded and collapsed widths.
+- Reviewer: Pending.
+
 ### 2026-10-10T19:23:22Z — Florence / Member 4 — simplify data integration and strengthen LaiCai branding
 - Workstream: Part 4 / Frontend
 - Branch: main
