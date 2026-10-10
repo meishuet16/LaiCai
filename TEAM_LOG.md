@@ -72,6 +72,26 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T17:50:10Z — Codex — Remove duplicate Customer Insights fixture notices
+
+- **Workstream:** Frontend / QA
+- **Branch:** `member4`
+- **Commit subject:** `fix: remove duplicate customer fixture notices`
+- **Issue / task:** Remove the two long fixture banners shown above Customer Insights.
+- **Files changed:** `src/app/AppShell.tsx`, `src/features/TimelinePage.tsx`, and this log.
+- **What changed:** Suppressed the global notice on Customer Insights and removed that page's duplicate local notice. The Data mode selector, sidebar fixture marker, and customer-card fixture badge still identify demo-only data.
+- **Why it changed:** The repeated warnings pushed customer information below the fold without adding distinct information.
+- **Contract / database / API impact:** None; connected-mode unavailable states and historical cutoff behavior are unchanged.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - Safari local Vite check (`/customers/c01/timeline` on port 5180) — PASS — both top notices absent; fixture indicators remain.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** Demo fixture remains explicitly identified; no source, prediction, decision, or outcome values changed.
+- **Known issues / blockers:** Connected timeline APIs remain unavailable as previously logged.
+- **Next action / handoff:** Review on `member4`; do not push or merge without approval.
+- **Reviewer / pairing:** `N/A`
+
 ### 2026-10-10T17:37:04Z — Codex — Remove ownership from Customer Insights
 
 - **Workstream:** Frontend / QA

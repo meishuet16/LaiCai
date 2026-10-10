@@ -114,7 +114,7 @@ export function AppShell() {
         </div>
       </header>
       <main ref={mainRef}>
-        <div className={`notice ${dataMode === 'demo_fixture' ? 'ambernote' : 'bluenote'} global-demo-notice`}><b>{dataMode === 'demo_fixture' ? 'DEMO FIXTURE — SAMPLE DATA' : 'Connected mode · not connected'}</b><span>{dataMode === 'demo_fixture' ? 'Illustrative local fixtures only. They are not Synthetic SaaS v1.2 records, trained model outputs, observed outcomes, or persisted decisions.' : 'No browser-safe authenticated customer, prediction, decision, or timeline read APIs are connected. Pages show unavailable states; fixtures are not substituted.'}</span></div>
+        {activePage === 'timeline' ? null : <div className={`notice ${dataMode === 'demo_fixture' ? 'ambernote' : 'bluenote'} global-demo-notice`}><b>{dataMode === 'demo_fixture' ? 'DEMO FIXTURE — SAMPLE DATA' : 'Connected mode · not connected'}</b><span>{dataMode === 'demo_fixture' ? 'Illustrative local fixtures only. They are not Synthetic SaaS v1.2 records, trained model outputs, observed outcomes, or persisted decisions.' : 'No browser-safe authenticated customer, prediction, decision, or timeline read APIs are connected. Pages show unavailable states; fixtures are not substituted.'}</span></div>}
         <div className="page-stack">
           {pages.map(page => <section key={page.section} className="page-view" hidden={activePage !== page.section} aria-hidden={activePage !== page.section} inert={activePage !== page.section || drawerOpen} aria-label={navItems.find(item => item.section === page.section)?.label}>{page.content}</section>)}
         </div>
