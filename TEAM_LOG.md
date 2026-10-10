@@ -72,6 +72,25 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T21:55:25Z — Codex — Refine and reconcile frontend workflow views
+
+- **Workstream:** Frontend / Integration / QA
+- **Branch:** `member4`
+- **Commit subject:** `fix: refine frontend workflow and navigation views`
+- **Issue / task:** Review the remaining local frontend changes before aligning them with the latest main branch.
+- **Files changed:** `index.html`, `src/app/AppShell.tsx`, `src/components/CustomerSwitcher.tsx`, `src/components/CustomerTable.tsx`, `src/components/StatusPills.tsx`, `src/domain/decision.ts`, affected page components in `src/features/`, `src/hooks/useCustomers.ts`, `src/index.css`, `src/services/decisionService.ts`, and this log.
+- **What changed:** Added a customer switcher and collapsible navigation, centered prediction details, compacted queue/status presentation, removed unsupported owner display/requirement, simplified Integration page sections, and wired the Retention Actions simulator as a slider-driven view. Corrected prediction evidence wording to match the frontend domain and retained the requirement that timeline facts are hidden until an explicit cutoff is selected.
+- **Why it changed:** Consolidate the reviewed frontend refinements while preserving the five-page shell, fixture workflow, and point-in-time timeline behavior.
+- **Contract / database / API impact:** None; connected service adapters and backend contracts are unchanged. Demo decisions remain browser-session-only.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production build.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** Illustrative fixture data only; no trained predictions, connected outcomes, or measured ROI are claimed.
+- **Known issues / blockers:** Decision and timeline data remain fixture-backed in demo mode; no browser-safe connected read or approval adapter is implemented.
+- **Next action / handoff:** Reconcile this frontend commit with current `main`, keeping main-branch data/backend work and unrelated untracked files intact.
+- **Reviewer / pairing:** `N/A`
+
 ### 2026-10-10T18:08:07Z — Codex — Center and emphasize Retention Actions tabs
 
 - **Workstream:** Frontend / QA

@@ -5,7 +5,7 @@ import { accountDataSource, NotConnectedError } from '../services/retainIQServic
 import { matchesCurrencyFilter } from '../domain/customerFilters';
 
 type Result = { status: 'loading' | 'ready' | 'error' | 'unavailable'; rows: AccountRecord[]; error: string | null };
-export function useCustomers(): Result {
+export function useCustomers({ ignoreGlobalFilters = false }: { ignoreGlobalFilters?: boolean } = {}): Result {
   const { query, currency, dataMode } = useApp();
   const [result, setResult] = useState<Result>({ status: 'loading', rows: [], error: null });
   useEffect(() => {
@@ -19,7 +19,7 @@ export function useCustomers(): Result {
     });
     return () => controller.abort();
   }, [dataMode]);
-  const filtered = result.rows.filter(row =>
+  const filtered = ignoreGlobalFilters ? result.rows : result.rows.filter(row =>
     matchesCurrencyFilter(row, currency) &&
     row.customer_id.toLowerCase().includes(query.toLowerCase())
   );

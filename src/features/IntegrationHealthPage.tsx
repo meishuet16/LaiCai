@@ -114,14 +114,6 @@ export function IntegrationHealthPage() {
       <article className="quick"><small>Latest successful sync</small><strong className="sync-value">{formatDateTime(latestSuccessfulSync)}</strong><span>Latest timestamp present in fixtures</span></article>
     </section>
 
-    <section className="source-cards" aria-label="Integration summaries">
-      {data.sources.map(source => <article className="card source-card" key={source.source}>
-        <div className="section-head"><div><small>{source.category}</small><h2>{source.source}</h2></div><span className={`pill ${statusTone(source.status)}`}>{source.status}</span></div>
-        <div className="values"><p><span>Freshness</span><b>{source.freshness}</b></p><p><span>Last success</span><b>{formatDateTime(source.last_success_at)}</b></p><p><span>Mapping version</span><b>{source.mapping_version || 'N/A'}</b></p><p><span>Source schema version</span><b>N/A — not supplied</b></p></div>
-        <button type="button" className="tablelink" onClick={() => setSelectedSource(source.source)}>Inspect source details →</button>
-      </article>)}
-    </section>
-
     <section className="card">
       <div className="section-head"><div><h2>Source health and freshness</h2><p className="muted">Occurrence time and availability/ingestion time are distinct fields.</p></div></div>
       <div className="tablewrap"><table><thead><tr><th>Source / type</th><th>Event types</th><th>Last successful sync</th><th>Latest event occurrence</th><th>Latest availability / ingestion</th><th>Freshness</th><th>Mapping</th><th>Rejected / errors</th><th>Status</th><th></th></tr></thead><tbody>
@@ -180,16 +172,6 @@ export function IntegrationHealthPage() {
           <td><button type="button" className="tablelink" onClick={() => setSelectedEvent(event.id)}>Inspect redacted metadata</button></td>
         </tr>)}
       </tbody></table></div> : <p className="empty-trend">No rejected-event examples are connected. Review source-level counters; an empty example list does not imply zero errors.</p>}
-    </section>
-
-    <section className="card stage-section integration-operations" aria-labelledby="integration-operations-title">
-      <div className="section-head"><div><h2 id="integration-operations-title">Other data operations</h2><p className="muted">No production operation is available in this frontend.</p></div></div>
-      <div className="integration-operation-list">
-        <div><b>Historical import</b><span>Unavailable — no import service connected</span><button type="button" className="btn outline" disabled title="No import service is connected">Unavailable</button></div>
-        <div><b>Sync / refresh</b><span>Unavailable — no synchronization service connected</span><button type="button" className="btn outline" disabled title="No synchronization service is connected">Unavailable</button></div>
-        <div><b>Audit-safe report</b><span>Unavailable — no report service connected</span><button type="button" className="btn outline" disabled title="No report service is connected">Unavailable</button></div>
-      </div>
-      <p className="caption">The read-only source inspector is available for synthetic metadata. The demo-role selector is not authorization; production operations require server-side permissions.</p>
     </section>
 
     {selected ? <SourceDetails source={selected} onClose={() => setSelectedSource(null)} /> : null}

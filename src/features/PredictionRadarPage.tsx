@@ -63,11 +63,10 @@ export function PredictionRadarPage() {
   const [reliability, setReliability] = useState<Reliability | 'all'>('all');
   const [freshness, setFreshness] = useState<Freshness | 'all'>('all');
   const [segment, setSegment] = useState('all');
-  const [owner, setOwner] = useState('all');
   const [sortBy, setSortBy] = useState<SortBy>('risk');
   const [page, setPage] = useState(0);
 
-  useEffect(() => { setPage(0); }, [band, route, reliability, freshness, segment, owner, query, horizon]);
+  useEffect(() => { setPage(0); }, [band, route, reliability, freshness, segment, query, horizon]);
   if (status === 'loading') return <p role="status">Loading prediction records…</p>;
   if (status === 'unavailable') return <section className="card unavailable-state"><h2>Churn Prediction is not connected</h2><p>{error}</p><p>The active backend has no browser-safe prediction read, evaluation, or historical prediction API. Connected mode does not substitute local demo scores.</p></section>;
   if (status === 'error') return <div role="alert" className="notice ambernote">{error}</div>;
@@ -96,7 +95,6 @@ export function PredictionRadarPage() {
   });
   const warningCount = scored.filter(account => predictionWarnings(account.prediction).length > 0).length;
   const segments = [...new Set(forecastRows.map(account => account.segment).filter((value): value is string => Boolean(value)))].sort();
-  const owners = [...new Set(forecastRows.flatMap(account => account.owner ? [account.owner] : []))].sort();
 
   const filtered = forecastRows.filter(account =>
     account.customer_id.toLowerCase().includes(query.toLowerCase()) &&
@@ -104,8 +102,7 @@ export function PredictionRadarPage() {
     (route === 'all' || account.route === route) &&
     (reliability === 'all' || account.prediction?.reliability.status === reliability) &&
     (freshness === 'all' || account.prediction?.data_freshness.status === freshness) &&
-    (segment === 'all' || account.segment === segment) &&
-    (owner === 'all' || (owner === 'unassigned' ? !account.owner : account.owner === owner))
+    (segment === 'all' || account.segment === segment)
   );
   const sorted = [...filtered].sort((left, right) => {
     if (sortBy === 'account') return left.customer_id.localeCompare(right.customer_id);
@@ -129,7 +126,7 @@ export function PredictionRadarPage() {
   const pageCount = Math.ceil(sorted.length / pageSize);
   const safePage = Math.min(page, Math.max(0, pageCount - 1));
   const visible = sorted.slice(safePage * pageSize, (safePage + 1) * pageSize);
-  const clearFilters = () => { setQuery(''); setBand('all'); setRoute('all'); setReliability('all'); setFreshness('all'); setSegment('all'); setOwner('all'); setSortBy('risk'); setPage(0); };
+  const clearFilters = () => { setQuery(''); setBand('all'); setRoute('all'); setReliability('all'); setFreshness('all'); setSegment('all'); setSortBy('risk'); setPage(0); };
 
   return <>
     <p className="muted page-intro">Reliability describes evidence sufficiency, not a probability that a score is correct. In Demo Fixture mode, probability values are illustrative and are not trained-model outputs.</p>
@@ -174,7 +171,6 @@ export function PredictionRadarPage() {
         <select aria-label="Reliability status" value={reliability} onChange={event => setReliability(event.target.value as Reliability | 'all')}><option value="all">All reliability</option>{reliabilityOptions.map(value => <option key={value} value={value}>{label(value)}</option>)}</select>
         <select aria-label="Data freshness" value={freshness} onChange={event => setFreshness(event.target.value as Freshness | 'all')}><option value="all">All freshness</option>{freshnessOptions.map(value => <option key={value} value={value}>{label(value)}</option>)}</select>
         <select aria-label="Segment" value={segment} onChange={event => setSegment(event.target.value)}><option value="all">All segments</option>{segments.map(value => <option key={value} value={value}>{value}</option>)}</select>
-        <select aria-label="Owner" value={owner} onChange={event => setOwner(event.target.value)}><option value="all">All owners</option>{owners.map(value => <option key={value} value={value}>{value}</option>)}{forecastRows.some(account => !account.owner) ? <option value="unassigned">Unassigned</option> : null}</select>
         <label className="sort-control">Sort by<select aria-label="Sort accounts" value={sortBy} onChange={event => { setSortBy(event.target.value as SortBy); setPage(0); }}><option value="risk">Highest selected-horizon risk</option><option value="exposure">Highest exposure proxy</option><option value="account">Account ID</option></select></label>
         <button type="button" className="btn outline" onClick={clearFilters}>Clear filters</button>
       </div>

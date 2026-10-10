@@ -67,6 +67,7 @@ export function AppShell() {
   const previousPageKey = useRef('');
   const scrollByPage = useRef<Record<string, number>>({});
   const [timelineCustomerId, setTimelineCustomerId] = useState(() => route.section === 'timeline' ? route.customerId : 'c01');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   const activePage: PrimarySection = route.section === 'prediction-detail' ? 'predictions' : route.section === 'case-detail' ? 'cases' : route.section;
   const displayedTimelineCustomerId = route.section === 'timeline' ? route.customerId : timelineCustomerId;
@@ -88,9 +89,10 @@ export function AppShell() {
     { section: 'timeline', content: <TimelinePage customerId={displayedTimelineCustomerId} /> },
   ];
 
-  return <div className="app">
+  return <div className={`app${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
     <aside className="sidebar">
-      <a className="logo" href="/command-center" aria-label="RetainIQ — Business Overview" onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navigate('/command-center'); } }}><span>R</span><b>RetainIQ</b></a>
+      <a className="logo" href="/command-center" aria-label="LaiCai — Business Overview" onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navigate('/command-center'); } }}><span>L</span><b>LaiCai</b></a>
+      <button type="button" className="sidebar-toggle" onClick={() => setSidebarCollapsed(value => !value)} aria-label={sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'} aria-expanded={!sidebarCollapsed}><span aria-hidden="true">{sidebarCollapsed ? '›' : '‹'}</span></button>
       <nav aria-label="Main navigation">
         {navItems.map(item => {
           const active = activePage === item.section;
@@ -113,7 +115,7 @@ export function AppShell() {
         <div className="page-stack">
           {pages.map(page => <section key={page.section} className="page-view" hidden={activePage !== page.section} aria-hidden={activePage !== page.section} inert={activePage !== page.section || drawerOpen} aria-label={navItems.find(item => item.section === page.section)?.label}>{page.content}</section>)}
         </div>
-        {route.section === 'prediction-detail' && <RouteDrawer eyebrow="Churn Prediction · Account evidence" title="Prediction details" onClose={closeDrawer}><PredictionDetailPage predictionId={route.predictionId} /></RouteDrawer>}
+        {route.section === 'prediction-detail' && <RouteDrawer eyebrow="Churn Prediction · Account evidence" title="Prediction details" onClose={closeDrawer} centered><PredictionDetailPage predictionId={route.predictionId} /></RouteDrawer>}
         {route.section === 'case-detail' && <RouteDrawer eyebrow="Retention Actions" title="Retention case details" onClose={closeDrawer} centered><DecisionCaseDetailPage key={route.caseId} caseId={route.caseId} /></RouteDrawer>}
       </main>
     </div>

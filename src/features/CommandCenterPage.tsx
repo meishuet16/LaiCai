@@ -9,10 +9,10 @@ import { useDashboard } from '../hooks/useDashboard';
 const horizons: Horizon[] = [7, 14, 30];
 const currencies: Currency[] = ['MYR', 'USD', 'SGD'];
 const predictionStatusItems = [
-  { key: 'scored', label: 'Scored', color: 'var(--forest)' },
-  { key: 'abstained', label: 'Abstained', color: '#bd9859' },
-  { key: 'known_cancellation', label: 'Known cancellation', color: 'var(--terracotta)' },
-  { key: 'not_eligible', label: 'Not eligible', color: '#aeb5bd' },
+  { key: 'scored', label: 'Scored', color: 'var(--chart-sage)' },
+  { key: 'abstained', label: 'Abstained', color: 'var(--chart-sand)' },
+  { key: 'known_cancellation', label: 'Known cancellation', color: 'var(--chart-coral)' },
+  { key: 'not_eligible', label: 'Not eligible', color: 'var(--chart-slate)' },
 ] as const;
 
 const inputFreshnessLabels: Record<Freshness, string> = {
