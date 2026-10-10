@@ -29,7 +29,7 @@ Predictions retain independent p7/p14/p30 values and explicit non-forecast state
 | Business Overview | Customer, prediction, decision, outcome, and evaluation reads unavailable | Explicit fixture summary; currency-separated MRR/exposure; no source-backed claims |
 | Data Integration | Authenticated integration-health read is not connected in browser | Explicit example health/events; canonical types; safe metadata only |
 | Churn Prediction | Prediction and evaluation APIs unavailable | Fixture probabilities are identified as non-model samples; no fabricated risk history |
-| Retention Actions | Case, capacity, budget, and approval APIs unavailable | Session-only decisions/execution and `SCENARIO ONLY` calculator |
+| Retention Actions | Case, capacity, budget, and approval APIs unavailable | Session-only decisions/execution and a `SCENARIO ONLY` slider simulator for budget, review slots, action cost, margin, and assumed risk reduction |
 | Customer Insights | Customer, event, provenance, and feedback APIs unavailable | Small illustrative timeline; selected historical cutoff gates event availability |
 
 ## Current backend boundary

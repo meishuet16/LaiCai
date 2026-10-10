@@ -72,6 +72,27 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T17:01:33Z — Codex — Add slider-driven Strategy & ROI simulator
+
+- **Workstream:** Frontend / QA / Docs
+- **Branch:** `member4`
+- **Commit subject:** `feat: add slider-driven strategy and ROI simulator`
+- **Issue / task:** Convert the Retention Actions Strategy & ROI tab into an interactive slider simulator.
+- **Files changed:** `src/features/DecisionCasesPage.tsx`, `src/features/StrategyRoiSimulator.tsx`, `src/index.css`, `docs/FRONTEND_ARCHITECTURE.md`, and this log.
+- **What changed:**
+  - Replaced number-field what-ifs with sliders for same-currency scenario budget, review slots, assumed action cost, contribution margin, and assumed absolute churn reduction.
+  - Added live allocation and one-month break-even previews, including budget/slot meters, a candidate list, threshold marker, and explicit scenario-only labels.
+- **Why it changed:** Make resource and ROI assumptions easier to explore while keeping hypothetical results distinct from actual decision-engine allocations or measured outcomes.
+- **Contract / database / API impact:** None. The simulator uses explicit local demo fixtures and existing scenario arithmetic; no backend writes or new endpoints.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - Safari local Vite check (`/cases`, explicit demo fixture mode) — PASS — Strategy & ROI simulator rendered; a zero budget removed the candidate from the allocation, and changing assumed reduction from 10.0 to 25.2 pp recalculated hypothetical net value from -RM 66.00 to RM 61.68.
+- **Data / model / ROI evidence:** Illustrative fixture records and editable scenario assumptions only; no source-backed budget allocation, causal uplift, observed savings, or measured ROI.
+- **Known issues / blockers:** Connected decision-case and budget/capacity APIs remain unavailable; the simulator does not commit decisions or evaluate strategy performance.
+- **Next action / handoff:** Integrate authorized decision and budget contracts when supplied by Member 3; retain scenario-only labeling until then.
+- **Reviewer / pairing:** `N/A`
+
 ### 2026-10-10T16:43:30Z — Codex — Align frontend data contracts and unavailable states
 
 - **Workstream:** Frontend / Integration / QA / Docs
