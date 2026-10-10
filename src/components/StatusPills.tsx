@@ -1,10 +1,10 @@
 import type { Freshness, Reliability } from '../domain/customer';
 
-export type RiskBand = 'low' | 'medium' | 'high' | 'no_score';
+export type RiskBand = 'low' | 'medium' | 'high' | 'no_score' | null;
 const label = (value: string) => value.replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 
 export function RiskPill({ band }: { band: RiskBand }) {
-  return <span className={`pill risk-pill risk-${band}`}>{band === 'no_score' ? 'No score' : label(band)}</span>;
+  return <span className={`pill risk-pill risk-${band ?? 'no_score'}`}>{band === 'no_score' ? 'No score' : band ? label(band) : 'Policy band unavailable'}</span>;
 }
 
 export function EvidencePills({ reliability, freshness }: { reliability?: Reliability | null; freshness?: Freshness | null }) {

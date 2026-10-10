@@ -3,6 +3,7 @@ import { useApp } from '../app/AppContext';
 import { casePath, predictionPath } from '../app/routes';
 import type { Horizon } from '../domain/customer';
 import { formatDateTime, formatMoney, formatRisk } from '../domain/format';
+import { customerLabel } from '../domain/customer';
 import { feedbackAt, visibleTimelineEvents, type TimelineCategory } from '../domain/timeline';
 import { useTimeline } from '../hooks/useTimeline';
 import { EvidencePills, RiskPill, type RiskBand } from '../components/StatusPills';
@@ -42,6 +43,7 @@ export function TimelinePage({ customerId }: { customerId: string }) {
     return () => window.removeEventListener('keydown', close);
   }, [selectedId]);
   if (status === 'loading') return <p role="status">Loading customer timeline…</p>;
+  if (status === 'unavailable') return <section className="card unavailable-state"><h2>Customer Insights is not connected</h2><p>{error}</p><p>Account timeline, prediction history, decision, and feedback reads are unavailable. No future outcomes or fixture events are substituted in Connected mode.</p></section>;
   if (status === 'error') return <div role="alert" className="notice ambernote">{error}</div>;
   if (!record) return <div className="card"><h2>Customer not found</h2><p className="muted">No customer record is available for this identifier in the demo data.</p><button className="btn outline" onClick={() => navigate('/predictions')}>Open Churn Prediction</button></div>;
 
@@ -51,7 +53,7 @@ export function TimelinePage({ customerId }: { customerId: string }) {
   const visible = visibleTimelineEvents(record.events, cutoff);
   const filtered = visible.filter(event => {
     if (category !== 'all' && event.category !== category) return false;
-    if (eventType !== 'all' && event.title !== eventType) return false;
+    if (eventType !== 'all' && (event.canonical_event_type ?? event.title) !== eventType) return false;
     if (mode === 'decisions' && !['decision', 'action'].includes(event.category)) return false;
     if (mode === 'source' && event.category !== 'source') return false;
     if (from && event.occurred_at < toUtc(from)!) return false;
@@ -59,15 +61,16 @@ export function TimelinePage({ customerId }: { customerId: string }) {
     return true;
   });
   const selected = selectedId ? visible.find(event => event.id === selectedId) ?? null : null;
-  const predictionVisible = prediction && (!cutoff || prediction.generated_at <= cutoff);
+  const predictionVisible = prediction && prediction.generated_at != null && (!cutoff || prediction.generated_at <= cutoff);
   const currentProbability = predictionVisible && prediction?.status === 'scored' ? horizon === 7 ? prediction.p_churn_7d : horizon === 14 ? prediction.p_churn_14d : prediction.p_churn_30d : null;
-  const currentRiskBand: RiskBand = currentProbability == null ? 'no_score' : currentProbability < .3 ? 'low' : currentProbability < .6 ? 'medium' : 'high';
+  const currentRiskBand: RiskBand = predictionVisible ? prediction?.risk_bands_by_horizon?.[horizon] ?? null : 'no_score';
   const feedbackRows = horizons.filter(value => feedbackHorizon === 'all' || feedbackHorizon === value).map(value => ({ horizon: value, feedback: feedbackAt(account, value, cutoff) }));
   const historical = Boolean(cutoff);
-  const eventTypes = [...new Set(record.events.map(event => event.title))].sort();
+  const eventTypes = [...new Set(record.events.map(event => event.canonical_event_type ?? event.title))].sort();
   return <>
-    <div className="notice ambernote">Synthetic, read-only Customer Insights. Demo IDs and redacted source summaries are not authoritative records. No authenticated role gate, source-record API, complete historical prediction chain, or outcome feed is connected.</div>
-    <section className="card timeline-header"><div className="section-head"><div><h2>{account.name}</h2><p className="muted">{account.customer_id}{historical ? ' · current display name; historical segment/plan unavailable' : ` · ${account.segment} · ${account.plan}`}</p></div><span className="pill neutral">{historical ? 'KNOWN AT SELECTED TIME' : 'CURRENT DEMO VIEW'}</span></div><div className="timeline-summary">
+    <div className="notice ambernote">DEMO FIXTURE — SAMPLE DATA. This is not a source-backed customer timeline. Choose a cutoff to apply both event-time and availability-time filtering; without a supplied cutoff, timeline events remain hidden.</div>
+    <section className="card stage-section"><div className="section-head"><div><h2>Customer profile attributes</h2><p className="muted">Source-backed fields only; unavailable attributes remain N/A.</p></div></div><div className="values"><p><span>Tenant-scoped ID</span><b>{account.tenant_id ?? 'Not supplied'}</b></p><p><span>Segment</span><b>{historical ? 'N/A — historical availability not supplied' : account.segment ?? 'N/A'}</b></p><p><span>Industry / region</span><b>{historical ? 'N/A — historical availability not supplied' : `${account.industry ?? 'N/A'} / ${account.region ?? 'N/A'}`}</b></p><p><span>Acquisition / onboarding cohort</span><b>{historical ? 'N/A — historical availability not supplied' : `${account.acquisition_channel ?? 'N/A'} / ${account.onboarding_cohort ?? 'N/A'}`}</b></p><p><span>Subscription state / plan / tenure</span><b>{historical ? 'N/A — historical availability not supplied' : `${account.subscription_state ?? 'N/A'} / ${account.plan ?? 'N/A'} / ${account.tenure_days == null ? 'N/A' : `${account.tenure_days} days`}`}</b></p><p><span>Account created</span><b>{historical ? 'N/A — historical availability not supplied' : formatDateTime(account.account_created_at)}</b></p></div></section>
+    <section className="card timeline-header"><div className="section-head"><div><h2>{customerLabel(account)}</h2><p className="muted">{account.customer_id}{historical ? ' · historical profile fields require source availability timestamps' : ` · ${account.segment ?? 'Segment unavailable'} · ${account.plan ?? 'Plan unavailable'}`}</p></div><span className="pill neutral">{historical ? 'KNOWN AT SELECTED TIME' : 'DEMO FIXTURE VIEW'}</span></div><div className="timeline-summary">
       <div><small>Subscription status</small><b>N/A — source status not connected</b></div>
       <div><small>MRR / currency</small><b>{historical ? 'N/A — historical valuation not stored' : formatMoney(account.mrr)}</b></div>
       <div><small>Owner</small><b>{historical ? 'N/A — historical assignment not stored' : item?.owner ?? 'Unassigned'}</b></div>

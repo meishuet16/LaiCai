@@ -7,9 +7,10 @@ import { EvidencePills } from '../components/StatusPills';
 
 export function PredictionDetailPage({ predictionId }: { predictionId: string }) {
   const { navigate } = useApp();
-  const { status, account } = usePrediction(predictionId);
+  const { status, account, error } = usePrediction(predictionId);
   const { cases } = useDecisionCases();
   if (status === 'loading') return <p role="status">Loading prediction…</p>;
+  if (status === 'unavailable') return <section className="card unavailable-state"><h2>Prediction details are not connected</h2><p>{error}</p></section>;
   if (status === 'error') return <div role="alert" className="notice ambernote">Prediction could not be loaded.</div>;
   if (!account?.prediction) return <div className="card"><h2>Prediction not found</h2><p className="muted">It may have been removed or may not be available in this demo dataset.</p></div>;
 
@@ -19,13 +20,13 @@ export function PredictionDetailPage({ predictionId }: { predictionId: string })
   const reliabilityReasons = prediction.reliability.reasons.filter(Boolean);
 
   return <div className="prediction-detail-content">
-    <div className="detail-title"><div><h2>{account.name}</h2><p className="muted">Account {account.customer_id} · {account.segment} · {account.plan}</p></div><span className={`pill ${prediction.status === 'scored' ? 'good' : 'amber'}`}>{prediction.status.replaceAll('_', ' ')}</span></div>
-    <div className="radar-meta"><span>Evidence: <b>{account.evidence_kind === 'synthetic' ? 'Synthetic fixture' : 'Source-backed'}</b></span><span>Score cutoff: <b>{formatDateTime(prediction.as_of)}</b></span><span>Generated: <b>{formatDateTime(prediction.generated_at)}</b></span></div>
+    <div className="detail-title"><div><h2>{account.name ?? account.customer_id}</h2><p className="muted">Account {account.customer_id} · {account.segment ?? 'Segment unavailable'} · {account.plan ?? 'Plan unavailable'}</p></div><span className={`pill ${prediction.status === 'scored' ? 'good' : 'amber'}`}>{prediction.status.replaceAll('_', ' ')}</span></div>
+    <div className="radar-meta"><span>Evidence: <b>{account.evidence_kind === 'demo_fixture' ? 'DEMO FIXTURE — SAMPLE DATA' : 'Source-backed'}</b></span><span>Score cutoff: <b>{formatDateTime(prediction.as_of)}</b></span><span>Generated: <b>{formatDateTime(prediction.generated_at)}</b></span></div>
 
     <section className="probability-grid" aria-label="Forecast horizons">{([7, 14, 30] as const).map(days => <article className="card probability" key={days}><span>{days}-day cumulative churn risk</span><strong>{formatRisk(prediction, days)}</strong><small>{prediction.status !== 'scored' ? 'Not scored — no numeric forecast' : `Prediction cutoff ${formatDateTime(prediction.as_of)}`}</small></article>)}</section>
 
     <div className="split stage-section">
-      <section className="card"><h2>Prediction record</h2><div className="values"><p><span>Prediction ID</span><b>{prediction.prediction_id}</b></p><p><span>Prediction run ID</span><b>{prediction.prediction_run_id}</b></p><p><span>Score cutoff</span><b>{formatDateTime(prediction.as_of)}</b></p><p><span>Generated</span><b>{formatDateTime(prediction.generated_at)}</b></p><p><span>Model / feature version</span><b>{prediction.model_version} / {prediction.feature_version}</b></p><p><span>Calibration / label policy</span><b>{prediction.calibration_version} / {prediction.label_policy_version}</b></p></div></section>
+      <section className="card"><h2>Prediction record</h2><div className="values"><p><span>Prediction ID</span><b>{prediction.prediction_id}</b></p><p><span>Prediction run ID</span><b>{prediction.prediction_run_id}</b></p><p><span>Score cutoff</span><b>{formatDateTime(prediction.as_of)}</b></p><p><span>Generated</span><b>{formatDateTime(prediction.generated_at)}</b></p><p><span>Model / feature version</span><b>{prediction.model_version ?? 'N/A'} / {prediction.feature_version ?? 'N/A'}</b></p><p><span>Calibration / label policy</span><b>{prediction.calibration_version ?? 'N/A'} / {prediction.label_policy_version ?? 'N/A'}</b></p></div></section>
       <section className="card"><h2>Reliability and data freshness</h2><p className="muted">Reliability describes evidence sufficiency and applicability, not probability of correctness.</p><div className="values"><p><span>Status</span><b><EvidencePills reliability={prediction.reliability.status} freshness={prediction.data_freshness.status} /></b></p><p><span>Reliability reasons</span><b>{reliabilityReasons.join('; ') || 'No reliability reason codes supplied'}</b></p><p><span>Input data available by</span><b>{formatDateTime(prediction.data_freshness.input_data_as_of)}</b></p><p><span>Stale sources</span><b>{prediction.data_freshness.stale_sources.join(', ') || 'None listed in fixture'}</b></p></div></section>
     </div>
 

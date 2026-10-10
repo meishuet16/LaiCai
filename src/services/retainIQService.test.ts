@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { fixtureDataSource } from './retainIQService.ts';
+import { accountDataSource, connectedDataSource, fixtureDataSource, NotConnectedError } from './retainIQService.ts';
 
 test('fixture forecasts preserve identity, cumulative horizons, and currency', async () => {
   const accounts = await fixtureDataSource.listAccounts();
@@ -28,4 +28,23 @@ test('missing account remains missing', async () => {
   assert.equal(await fixtureDataSource.getAccount('unknown'), null);
   assert.equal(await fixtureDataSource.getPrediction('unknown'), null);
   assert.equal((await fixtureDataSource.getPrediction('demo_pred_c02'))?.customer_id, 'c02');
+});
+
+test('fixture records require an explicit data mode; connected mode reports the missing contract', async () => {
+  await assert.rejects(() => connectedDataSource.listAccounts(), NotConnectedError);
+  await assert.rejects(() => accountDataSource('connected').listAccounts(), NotConnectedError);
+  assert.equal((await accountDataSource('demo_fixture').listAccounts()).length, 9);
+});
+
+test('fixture customer identities do not invent CRM names, owners, tenant context, or cutoff metadata', async () => {
+  const accounts = await fixtureDataSource.listAccounts();
+  for (const account of accounts) {
+    assert.equal(account.name, account.customer_id);
+    assert.equal(account.owner, null);
+    assert.equal(account.tenant_id, null);
+    assert.equal(account.prediction?.tenant_id, null);
+    assert.equal(account.prediction?.as_of, null);
+    assert.equal(account.prediction?.model_version, null);
+    assert.equal(account.evidence_kind, 'demo_fixture');
+  }
 });

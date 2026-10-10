@@ -3,6 +3,7 @@ import type { Currency, Horizon, Role } from '../domain/customer';
 import { routeFromPath, type AppRoute } from './routes';
 
 type AppState = {
+  dataMode: 'connected' | 'demo_fixture'; setDataMode: (mode: 'connected' | 'demo_fixture') => void;
   route: AppRoute;
   navigate: (path: string) => void;
   closeDrawer: () => void;
@@ -14,6 +15,7 @@ type AppState = {
 const Context = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const [dataMode, setDataMode] = useState<AppState['dataMode']>('connected');
   const [route, setRoute] = useState<AppRoute>(() => routeFromPath(window.location.pathname));
   const [query, setQuery] = useState('');
   const [horizon, setHorizon] = useState<Horizon>(30);
@@ -40,6 +42,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     else if (route.section === 'case-detail') navigate('/cases');
   }, [navigate, route.section]);
 
-  return <Context.Provider value={{ route, navigate, closeDrawer, query, setQuery, horizon, setHorizon, currency, setCurrency, role, setRole }}>{children}</Context.Provider>;
+  return <Context.Provider value={{ dataMode, setDataMode, route, navigate, closeDrawer, query, setQuery, horizon, setHorizon, currency, setCurrency, role, setRole }}>{children}</Context.Provider>;
 }
 export function useApp() { const value = useContext(Context); if (!value) throw new Error('Missing AppProvider'); return value; }

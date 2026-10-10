@@ -72,6 +72,31 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T16:43:30Z — Codex — Align frontend data contracts and unavailable states
+
+- **Workstream:** Frontend / Integration / QA / Docs
+- **Branch:** `member4`
+- **Commit subject:** `fix: align frontend with canonical synthetic contracts`
+- **Issue / task:** Correct RetainIQ frontend content and align the five-page UI with current Synthetic SaaS v1.2/backend contracts.
+- **Files changed:** `src/`, `docs/FRONTEND_ARCHITECTURE.md`, `docs/MEMBER4_INTEGRATION.md`, and this log.
+- **What changed:**
+  - Added backend-supported currency-code validation and currency-aware minor-unit formatting; retained separate currency aggregates and corrected scenario amount conversion.
+  - Replaced the legacy subscription event alias with the current canonical event vocabulary; distinguished event time, availability, and source semantics.
+  - Added explicit `connected` and opt-in `demo_fixture` data modes. Connected pages now report missing authenticated reads instead of silently substituting sample accounts, predictions, cases, or timelines.
+  - Removed the hardcoded tenant/cutoff shell assumptions and fixture CRM names/owners; made identity search account-ID based and applied it to the prediction table.
+  - Updated prediction/status, historical cutoff, freshness, MRR exposure, timeline, and workflow UI states; preserved the five routes and existing drawers.
+- **Why it changed:** The previous UI represented a hand-written fixture as source/model data, used outdated money/event assumptions, and displayed tenant/cutoff context unsupported by the active backend.
+- **Contract / database / API impact:** Frontend-only domain/service adapter changes; no shared Python contracts or database schema changed. Confirmed active API routes are `POST /v1/ingest/events`, `GET /v1/integrations`, and `GET /v1/admin/integrations`. The frontend does not call them: service-principal authentication has no approved browser-safe adapter, and no customer, prediction/evaluation, decision, timeline, or feedback read route is present.
+- **Tests / verification:**
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - `npm run build` — PASS — TypeScript project build and Vite production bundle (47 modules).
+  - `git diff --check` — PASS — no whitespace errors.
+  - `npm run lint`, `npm run typecheck`, and `npm test` — NOT RUN — these scripts are not defined in `package.json`.
+- **Data / model / ROI evidence:** Demo fixture records and user-entered ROI assumptions only. No trained model output, source-backed business result, historical evaluation, causal uplift, or saved revenue is claimed.
+- **Known issues / blockers:** Connected customer, prediction, decision, timeline, evaluation, outcome, and browser-safe integration-health APIs remain unimplemented/unavailable. Retention decisions remain session-only in explicit demo mode; scenario arithmetic is illustrative, not backend-authoritative ROI.
+- **Next action / handoff:** Backend owners should provide tenant-authorized paginated read contracts and transactional decision endpoints behind an approved browser-safe auth boundary before connected mode can be enabled.
+- **Reviewer / pairing:** `N/A`
+
 ### 2026-10-10T15:09:47Z — Codex — Add five-page RetainIQ frontend dashboard
 
 - **Workstream:** Frontend

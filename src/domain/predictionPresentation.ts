@@ -1,18 +1,10 @@
-import type { AccountRecord, Horizon, PredictionSnapshot } from './customer';
+import type { AccountRecord, Horizon, PredictionSnapshot } from './customer.ts';
 
-export type PredictionRiskBand = 'low' | 'medium' | 'high' | 'no_score';
 export type PredictionWarning = 'missing_horizon_probability' | 'probability_out_of_range' | 'horizon_order_violation';
 
 export function probabilityAt(prediction: PredictionSnapshot | null, horizon: Horizon): number | null {
   if (!prediction || prediction.status !== 'scored') return null;
   return horizon === 7 ? prediction.p_churn_7d : horizon === 14 ? prediction.p_churn_14d : prediction.p_churn_30d;
-}
-
-export function riskBandAt(probability: number | null): PredictionRiskBand {
-  if (probability == null) return 'no_score';
-  if (probability < 0.3) return 'low';
-  if (probability < 0.6) return 'medium';
-  return 'high';
 }
 
 export function predictionWarnings(prediction: PredictionSnapshot | null): PredictionWarning[] {
