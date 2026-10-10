@@ -144,7 +144,7 @@ export function StrategyRoiSimulator({ accounts, cases, capacity }: { accounts: 
         <AllocationMeter label="Review slots used" value={allocated.length} max={scenarioCapacity}
           detail={`${allocated.length} of ${scenarioCapacity} slots`} />
         <div className="simulator-summary"><div><small>Unallocated budget</small><b>{formatMoney({ amount_minor: budgetRemaining, currency: scenarioCurrency })}</b></div><div><small>Slots remaining</small><b>{Math.max(0, scenarioCapacity - allocated.length)}</b></div></div>
-        <p className="caption">Candidate costs and MRR are compared within {scenarioCurrency}. The selected heuristic is a fixture what-if, not the backend decision rank.</p>
+        <p className="caption">Candidate costs and MRR are compared within {scenarioCurrency}. This what-if allocation is separate from the governed decision rank.</p>
       </section>
     </div>
 
@@ -159,7 +159,7 @@ export function StrategyRoiSimulator({ accounts, cases, capacity }: { accounts: 
     <div className="simulator-layout">
       <section className="card simulator-controls" aria-labelledby="roi-controls-title">
         <div className="section-head"><div><small className="simulator-step">02 · BREAK-EVEN</small><h2 id="roi-controls-title">Set ROI assumptions</h2></div><span className="pill amber">SCENARIO ONLY</span></div>
-        {roiCases.length === 0 ? <p className="empty-trend">No case has valid MRR, p30, and an eligible action cost in this fixture.</p> : <>
+        {roiCases.length === 0 ? <p className="empty-trend">No case has valid MRR, p30, and an eligible action cost in the current selection.</p> : <>
           <div className="simulator-selects">
             <label>Case<select value={roiCase?.id ?? ''} onChange={event => { setScenarioCaseId(event.target.value); setScenarioActionId(''); setScenarioCost(null); }}>{roiCases.map(item => <option key={item.id} value={item.id}>{customerLabel(byId.get(item.customer_id)!)} · {item.id}</option>)}</select></label>
             <label>Eligible action<select value={roiAction?.id ?? ''} onChange={event => { setScenarioActionId(event.target.value); setScenarioCost(null); }}>{roiActions.map(action => <option key={action.id} value={action.id}>{action.id.replaceAll('_', ' ').toLowerCase()}</option>)}</select></label>

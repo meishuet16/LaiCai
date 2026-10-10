@@ -21,6 +21,8 @@ data/
 *.sqlite3-wal
 node_modules/
 dist/
+.codex-presentation-build/
+tmp/
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts

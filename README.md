@@ -8,11 +8,21 @@
 
 **Connect → Predict → Decide → Learn**
 
-[The Problem](#the-problem) · [Our Solution](#the-solution) · [Key Features](#key-features) · [Product Walkthrough](#product-walkthrough) · [Getting Started](#getting-started) · [Evaluation](#evaluation-and-evidence) · [Demo](#demo-guide)
+[Presentation](#presentation) · [The Problem](#the-problem) · [Our Solution](#the-solution) · [Key Features](#key-features) · [Product Walkthrough](#product-walkthrough) · [Getting Started](#getting-started) · [Evaluation](#evaluation-and-evidence)
 
 > **What is LaiCai?** LaiCai (RetainIQ v2) is a human-governed customer retention intelligence system for subscription businesses. It is designed to connect to existing product, billing, and subscription systems; identify emerging churn risk across **7, 14, and 30 days**; prioritize limited Customer Success resources; recommend fact-supported actions; and learn responsibly from subsequent outcomes.
 >
-> **Demo and evidence note:** The current `main` branch includes a functional local data foundation and an interactive five-page **synthetic frontend demo**. Some prediction, decision, feedback, and live-service integrations described below are **product requirements / target architecture**, not independently verified production features on `main`. No real-world model-performance, retention-uplift, or saved-revenue result is claimed. See [Implementation & evidence status](#implementation-and-evidence-status).
+> **Evidence note:** The local product flow is connected end to end through an authenticated SQLite evaluation workspace: source health, account records, forecasts, persisted cases, feedback maturity and release governance. The evaluation cohort is synthetic; no real-world model-performance, retention-uplift or saved-revenue result is claimed. See [Implementation & evidence status](#implementation-and-evidence-status).
+
+---
+
+## Presentation
+
+- **Live 3-minute pitch:** [Open the deployed HTML presentation](https://lai-cai-six.vercel.app/pitch/retainiq-3min-pitch.html)
+- **PDF:** [Download the presentation](output/pdf/LaiCai_3min_Pitch.pdf)
+- **Source:** [`pitch/retainiq-3min-pitch.html`](pitch/retainiq-3min-pitch.html)
+
+The HTML presentation uses larger, muted, auto-playing system walkthroughs for the Connect, Predict, Decide, Learn, and Strategy & ROI sections. Use the arrow keys or spacebar to advance, `N` for speaker notes, and the fullscreen control when presenting. The PDF uses matching still frames for reliable offline review.
 
 ---
 
@@ -180,7 +190,7 @@ This helps managers distinguish high *percentage risk* from high *monthly recurr
 
 Support escalation, plan changes, downgrades, pauses, and discounts require additional actual support/entitlement/pricing evidence and authorization; they remain **disabled or simulation-only** without it.
 
-LaiCai is designed to preserve the **original proposal**, **human final choice**, **reason**, **owner**, **approval time**, **execution**, and **later observations**. A manager may **approve, modify, reject, or choose no intervention**. The backend must enforce monetary/staff limits transactionally before any production approval; an in-browser demo guard is not a replacement for this.
+LaiCai is designed to preserve the **original proposal**, **human final choice**, **reason**, **owner**, **approval time**, **execution**, and **later observations**. A manager may **approve, modify, reject, or choose no intervention**. The backend enforces monetary and staff limits transactionally before approval; browser-side checks are an additional usability safeguard.
 
 #### What-if ROI — understand break-even before spending
 
@@ -313,7 +323,7 @@ PART 4 · FEEDBACK AND DASHBOARD
 
 | Layer | Technology / design | Important boundary |
 |---|---|---|
-| Frontend | **React 19 + TypeScript + Vite** | Five-page dashboard, reusable domain types/services and synthetic demonstration adapters |
+| Frontend | **React 19 + TypeScript + Vite** | Six-view dashboard covering Connect → Predict → Decide → Learn |
 | Local backend and data foundation | **Python standard library + WSGI + SQLite** | Authenticated ingestion, canonical records, import/replay, tenant/source-scoped reads |
 | Planned/shared database architecture | **PostgreSQL / Supabase-compatible design** | Managed tenancy, persistence, and transactional server-side rules require deployed verification |
 | Prediction approach | **LightGBM**, logistic regression and rule baselines; horizon calibration | Model artifacts and empirical metrics must be built and validated against eligible time-safe data |
@@ -330,20 +340,19 @@ PART 4 · FEEDBACK AND DASHBOARD
 LaiCai/
 ├── src/                       # React/TypeScript frontend
 │   ├── app/                   # Routing, app state, navigation
-│   ├── features/              # The five dashboard pages + detail drawers
+│   ├── features/              # Six primary views + detail drawers
 │   ├── components/            # Shared UI components
 │   ├── domain/                # Typed customer, risk, case, scenario logic
 │   ├── hooks/                 # Data and navigation hooks
-│   └── services/              # Frontend data contracts/demo adapters
+│   └── services/              # Frontend data contracts and authenticated API adapters
 ├── retaniq/                   # Python Part 1 ingestion and data foundation
 │   └── synthetic/             # Synthetic SaaS dataset tools
 ├── migrations/                # Current local SQLite migrations
 ├── tests/                     # Python foundation/synthetic tests
-├── examples/                  # Internal history/handoff examples
+├── examples/                  # Reproducible workflow examples
 ├── configs/                   # Synthetic configuration
-├── docs/                      # Dataset, frontend, integration and handoff guides
+├── docs/                      # Reviewer-facing dataset and architecture guides
 ├── DATASET_CARD.md            # Dataset provenance and real-data readiness
-├── TEAM_LOG.md                # Per-commit evidence and handoff log
 └── README.md
 ```
 
@@ -416,10 +425,12 @@ git clone https://github.com/meishuet16/LaiCai.git
 cd LaiCai
 ```
 
-### 1. Run the five-page frontend demo
+### 1. Run the connected local workspace
 
 ```bash
 npm install
+npm run data:seed
+npm run dev:dashboard-api
 npm run dev
 ```
 
@@ -430,39 +441,40 @@ npm run build
 npm run preview
 ```
 
-**Demo behavior:** the current pages use explicitly synthetic frontend service data. Changing a demo case does not execute a billing/customer operation and browser-memory actions are not production-persistent.
+The default frontend reads the authenticated SQLite workspace. Case decisions, execution evidence and follow-up notes are persisted in the working copy. Approval creates a governed task record; it does not automatically send outreach or execute a payment operation.
 
 ### 2. Start the local Python ingestion foundation
 
-Run from the repository root. The following provisions a **local demonstration tenant and a usage-only integration**:
+Run from the repository root. The following provisions a **local tenant and a usage-only integration**:
 
 ```bash
 python -m retaniq init-db --db ./data/retaniq.sqlite3
-python -m retaniq create-tenant --db ./data/retaniq.sqlite3 --tenant-id tenant_demo
-python -m retaniq create-integration --db ./data/retaniq.sqlite3 --tenant-id tenant_demo --source product_app --purpose retention_inference --category usage
-python -m retaniq create-customer --db ./data/retaniq.sqlite3 --tenant-id tenant_demo --customer-id customer_001
-python -m retaniq map-customer --db ./data/retaniq.sqlite3 --tenant-id tenant_demo --source product_app --external-customer-id acct_001 --customer-id customer_001
+python -m retaniq create-tenant --db ./data/retaniq.sqlite3 --tenant-id tenant_local
+python -m retaniq create-integration --db ./data/retaniq.sqlite3 --tenant-id tenant_local --source product_app --purpose retention_inference --category usage
+python -m retaniq create-customer --db ./data/retaniq.sqlite3 --tenant-id tenant_local --customer-id customer_001
+python -m retaniq map-customer --db ./data/retaniq.sqlite3 --tenant-id tenant_local --source product_app --external-customer-id acct_001 --customer-id customer_001
 python -m retaniq serve --db ./data/retaniq.sqlite3
 ```
 
-Provisioned credentials may be printed **once**. Keep them in an approved secret store; never commit or paste them into frontend code or public logs. A token scoped only to `usage` cannot submit billing/subscription events. To add authorized sources, categories and internal roles, see [Part 1 handoff](docs/MEMBER1_TO_MEMBER2_DATA_HANDOFF.md) and the CLI.
+Provisioned credentials may be printed **once**. Keep them in an approved secret store; never commit or paste them into frontend code or public logs. A token scoped only to `usage` cannot submit billing/subscription events. Use the CLI help to add authorized sources, categories, and internal roles.
 
-**These are two independently runnable local demonstrations**. Starting them does not automatically connect the frontend's fixture services to the Python API or enable end-to-end real-time model inference.
+The lower-level ingestion foundation is separate from the reviewer workspace above. Use `npm run data:seed` and `npm run dev:dashboard-api` for the connected product walkthrough.
 
 ### 3. Generate or inspect synthetic history
 
 The repository includes a deterministic **Synthetic SaaS v1.2** generator with documented **QUICK**, **STANDARD**, and **FULL** profiles. The FULL profile was reported in the team handoff as **20,000 accounts across 4 tenants, 24 months of simulated history**; all generated history remains **synthetic**.
 
-Generated datasets and local SQLite files are kept **outside Git**. Follow [Synthetic dataset guide](docs/SYNTHETIC_SAAS_DATASET.md), [dataset isolation strategy](docs/HYBRID_DATASET_STRATEGY.md), and [Member 2 synthetic handoff](docs/MEMBER1_TO_MEMBER2_SYNTHETIC_HANDOFF.md) for reproducible generation, validation, import, manifest identity, and replay commands.
+Generated datasets and local SQLite files are kept **outside Git**. Follow the [Synthetic dataset guide](docs/SYNTHETIC_SAAS_DATASET.md) and [dataset isolation strategy](docs/HYBRID_DATASET_STRATEGY.md) for reproducible generation, validation, import, manifest identity, and replay commands.
 
 ### 4. Run available verification
 
 ```bash
 python -m unittest discover -s tests -v
+npm run test:frontend
 npm run build
 ```
 
-The frontend also contains TypeScript `*.test.ts` files, but the current `package.json` does **not** define `npm test`. Use the documented runtime/test invocation for the relevant Node version; do not assume a nonexistent script.
+The frontend TypeScript tests run through Node's test runner using the `test:frontend` script.
 
 **Local testing verifies engineering behavior, not empirical real-world churn prediction or intervention impact.**
 
@@ -525,7 +537,7 @@ This measures **how much subsequently churned MRR appeared in the historical rev
 - Re-evaluate calibration and horizon ordering after any probability correction.
 - A model candidate is not automatically promoted for improving one metric; enforce independent comparison, appropriate subgroup checks, operator approval and rollback.
 
-## Demo guide
+## Product walkthrough guide
 
 ### Suggested judge-facing walkthrough
 
@@ -538,7 +550,7 @@ This measures **how much subsequently churned MRR appeared in the historical rev
 | **5 — Learn (2:10–2:25)** | Pending/mature distinction, actual follow-up, controlled release gate | Traceable feedback without leakage or false causal claims |
 | **6 — Impact (2:25–3:00)** | Attention saved, RM150 break-even example, accountability | Business relevance without invented ROI |
 
-This follows the team's **3-minute pitch narrative**. In Phase 2, use the longer demo slot to click through **Business Overview → Churn Prediction → Retention Actions → Customer Insights**, with a brief **Data Integration** stop. When running the current frontend, identify it as a **synthetic interactive demonstration**. Do not describe fixture percentages as trained predictions or present unavailable feedback/retraining views as executed production jobs.
+This follows the team's **3-minute pitch narrative**. In Phase 2, click through **Business Overview → Data Integration → Churn Prediction → Retention Actions → Customer Insights → Learning & Model Health**. The SQLite workflow is fully connected locally. Identify the dataset as a synthetic evaluation cohort and do not present pending feedback, scenario ROI or unavailable real-world outcomes as measured production impact.
 
 ### What a fully validated end-to-end replay should demonstrate
 
@@ -559,7 +571,7 @@ A synthetic action in replay **cannot** show that the action saved the account. 
 | **2. Predictive Rigor & Data Robustness** | Point-in-time 7/14/30 horizons, own-history features, LightGBM vs baselines, calibration, abstention | Dataset card, timestamp tests, held-out metrics **when valid** |
 | **3. Decision Support & Actionability** | Reliability routes, p30×MRR shortlist, Top-K, fact-based actions, budget/time guardrails and final human approval | Case flow, scenario calculator, approval/audit contract |
 | **4. Explainability & Trust** | Source evidence, horizon-specific model explanation, freshness, insufficiency states and a customer timeline | Feature values, reliability reasons, evidence provenance |
-| **5. Live Execution, Prototype & Pitch** | Five-page interactive frontend and runnable data foundation; coherent 3-minute story and replay path | Local build/API demos now; fully integrated deployed demo **requires separate verification** |
+| **5. Live Execution, Prototype & Pitch** | Six-view connected frontend, runnable SQLite foundation and coherent 3-minute story | Browser → API → SQLite walkthrough, persisted cases and governed learning state |
 
 The rubric rewards **proven decision usefulness**, not a polished dashboard alone. Any unavailable evidence should be labeled honestly rather than substituted with synthetic success metrics.
 
@@ -568,14 +580,7 @@ The rubric rewards **proven decision usefulness**, not a polished dashboard alon
 - [Dataset provenance and real-data gate](DATASET_CARD.md)
 - [Synthetic SaaS dataset v1.2](docs/SYNTHETIC_SAAS_DATASET.md)
 - [Historical/synthetic data isolation](docs/HYBRID_DATASET_STRATEGY.md)
-- [Member 1 → Member 2 data contract](docs/MEMBER1_TO_MEMBER2_DATA_HANDOFF.md)
-- [Member 1 → Member 2 synthetic handoff](docs/MEMBER1_TO_MEMBER2_SYNTHETIC_HANDOFF.md)
-- [PostgreSQL RLS and authorization](docs/MEMBER1_POSTGRESQL_RLS_AND_AUTHORIZATION.md)
-- [Supabase connection and security preparation](docs/MEMBER1_SUPABASE_CONNECTION_AND_SECURITY_PREPARATION.md)
-- [Member 1 final Data Foundation acceptance](docs/MEMBER1_FINAL_DATA_FOUNDATION_ACCEPTANCE.md)
 - [Frontend architecture and route boundaries](docs/FRONTEND_ARCHITECTURE.md)
-- [Frontend integration notes](docs/MEMBER4_INTEGRATION.md)
-- [Team implementation and verification history](TEAM_LOG.md)
 
 The complete product/engineering requirements are maintained as the team's canonical specification; repository features and outcomes should always be checked against tested code and evidence, not inferred from a specification alone.
 

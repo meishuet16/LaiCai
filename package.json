@@ -5,7 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:web": "vite",
+    "dev:api": "py -3.14 -m uvicorn backend.decision.main:app --host 127.0.0.1 --port 8003",
+    "data:seed": "py -3.14 -B -m scripts.seed_dashboard_data --replace",
+    "dev:dashboard-api": "py -3.14 -B -m scripts.start_dashboard_api",
     "build": "tsc -b && vite build",
+    "test:frontend": "node --experimental-strip-types --test \"src/**/*.test.ts\"",
     "preview": "vite preview"
   },
   "dependencies": {

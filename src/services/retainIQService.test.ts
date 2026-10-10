@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { accountDataSource, connectedDataSource, fixtureDataSource, NotConnectedError } from './retainIQService.ts';
+import { accountDataSource, connectedDataSource, fixtureDataSource } from './retainIQService.ts';
 
 test('fixture forecasts preserve identity, cumulative horizons, and currency', async () => {
   const accounts = await fixtureDataSource.listAccounts();
@@ -30,10 +30,32 @@ test('missing account remains missing', async () => {
   assert.equal((await fixtureDataSource.getPrediction('demo_pred_c02'))?.customer_id, 'c02');
 });
 
-test('fixture and connected sources remain separate; connected mode reports the missing contract', async () => {
-  await assert.rejects(() => connectedDataSource.listAccounts(), NotConnectedError);
-  await assert.rejects(() => accountDataSource('connected').listAccounts(), NotConnectedError);
-  assert.equal((await accountDataSource('demo_fixture').listAccounts()).length, 9);
+test('fixture and connected sources remain separate; connected mode uses the backend adapter', async () => {
+  const originalFetch = globalThis.fetch;
+  const fixture = structuredClone((await fixtureDataSource.listAccounts())[0]);
+  fixture.tenant_id = 'tenant-01';
+  fixture.evidence_kind = 'source_backed';
+  fixture.data_origin = 'backend_dataset';
+  fixture.prediction!.tenant_id = 'tenant-01';
+  fixture.prediction!.as_of = '2026-10-01T00:00:00Z';
+  fixture.prediction!.generated_at = '2026-10-01T00:05:00Z';
+  fixture.prediction!.model_version = 'synthetic_demo_model_v1';
+  globalThis.fetch = (async (input) => {
+    const url = String(input);
+    if (url.endsWith('/v1/dashboard/accounts')) return new Response(JSON.stringify({ accounts: [fixture], meta: {} }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    if (url.endsWith('/v1/decisions/route')) return new Response(JSON.stringify({ customer_id: fixture.customer_id, prediction_id: fixture.prediction!.prediction_id, route: 'PRIORITY_REVIEW', route_reason: 'backend_policy', exposure_proxy_30d_minor: 62400, currency: 'MYR' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    return new Response(null, { status: 404 });
+  }) as typeof fetch;
+  try {
+    const connected = await connectedDataSource.listAccounts();
+    assert.equal(connected.length, 1);
+    assert.equal(connected[0].data_origin, 'backend_dataset');
+    assert.equal(connected[0].route_reason, 'backend_policy');
+    assert.equal((await accountDataSource('connected').listAccounts()).length, 1);
+    assert.equal((await accountDataSource('demo_fixture').listAccounts()).length, 9);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('demo fixtures retain sample names and owners without inventing tenant, cutoff, or model metadata', async () => {

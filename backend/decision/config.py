@@ -12,7 +12,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     # Database
-    database_url: str = "postgresql://postgres:password@localhost:5432/retainiq"
+    # Optional for the judge-facing local workspace. Database-backed endpoints still
+    # require DATABASE_URL; pure routing and health checks do not.
+    database_url: str | None = None
 
     # Routing policy defaults (overridden by admin config in DB in Phase 2)
     routing_p30_threshold: float = 0.40

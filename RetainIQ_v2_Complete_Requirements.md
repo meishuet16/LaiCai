@@ -882,7 +882,7 @@ If team is small, people can own multiple workstreams; the **interfaces and test
 
 ### 14.3 Every commit must be documented
 
-Every team member updates **`TEAM_LOG.md` in the same Git commit as their code/docs change**. Include timestamp (UTC), author, workstream, commit subject, changed files, concrete changes, test commands and results, remaining risks/blockers, and next action. Never invent a Git hash before making the commit. Coding agents must obey `AGENT.md`; if the repository's agent tooling recognizes only `AGENTS.md`, copy the same rules there.
+Every team member updates **`TEAM_LOG.md` in the same Git commit as their code/docs change**. Include timestamp (UTC), author, workstream, commit subject, changed files, concrete changes, test commands and results, remaining risks/blockers, and next action. Never invent a Git hash before making the commit. Coding agents must obey `AGENTS.md`.
 
 **Ready to merge** means: correct tenant/time/currency contracts; relevant tests run (or explicit reasons they could not); no leaked secret/PII; APIs/types/docs updated; `TEAM_LOG.md` staged in the same commit; no unmeasured metrics or false ROI claims; another member can reproduce the relevant workflow.
 
@@ -943,18 +943,13 @@ The following are the **integrated product-level gates**, in addition to per-par
 - [ ] Historical demo reveals future outcomes only after saving original predictions.
 - [ ] Cross-tenant access/security and ingestion/decision idempotency tests pass.
 - [ ] `TEAM_LOG.md` entry accompanies **every Git commit** and tests/blockers are reported truthfully.
-- [ ] Team follows `AGENT.md` (and optional `AGENTS.md` alias) for implementation safety.
+- [ ] Team follows `AGENTS.md` for implementation safety.
 
 ---
 
 ## 17. Source alignment and integration decisions
 
-This document is integrated from the following **user-provided** specifications, without pretending that any item has been implemented or empirically validated:
-
-- `RetainIQ_v2_Data_Foundation.md` — Part 1
-- `RetainIQ_v2_Part2_Prediction_Engine_Requirements.md` — Part 2
-- `RetainIQ_v2_Part3_Decision_Engine_Requirements.md` — Part 3
-- `RetainIQ_v2_Part4_Closed_Loop_Learning_and_Dashboard_Requirements.md` — Part 4
+This document consolidates the four **user-provided** Part 1–4 specifications into one reviewer-facing canonical source, without pretending that any item has been implemented or empirically validated. The superseded per-part copies were removed from the reviewer package to avoid conflicting or duplicated requirements.
 
 **Explicit decisions made to reconcile conflicting/underspecified original contracts:**
 

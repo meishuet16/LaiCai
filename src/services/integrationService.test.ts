@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { fixtureIntegrationService, integrationDataSource } from './integrationService.ts';
-import { NotConnectedError } from './retainIQService.ts';
 
 test('integration fixtures preserve source timing and redact rejected metadata', async () => {
   const overview = await fixtureIntegrationService.getOverview();
@@ -22,8 +21,18 @@ test('integration fixtures preserve source timing and redact rejected metadata',
 });
 
 test('connected mode never silently falls back to integration fixtures', async () => {
-  await assert.rejects(() => integrationDataSource('connected').getOverview(), NotConnectedError);
-  assert.equal(await integrationDataSource('demo_fixture').getOverview().then(value => value.evidence_kind), 'demo_fixture');
+  const originalFetch = globalThis.fetch;
+  const backendOverview = { evidence_kind: 'source_backed', sources: [], coverage: { accounts_mapped: 30, accounts_unmatched: 0, active_paying: 24, missing_mrr: 4, incomplete_subscription_history: 3, usage_percent: 96, billing_percent: 91, subscription_percent: 99 }, rejected_events: [], alerts: [] };
+  globalThis.fetch = (async () => new Response(JSON.stringify(backendOverview), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+  try {
+    const connected = await integrationDataSource('connected').getOverview();
+    assert.equal(connected.evidence_kind, 'source_backed');
+    assert.deepEqual(connected.sources, []);
+    assert.deepEqual(connected.coverage, backendOverview.coverage);
+    assert.equal(await integrationDataSource('demo_fixture').getOverview().then(value => value.evidence_kind), 'demo_fixture');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('integration fixture vocabulary uses canonical event names only', async () => {

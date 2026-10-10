@@ -1,8 +1,8 @@
 import type { CanonicalEventType } from '../domain/integration.ts';
 import type { TimelineEvent, TimelineRecord } from '../domain/timeline.ts';
 import type { DataMode } from '../domain/customer.ts';
-import { decisionService } from './decisionService.ts';
-import { fixtureDataSource, NotConnectedError } from './retainIQService.ts';
+import { connectedDecisionService, decisionService } from './decisionService.ts';
+import { connectedDataSource, fixtureDataSource } from './retainIQService.ts';
 
 type SourceFixture = { customer_id: string; id: string; source: string; title: string; summary: string; occurred_at: string; available_at: string; fact_ids: string[] };
 // Redacted examples only. Occurrence and source availability are independent timestamps.
@@ -48,7 +48,52 @@ export const fixtureTimelineService: TimelineDataSource = {
 };
 
 export const connectedTimelineService: TimelineDataSource = {
-  async getTimeline() { throw new NotConnectedError('Customer timeline and point-in-time event APIs are not connected in this frontend.'); },
+  async getTimeline(customerId, signal) {
+    const [account, item] = await Promise.all([
+      connectedDataSource.getAccount(customerId, signal),
+      connectedDecisionService.getCase(`case_${customerId}`, signal),
+    ]);
+    if (!account) return null;
+    const events: TimelineEvent[] = [];
+    const prediction = account.prediction;
+    if (prediction?.generated_at) events.push({
+      id: prediction.prediction_id,
+      category: 'prediction',
+      title: prediction.status === 'scored' ? 'Prediction snapshot' : `${prediction.status.replaceAll('_', ' ')} route status`,
+      canonical_event_type: null,
+      summary: prediction.status === 'scored' ? 'Persisted 7-, 14-, and 30-day risk forecast.' : 'Persisted non-forecast status; numeric probabilities are unavailable.',
+      occurred_at: prediction.generated_at,
+      available_at: prediction.generated_at,
+      source: 'authenticated_sqlite',
+      source_record_id: prediction.prediction_id,
+      prediction_id: prediction.prediction_id,
+      case_id: null,
+      policy_version: prediction.label_policy_version,
+      fact_ids: [],
+      details: [`As-of cutoff: ${prediction.as_of ?? 'N/A'}`, `Model: ${prediction.model_version ?? 'N/A'}`, `Reliability: ${prediction.reliability.status}; freshness: ${prediction.data_freshness.status}`],
+      provenance: 'synthetic_prediction_fixture',
+    });
+    if (item) {
+      for (const entry of item.audit) events.push({
+        id: entry.id,
+        category: 'decision',
+        title: entry.type.replaceAll('_', ' '),
+        canonical_event_type: null,
+        summary: entry.detail,
+        occurred_at: entry.at,
+        available_at: entry.at,
+        source: 'retention_case_audit',
+        source_record_id: null,
+        prediction_id: prediction?.prediction_id ?? null,
+        case_id: item.id,
+        policy_version: 'retention_policy_v1_2',
+        fact_ids: item.fact_ids,
+        details: [`Actor: ${entry.actor}`, 'The prediction and case audit are persisted in the tenant-scoped SQLite workspace.'],
+        provenance: 'synthetic_case_audit',
+      });
+    }
+    return { account, case: item, events, evidence_kind: 'source_backed' };
+  },
 };
 
 export function timelineDataSource(mode: DataMode): TimelineDataSource {

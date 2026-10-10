@@ -1,11 +1,12 @@
-export type Section = 'command-center' | 'integrations' | 'predictions' | 'prediction-detail' | 'cases' | 'case-detail' | 'timeline';
-export type AppRoute = { section: 'command-center' | 'integrations' | 'predictions' | 'cases' } | { section: 'timeline'; customerId: string } | { section: 'prediction-detail'; predictionId: string } | { section: 'case-detail'; caseId: string };
+export type Section = 'command-center' | 'integrations' | 'predictions' | 'prediction-detail' | 'cases' | 'case-detail' | 'timeline' | 'learning';
+export type AppRoute = { section: 'command-center' | 'integrations' | 'predictions' | 'cases' | 'learning' } | { section: 'timeline'; customerId: string } | { section: 'prediction-detail'; predictionId: string } | { section: 'case-detail'; caseId: string };
 export const navItems = [
   { section: 'command-center', label: 'Business Overview', href: '/command-center' },
   { section: 'integrations', label: 'Data Integration', href: '/integrations' },
   { section: 'predictions', label: 'Churn Prediction', href: '/predictions' },
   { section: 'cases', label: 'Retention Actions', href: '/cases' },
   { section: 'timeline', label: 'Customer Insights', href: '/customers/c01/timeline' },
+  { section: 'learning', label: 'Learning & Model Health', href: '/learning' },
 ] as const;
 export const timelinePath = (customerId: string) => `/customers/${encodeURIComponent(customerId)}/timeline`;
 export const predictionPath = (predictionId: string) => `/predictions/${encodeURIComponent(predictionId)}`;

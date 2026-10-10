@@ -9,17 +9,21 @@ never from a client-supplied body field.
 from __future__ import annotations
 import logging
 from contextlib import contextmanager
-from typing import Generator
+from typing import Any, Generator
 
-import psycopg2
-import psycopg2.extras
-from psycopg2 import pool as pg_pool
+try:
+    import psycopg2
+    import psycopg2.extras
+    from psycopg2 import pool as pg_pool
+except ModuleNotFoundError:  # Optional for the stateless reviewer workspace.
+    psycopg2 = None
+    pg_pool = None
 
 from .config import settings
 
 logger = logging.getLogger(__name__)
 
-_pool: pg_pool.SimpleConnectionPool | None = None
+_pool: Any | None = None
 
 
 def init_pool() -> None:
@@ -27,6 +31,11 @@ def init_pool() -> None:
     global _pool
     if _pool is not None:
         return
+    if not settings.database_url:
+        logger.info("DATABASE_URL is not configured; starting the local API without PostgreSQL.")
+        return
+    if psycopg2 is None or pg_pool is None:
+        raise RuntimeError("psycopg2 is required when DATABASE_URL is configured")
     logger.info("Initializing PostgreSQL connection pool...")
     _pool = pg_pool.SimpleConnectionPool(
         minconn=1,

@@ -29,6 +29,7 @@ export type AccountRecord = {
   case_id: string | null; case_status: string | null; next_step: string | null;
   route: Route; route_reason: string; exposure_proxy: Money | null;
   prediction: PredictionSnapshot | null; evidence_kind: 'demo_fixture' | 'source_backed';
+  data_origin?: 'frontend_fixture' | 'backend_dataset';
 };
 
 export type DataMode = 'connected' | 'demo_fixture';

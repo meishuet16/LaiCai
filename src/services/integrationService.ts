@@ -1,6 +1,6 @@
 import type { DataMode } from '../domain/customer.ts';
 import type { IntegrationOverview } from '../domain/integration.ts';
-import { NotConnectedError } from './retainIQService.ts';
+import { getBackendIntegrations } from './backendClient.ts';
 
 const fixtureOverview: IntegrationOverview = {
   evidence_kind: 'demo_fixture',
@@ -26,7 +26,7 @@ export const fixtureIntegrationService: IntegrationDataSource = {
   async getOverview(signal) { if (signal?.aborted) throw new DOMException('Aborted', 'AbortError'); return fixtureOverview; },
 };
 export const connectedIntegrationService: IntegrationDataSource = {
-  async getOverview() { throw new NotConnectedError('Integration health requires an authenticated backend-for-frontend; no browser-safe health API is connected.'); },
+  async getOverview(signal) { return getBackendIntegrations(signal); },
 };
 export function integrationDataSource(mode: DataMode): IntegrationDataSource {
   return mode === 'demo_fixture' ? fixtureIntegrationService : connectedIntegrationService;

@@ -2,14 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { casePath, navItems, predictionPath, routeFromPath, timelinePath } from './routes.ts';
 
-test('primary navigation has the required five labels and keeps existing paths', () => {
-  assert.deepEqual(navItems.map(item => item.label), ['Business Overview', 'Data Integration', 'Churn Prediction', 'Retention Actions', 'Customer Insights']);
-  assert.deepEqual(navItems.map(item => item.href), ['/command-center', '/integrations', '/predictions', '/cases', '/customers/c01/timeline']);
+test('primary navigation covers the full connect-predict-decide-learn workflow', () => {
+  assert.deepEqual(navItems.map(item => item.label), ['Business Overview', 'Data Integration', 'Churn Prediction', 'Retention Actions', 'Customer Insights', 'Learning & Model Health']);
+  assert.deepEqual(navItems.map(item => item.href), ['/command-center', '/integrations', '/predictions', '/cases', '/customers/c01/timeline', '/learning']);
 });
 
 test('known sections resolve from direct URLs', () => {
   assert.deepEqual(routeFromPath('/predictions'), { section: 'predictions' });
   assert.deepEqual(routeFromPath('/cases/'), { section: 'cases' });
+  assert.deepEqual(routeFromPath('/learning'), { section: 'learning' });
 });
 test('account timeline IDs survive URL encoding', () => {
   assert.deepEqual(routeFromPath(timelinePath('account/a b')), { section: 'timeline', customerId: 'account/a b' });

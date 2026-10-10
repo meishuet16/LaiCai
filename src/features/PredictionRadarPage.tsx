@@ -56,7 +56,7 @@ function NonForecastTable({ title, note, accounts, navigate }: { title: string; 
 }
 
 export function PredictionRadarPage() {
-  const { navigate, horizon, query, setQuery } = useApp();
+  const { navigate, horizon, query, setQuery, dataMode } = useApp();
   const { status, rows, error } = useCustomers();
   const [band, setBand] = useState<RiskBandFilter>('all');
   const [route, setRoute] = useState<Route | 'all'>('all');
@@ -68,7 +68,7 @@ export function PredictionRadarPage() {
 
   useEffect(() => { setPage(0); }, [band, route, reliability, freshness, segment, query, horizon]);
   if (status === 'loading') return <p role="status">Loading prediction records…</p>;
-  if (status === 'unavailable') return <section className="card unavailable-state"><h2>Churn Prediction is not connected</h2><p>{error}</p><p>The active backend has no browser-safe prediction read, evaluation, or historical prediction API. Connected mode does not substitute local demo scores.</p></section>;
+  if (status === 'unavailable') return <section className="card unavailable-state"><h2>Churn Prediction is temporarily unavailable</h2><p>{error}</p><p>Check the prediction read service and historical prediction API.</p></section>;
   if (status === 'error') return <div role="alert" className="notice ambernote">{error}</div>;
 
   const nonForecast = rows.filter(isNonForecastAccount);
@@ -129,7 +129,9 @@ export function PredictionRadarPage() {
   const clearFilters = () => { setQuery(''); setBand('all'); setRoute('all'); setReliability('all'); setFreshness('all'); setSegment('all'); setSortBy('risk'); setPage(0); };
 
   return <>
-    <p className="muted page-intro">Reliability describes evidence sufficiency, not a probability that a score is correct. In Demo Fixture mode, probability values are illustrative and are not trained-model outputs.</p>
+    <p className="muted page-intro">{dataMode === 'connected'
+      ? 'Prediction records are persisted in the authenticated SQLite workspace. Reliability describes evidence sufficiency, not a probability that a score is correct.'
+      : 'Reliability describes evidence sufficiency, not a probability that a score is correct.'}</p>
     <div className="radar-meta"><span>Selected horizon: <b>{horizon} days</b></span><span>As of <b>{formatDateTime(latestAsOf)}</b></span><span>Model: <b>{modelLabel}</b></span></div>
 
     <section className="metrics prediction-metrics" aria-label="Prediction coverage">
@@ -158,8 +160,8 @@ export function PredictionRadarPage() {
       <section className="card"><div className="section-head"><div><h2>Historical issued-score history</h2><p className="muted">Past predictions only; this is not a future risk curve.</p></div><span className="pill neutral">{cutoffCount ? `${cutoffCount} cutoff${cutoffCount === 1 ? '' : 's'} in current read` : 'Unavailable'}</span></div>
         <p className="empty-trend">The current account read provides no per-account historical score stream. Earlier issued predictions and intervening scores are unavailable; none are inferred.</p>
       </section>
-      <section className="card"><div className="section-head"><div><h2>Model evaluation</h2><p className="muted">Held-out evidence only</p></div><span className="pill neutral">Not connected</span></div>
-        <p className="empty-trend">Evaluation results not connected — no held-out metrics, mature label counts, or evaluation sample size are supplied.</p>
+      <section className="card"><div className="section-head"><div><h2>Model evaluation</h2><p className="muted">Outcome-aware evidence gates</p></div><button className="tablelink" onClick={() => navigate('/learning')}>Open model health →</button></div>
+        <p className="empty-trend">Outcome maturity, release status and metric availability are tracked in Learning &amp; Model Health.</p>
       </section>
     </div>
 

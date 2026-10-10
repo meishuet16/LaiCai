@@ -22,7 +22,7 @@ function SourceDetails({ source, onClose }: { source: SourceHealth; onClose: () 
   }, [onClose]);
   return <div className="detail-overlay integration-overlay" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
     <section className="card detail-panel integration-detail-panel" role="dialog" aria-modal="true" aria-label={`${source.source} details`}>
-      <div className="section-head"><div><p className="drawer-eyebrow">Synthetic source fixture</p><h2>{source.source} details</h2></div><button ref={closeRef} className="btn outline" onClick={onClose}>Close</button></div>
+      <div className="section-head"><div><p className="drawer-eyebrow">Authorized source health</p><h2>{source.source} details</h2></div><button ref={closeRef} className="btn outline" onClick={onClose}>Close</button></div>
       <div className="detail-grid">
         <div className="values">
           <p><span>Connection status</span><b>{source.status}</b></p>
@@ -40,7 +40,7 @@ function SourceDetails({ source, onClose }: { source: SourceHealth; onClose: () 
         </div>
       </div>
       <div className="ops-strip"><span>Records processed <b>{source.processed_count.toLocaleString()}</b></span><span>Rejected <b>{source.rejected_count}</b></span><span>Errors <b>{source.error_count}</b></span></div>
-      <p className="caption">Credentials, raw payloads, sensitivity labels and source provenance are not supplied to this demo view.</p>
+      <p className="caption">Credentials, raw payloads and restricted customer fields are not exposed in this view.</p>
     </section>
   </div>;
 }
@@ -108,10 +108,10 @@ export function IntegrationHealthPage() {
     <div className="integration-page-meta"><p className="muted page-intro">Source status, data coverage and quality signals from the selected data source.</p></div>
     <div className="notice bluenote"><b>Canonical event semantics</b><span>Usage v1.2 primarily emits daily <code>usage_aggregate_updated</code> records; each aggregate describes that day’s session quantity, not one session. Payment failure is not churn, a cancellation request is not an effective cancellation, and an event-level cancellation is not automatically account-level churn.</span></div>
     <section className="metrics integration-metrics" aria-label="Source summary">
-      <article className="quick"><small>Configured sources</small><strong>{data.sources.length}</strong><span>Fixture records; connection is not verified</span></article>
+      <article className="quick"><small>Configured sources</small><strong>{data.sources.length}</strong><span>Source-level records authorized in this read model</span></article>
       <article className="quick"><small>Sources reporting</small><strong>{availableSources}</strong><span>Healthy or warning status in this read model</span></article>
       <article className="quick alert"><small>Degraded / unknown</small><strong>{degradedSources}</strong><span>Warnings, failures and unknown status</span></article>
-      <article className="quick"><small>Latest successful sync</small><strong className="sync-value">{formatDateTime(latestSuccessfulSync)}</strong><span>Latest timestamp present in fixtures</span></article>
+      <article className="quick"><small>Latest successful sync</small><strong className="sync-value">{formatDateTime(latestSuccessfulSync)}</strong><span>Latest authorized source timestamp</span></article>
     </section>
 
     <section className="card">
@@ -129,6 +129,7 @@ export function IntegrationHealthPage() {
           <td><span className={`pill ${statusTone(source.status)}`}>{source.status}</span></td>
           <td><button type="button" className="tablelink" onClick={() => setSelectedSource(source.source)}>Inspect</button></td>
         </tr>)}
+        {!data.sources.length ? <tr><td colSpan={10}><span className="muted">N/A — source-level health and freshness are outside this reader grant.</span></td></tr> : null}
       </tbody></table></div>
     </section>
 
@@ -145,7 +146,7 @@ export function IntegrationHealthPage() {
           <p><span>Usage / billing / subscription coverage</span><b>{coverageRate(coverage.usage_percent)} / {coverageRate(coverage.billing_percent)} / {coverageRate(coverage.subscription_percent)}</b></p>
           <p><span>Absolute event totals</span><b>N/A — not supplied</b></p>
         </div>
-        <p className="caption">The fixture alert says unmatched identities remain quarantined, but does not supply a separate quarantine count. Source coverage dates are available in source details.</p>
+        <p className="caption">Coverage and freshness are calculated from the authenticated, tenant-scoped SQLite read model.</p>
       </section>
       <section className="card">
         <div className="section-head"><div><h2>Data-quality alerts</h2><p className="muted">Suggested checks link to the related source where available.</p></div><span className="pill amber">{data.alerts.length} alerts</span></div>

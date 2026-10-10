@@ -68,7 +68,7 @@ This is a gated future instruction; it was **not run**, and it does not establis
 
 ## Local evidence and limitations
 
-`python -m examples.member2_as_of_history` remains a small API fixture. Separately, Synthetic SaaS v1.2 QUICK, STANDARD, and FULL artifacts passed validation; STANDARD and FULL passed isolated canonical import and Member 2 read-only smoke checks. The v1.2 handoff includes synthetic horizon and chronological evidence. This is synthetic integration and training readiness only; no model has been trained and it does not establish real-data integration, real-world validation, or model performance on real customers. See [`docs/SYNTHETIC_SAAS_DATASET.md`](docs/SYNTHETIC_SAAS_DATASET.md) and [`docs/MEMBER1_TO_MEMBER2_SYNTHETIC_HANDOFF.md`](docs/MEMBER1_TO_MEMBER2_SYNTHETIC_HANDOFF.md).
+`python -m examples.member2_as_of_history` remains a small API fixture. Separately, Synthetic SaaS v1.2 QUICK, STANDARD, and FULL artifacts passed validation; STANDARD and FULL passed isolated canonical import and read-only smoke checks. This is synthetic integration and training readiness only; no model has been trained and it does not establish real-data integration, real-world validation, or model performance on real customers. See [`docs/SYNTHETIC_SAAS_DATASET.md`](docs/SYNTHETIC_SAAS_DATASET.md).
 
 The implementation stores event occurrence, receipt, and optional verified source-availability times; as-of visibility requires both occurrence and availability to be no later than the cutoff. It reconstructs subscription state from append-only events. The database is SQLite, not the PostgreSQL storage required by the integrated production requirements. There is no acquired historical dataset, source-specific mapping, or training pipeline.
 

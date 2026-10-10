@@ -15,6 +15,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .api import router
 from .config import settings
+from .dashboard_api import router as dashboard_router
+from .dashboard_data import dashboard_source_status
 from .database import close_pool, init_pool
 
 logging.basicConfig(
@@ -44,6 +46,7 @@ app.add_middleware(
 )
 
 app.include_router(router)
+app.include_router(dashboard_router)
 
 
 @app.on_event("startup")
@@ -61,8 +64,14 @@ def shutdown() -> None:
 
 @app.get("/health", tags=["Health"])
 def health_check() -> dict:
+    dashboard = dashboard_source_status()
     return {
         "status": "ok",
         "service": "decision-engine",
         "version": settings.app_version,
+        "mode": "database" if settings.database_url else "local_workspace",
+        "data_mode": "authenticated_backend" if dashboard["available"] else "frontend_fixture",
+        "data_tenant": dashboard["tenant_id"],
+        "data_as_of": dashboard["as_of"],
+        "evidence_kind": "synthetic",
     }

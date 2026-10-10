@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useApp } from './AppContext';
 import { navItems, timelinePath, type Section } from './routes';
-import type { Currency, DataMode, Horizon, Role } from '../domain/customer';
+import type { Currency, Horizon, Role } from '../domain/customer';
 import { CommandCenterPage } from '../features/CommandCenterPage';
 import { DecisionCasesPage } from '../features/DecisionCasesPage';
 import { DecisionCaseDetailPage } from '../features/DecisionCaseDetailPage';
@@ -9,14 +9,17 @@ import { IntegrationHealthPage } from '../features/IntegrationHealthPage';
 import { PredictionRadarPage } from '../features/PredictionRadarPage';
 import { PredictionDetailPage } from '../features/PredictionDetailPage';
 import { TimelinePage } from '../features/TimelinePage';
+import { LearningHealthPage } from '../features/LearningHealthPage';
+import { accountDataSource } from '../services/retainIQService.ts';
 
-type PrimarySection = 'command-center' | 'integrations' | 'predictions' | 'cases' | 'timeline';
+type PrimarySection = 'command-center' | 'integrations' | 'predictions' | 'cases' | 'timeline' | 'learning';
 const subtitles: Record<PrimarySection, string> = {
   'command-center': '',
   integrations: 'Source connectivity, synchronization, freshness and data quality',
   predictions: 'Multi-horizon risk with reliability and account-level evidence',
   cases: 'Prioritized retention work, human decisions and scenario planning',
   timeline: 'Customer profile, prediction, decisions and observed evidence',
+  learning: 'Outcome maturity, model health and governed release decisions',
 };
 
 function NavGlyph({ section }: { section: Section }) {
@@ -27,6 +30,7 @@ function NavGlyph({ section }: { section: Section }) {
     cases: <><path d="M4 7.5h6l2 2H20v9H4z"/><path d="M4 7.5v-2h6l2 2"/><path d="m9 14 2 2 4-4"/></>,
     'command-center': <><rect x="3.5" y="3.5" width="7" height="7" rx="1.3"/><rect x="13.5" y="3.5" width="7" height="4" rx="1.3"/><rect x="13.5" y="10.5" width="7" height="10" rx="1.3"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.3"/></>,
     timeline: <><path d="M5 5h14M5 12h14M5 19h14"/><circle cx="8" cy="5" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="10" cy="19" r="1.5"/></>,
+    learning: <><path d="M4 18V9m5 9V5m5 13v-7m5 7V3"/><path d="m4 12 5-4 5 5 5-8"/></>,
   };
   return <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" {...common}>{paths[section] ?? paths['command-center']}</svg>;
 }
@@ -62,12 +66,24 @@ function RouteDrawer({ eyebrow, title, onClose, children, centered = false }: { 
 }
 
 export function AppShell() {
-  const { route, navigate, closeDrawer, role, setRole, horizon, setHorizon, currency, setCurrency, dataMode, setDataMode } = useApp();
+  const { route, navigate, closeDrawer, role, setRole, horizon, setHorizon, currency, setCurrency, dataMode } = useApp();
   const mainRef = useRef<HTMLElement>(null);
   const previousPageKey = useRef('');
   const scrollByPage = useRef<Record<string, number>>({});
   const [timelineCustomerId, setTimelineCustomerId] = useState(() => route.section === 'timeline' ? route.customerId : 'c01');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    accountDataSource(dataMode).listAccounts(controller.signal).then(accounts => {
+      if (!controller.signal.aborted && accounts.length > 0) {
+        setTimelineCustomerId(current => current === 'c01' || !accounts.some(account => account.customer_id === current)
+          ? accounts[0].customer_id
+          : current);
+      }
+    }).catch(() => undefined);
+    return () => controller.abort();
+  }, [dataMode]);
 
   const activePage: PrimarySection = route.section === 'prediction-detail' ? 'predictions' : route.section === 'case-detail' ? 'cases' : route.section;
   const displayedTimelineCustomerId = route.section === 'timeline' ? route.customerId : timelineCustomerId;
@@ -87,6 +103,7 @@ export function AppShell() {
     { section: 'predictions', content: <PredictionRadarPage /> },
     { section: 'cases', content: <DecisionCasesPage /> },
     { section: 'timeline', content: <TimelinePage customerId={displayedTimelineCustomerId} /> },
+    { section: 'learning', content: <LearningHealthPage /> },
   ];
 
   return <div className={`app${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
@@ -105,10 +122,10 @@ export function AppShell() {
       <header className="topbar">
         <div className="page-heading"><h1>{title}</h1>{subtitles[activePage] && <p className="subtitle">{subtitles[activePage]}</p>}</div>
         <div className="topbar-tools">
-          <label className="header-control">Data source<select value={dataMode} onChange={event => setDataMode(event.target.value as DataMode)}><option value="connected">Connected · unavailable</option><option value="demo_fixture">Sample data</option></select></label>
+          <span className="data-status"><i/>Authenticated SQLite</span>
           {activePage === 'predictions' || activePage === 'cases' ? <label className="header-control">Currency<select value={currency} onChange={event => setCurrency(event.target.value as Currency | 'All')}><option>All</option><option>MYR</option><option>USD</option><option>SGD</option></select></label> : null}
           {activePage === 'predictions' || activePage === 'timeline' ? <div className="horizon-control"><span>Horizon</span><div className="seg" aria-label="Prediction horizon">{([7, 14, 30] as Horizon[]).map(days => <button aria-pressed={horizon === days} className={horizon === days ? 'on' : ''} onClick={() => setHorizon(days)} key={days}>{days}d</button>)}</div></div> : null}
-          {activePage === 'cases' || activePage === 'timeline' ? <label className="header-control">Role preview<select aria-label="Role preview (not authentication)" value={role} onChange={event => setRole(event.target.value as Role)}><option>Manager</option><option>CSM</option><option>Admin</option><option>Viewer</option></select></label> : null}
+          {activePage === 'cases' || activePage === 'timeline' ? <label className="header-control">Workspace role<select aria-label="Workspace role" value={role} onChange={event => setRole(event.target.value as Role)}><option>Manager</option><option>CSM</option><option>Admin</option><option>Viewer</option></select></label> : null}
         </div>
       </header>
       <main ref={mainRef}>

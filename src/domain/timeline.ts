@@ -10,7 +10,7 @@ export type TimelineEvent = {
   policy_version: string | null; fact_ids: string[]; details: string[];
   provenance: 'synthetic_source_fixture' | 'synthetic_prediction_fixture' | 'synthetic_case_audit' | 'synthetic_case_snapshot';
 };
-export type TimelineRecord = { account: AccountRecord; case: DecisionCase | null; events: TimelineEvent[]; evidence_kind: 'demo_fixture' };
+export type TimelineRecord = { account: AccountRecord; case: DecisionCase | null; events: TimelineEvent[]; evidence_kind: 'demo_fixture' | 'source_backed' };
 // NOT_CONNECTED is a UI availability marker, not a canonical feedback label.
 export type FeedbackState = 'PENDING' | 'MATURE_POSITIVE' | 'MATURE_NEGATIVE' | 'INCOMPLETE' | 'INELIGIBLE' | 'NOT_CONNECTED';
 

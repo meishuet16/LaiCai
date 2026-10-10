@@ -106,7 +106,7 @@ function RiskDistribution({
         </div>)}
       </div>
     </div>
-    <p className="caption">No client-side risk thresholds are applied. Model policy bands are unavailable. Insufficient-evidence accounts: {insufficientEvidence} (may overlap with abstained).</p>
+    <p className="caption">No client-side risk thresholds are applied. The Churn Prediction view uses backend-supplied model-policy bands. Insufficient-evidence accounts: {insufficientEvidence} (may overlap with abstained).</p>
   </section>;
 }
 
@@ -208,7 +208,7 @@ export function CommandCenterPage() {
   const summary = useMemo(() => snapshot ? summarizeOverview(snapshot.accounts, snapshot.cases, snapshot.integration, snapshot.as_of, horizon) : null, [snapshot, horizon]);
 
   if (status === 'loading') return <p role="status">Loading Business Overview…</p>;
-  if (status === 'unavailable') return <section className="card unavailable-state"><h2>Business Overview data not connected</h2><p>{error}</p><p>Connect authorized customer, prediction, decision, and integration read services. No fixture data is substituted in Connected mode.</p><button className="btn outline" onClick={() => navigate('/integrations')}>Check Data Integration</button></section>;
+  if (status === 'unavailable') return <section className="card unavailable-state"><h2>Business Overview is temporarily unavailable</h2><p>{error}</p><p>Check the authorized customer, prediction, decision, and integration services.</p><button className="btn outline" onClick={() => navigate('/integrations')}>Check Data Integration</button></section>;
   if (status === 'error' || !snapshot || !summary) return <div className="notice ambernote" role="alert">{error ?? 'Business Overview is unavailable.'}</div>;
 
   const modelVersion = summary.modelVersions.length === 1 ? summary.modelVersions[0] : summary.modelVersions.length ? `Multiple (${summary.modelVersions.length})` : 'N/A';
@@ -225,7 +225,7 @@ export function CommandCenterPage() {
       <article className="quick"><small>Open retention cases</small><strong>{summary.openCases}</strong></article>
       <article className="quick overview-workload-kpi" aria-label={`${summary.pendingCases} pending cases and ${summary.overdueCases ?? 'unavailable'} overdue cases`}>
         <small>Case workload</small>
-        <div className="overview-workload-values"><span><b>{summary.pendingCases}</b><small>Pending</small></span><span><b>{summary.overdueCases ?? 'N/A'}</b><small>Overdue · needs cutoff</small></span></div>
+        <div className="overview-workload-values"><span><b>{summary.pendingCases}</b><small>Pending</small></span><span><b>{summary.overdueCases ?? 'N/A'}</b><small>{summary.overdueCases == null ? 'Overdue · needs cutoff' : 'Overdue · at cutoff'}</small></span></div>
       </article>
     </section>
 

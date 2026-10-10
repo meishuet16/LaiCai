@@ -1,4 +1,5 @@
 import type { AccountRecord, Currency, DataMode, Freshness, Money, PredictionSnapshot, PredictionStatus, Reliability, Route } from '../domain/customer.ts';
+import { getBackendDashboardAccounts, routeAccountThroughBackend } from './backendClient.ts';
 
 export interface RetainIQDataSource {
   listAccounts(signal?: AbortSignal): Promise<AccountRecord[]>;
@@ -50,10 +51,30 @@ export class NotConnectedError extends Error {
   constructor(message: string) { super(message); this.name = 'NotConnectedError'; }
 }
 
+let backendAccountsPromise: Promise<AccountRecord[]> | null = null;
+
+async function loadBackendAccounts(signal?: AbortSignal): Promise<AccountRecord[]> {
+  if (!backendAccountsPromise) {
+    backendAccountsPromise = getBackendDashboardAccounts(signal)
+      .then(response => Promise.all(response.accounts.map(account => routeAccountThroughBackend(account, signal))))
+      .catch(error => {
+        backendAccountsPromise = null;
+        throw error;
+      });
+  }
+  const rows = await backendAccountsPromise;
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+  return structuredClone(rows);
+}
+
 export const connectedDataSource: RetainIQDataSource = {
-  async listAccounts() { throw new NotConnectedError('Customer, subscription, prediction, and decision read APIs are not connected in this frontend.'); },
-  async getAccount() { throw new NotConnectedError('Customer read API is not connected in this frontend.'); },
-  async getPrediction() { throw new NotConnectedError('Prediction read API is not connected in this frontend.'); },
+  listAccounts: loadBackendAccounts,
+  async getAccount(customerId, signal) {
+    return (await loadBackendAccounts(signal)).find(row => row.customer_id === customerId) ?? null;
+  },
+  async getPrediction(predictionId, signal) {
+    return (await loadBackendAccounts(signal)).find(row => row.prediction?.prediction_id === predictionId) ?? null;
+  },
 };
 
 export function accountDataSource(mode: DataMode): RetainIQDataSource {

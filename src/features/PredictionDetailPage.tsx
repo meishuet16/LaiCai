@@ -12,7 +12,7 @@ export function PredictionDetailPage({ predictionId }: { predictionId: string })
   if (status === 'loading') return <p role="status">Loading prediction…</p>;
   if (status === 'unavailable') return <section className="card unavailable-state"><h2>Prediction details are not connected</h2><p>{error}</p></section>;
   if (status === 'error') return <div role="alert" className="notice ambernote">Prediction could not be loaded.</div>;
-  if (!account?.prediction) return <div className="card"><h2>Prediction not found</h2><p className="muted">It may have been removed or may not be available in this demo dataset.</p></div>;
+  if (!account?.prediction) return <div className="card"><h2>Prediction not found</h2><p className="muted">It may have been removed or may not be available in the current dataset.</p></div>;
 
   const prediction = account.prediction;
   const relatedCase = cases.find(item => item.customer_id === account.customer_id);
@@ -21,7 +21,7 @@ export function PredictionDetailPage({ predictionId }: { predictionId: string })
 
   return <div className="prediction-detail-content">
     <div className="detail-title"><div><h2>{account.name ?? account.customer_id}</h2><p className="muted">{account.customer_id} · {account.segment ?? 'Segment unavailable'} · {account.plan ?? 'Plan unavailable'}</p></div><span className={`pill ${prediction.status === 'scored' ? 'good' : 'amber'}`}>{prediction.status.replaceAll('_', ' ')}</span></div>
-    <div className="radar-meta prediction-record-meta"><span>Evidence: <b>{account.evidence_kind === 'demo_fixture' ? 'Demo fixture' : 'Source-backed'}</b></span><span>Cutoff: <b>{formatDateTime(prediction.as_of)}</b></span><span>Model: <b>{prediction.model_version ?? 'N/A'}</b></span></div>
+    <div className="radar-meta prediction-record-meta"><span>Evidence: <b>{account.evidence_kind === 'source_backed' ? 'Source-backed' : 'Illustrative'}</b></span><span>Cutoff: <b>{formatDateTime(prediction.as_of)}</b></span><span>Model: <b>{prediction.model_version ?? 'N/A'}</b></span></div>
 
     <section className="probability-grid" aria-label="Forecast horizons">{([7, 14, 30] as const).map(days => <article className="card probability" key={days}><span>{days}-day risk</span><strong>{formatRisk(prediction, days)}</strong>{prediction.status !== 'scored' && <small>No forecast available</small>}</article>)}</section>
 

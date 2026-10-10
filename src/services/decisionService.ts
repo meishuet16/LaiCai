@@ -1,5 +1,7 @@
 import type { ActionId, ActionProposal, Capacity, DecisionCase, DecisionInput, ExecutionInput } from '../domain/decision.ts';
-import type { Currency, Money, Role } from '../domain/customer.ts';
+import type { AccountRecord, Currency, DataMode, Money, Role, Route } from '../domain/customer.ts';
+import { connectedDataSource } from './retainIQService.ts';
+import { getBackendCases, postBackendDecision, postBackendExecution, postBackendFollowUp } from './backendClient.ts';
 
 const money = (amount_minor: number, currency: Currency): Money => ({ amount_minor, currency });
 const auditTimes: Record<string, string> = { c01: '2026-10-08T08:00:00Z', c02: '2026-10-09T08:00:00Z', c03: '2026-10-05T08:00:00Z', c04: '2026-10-09T09:00:00Z', c05: '2026-10-09T08:00:00Z', c06: '2026-10-09T07:00:00Z', c07: '2026-10-09T09:30:00Z', c08: '2026-10-08T08:00:00Z', c09: '2026-10-09T08:00:00Z' };
@@ -17,17 +19,83 @@ const seeds: DecisionCase[] = [
 ];
 let cases = structuredClone(seeds);
 let sequence = 2;
+let usingConnectedCases = false;
+let connectedCaseSignature = '';
+let connectedAsOf: string | null = null;
 const clone = <T,>(value: T): T => structuredClone(value);
 const active = (item: DecisionCase) => ['HUMAN_REVIEWED', 'ASSIGNED', 'EXECUTED', 'FOLLOW_UP_DUE', 'FOLLOW_UP_COMPLETE'].includes(item.status);
 const budget: Money[] = [money(50000, 'MYR'), money(30000, 'SGD')];
+
+function caseFromConnectedAccount(account: AccountRecord): DecisionCase {
+  const statusByRoute: Record<Route, DecisionCase['status']> = {
+    PRIORITY_REVIEW: 'PROPOSED', HUMAN_REVIEW: 'PROPOSED', OBSERVE: 'OBSERVE',
+    KNOWN_CANCELLATION: 'KNOWN_CANCELLATION', NOT_ELIGIBLE: 'NOT_ELIGIBLE',
+  };
+  const prediction = account.prediction;
+  const createdAt = prediction?.generated_at ?? prediction?.as_of ?? '2026-10-01T00:05:00Z';
+  const scoreFact = prediction?.status === 'scored' && prediction.p_churn_30d != null
+    ? `Stored synthetic demo prediction has ${Math.round(prediction.p_churn_30d * 100)}% 30-day churn risk`
+    : prediction?.status === 'abstained'
+      ? `Stored synthetic demo prediction abstained: ${prediction.reliability.reasons.join(', ') || 'insufficient evidence'}`
+      : account.route === 'KNOWN_CANCELLATION'
+        ? 'Stored synthetic demo record marks a known cancellation; this is not a forecast'
+        : account.route === 'NOT_ELIGIBLE'
+          ? 'No eligible paid subscription was active at cutoff'
+          : 'No numeric prediction is available';
+  return {
+    id: account.case_id ?? `demo_case_${account.customer_id}`,
+    customer_id: account.customer_id,
+    route: account.route,
+    route_reason: account.route_reason,
+    status: statusByRoute[account.route],
+    owner: null,
+    created_at: createdAt,
+    due_at: ['PRIORITY_REVIEW', 'HUMAN_REVIEW'].includes(account.route) ? '2026-10-03T12:00:00Z' : null,
+    fact_ids: prediction ? [prediction.prediction_id] : [],
+    facts: [scoreFact],
+    warnings: ['Demo case derived in the browser from a persisted synthetic prediction; the case itself is not persisted.'],
+    proposed_action: account.route === 'PRIORITY_REVIEW' ? 'ACCOUNT_CHECK_IN' : account.route === 'HUMAN_REVIEW' ? 'DATA_INVESTIGATION' : null,
+    selected_action: null,
+    estimated_cost: null,
+    estimated_minutes: 0,
+    actual_cost: null,
+    actual_minutes: null,
+    response_at: null,
+    completed_at: null,
+    follow_up_at: null,
+    audit: [{ id: `demo_audit_${account.customer_id}_route`, at: createdAt, actor: 'synthetic_demo_policy_v1', type: 'ROUTED', detail: `${account.route}: ${account.route_reason}` }],
+  };
+}
+
+function ensureFixtureCases(): void {
+  if (!usingConnectedCases) return;
+  cases = clone(seeds);
+  usingConnectedCases = false;
+  connectedCaseSignature = '';
+  connectedAsOf = null;
+}
+
+async function syncConnectedCases(signal?: AbortSignal): Promise<void> {
+  const accounts = await connectedDataSource.listAccounts(signal);
+  const signature = accounts.map(account => `${account.customer_id}:${account.prediction?.prediction_id ?? 'none'}:${account.route}`).join('|');
+  if (!usingConnectedCases || signature !== connectedCaseSignature) {
+    cases = accounts.map(caseFromConnectedAccount);
+    connectedCaseSignature = signature;
+  }
+  connectedAsOf = accounts
+    .flatMap(account => account.prediction?.as_of ? [account.prediction.as_of] : [])
+    .sort()
+    .at(-1) ?? null;
+  usingConnectedCases = true;
+}
 
 export function proposalsFor(item: DecisionCase): ActionProposal[] {
   const currency = item.customer_id === 'c08' ? 'SGD' : 'MYR';
   const priority = item.route === 'PRIORITY_REVIEW';
   const investigation = item.route === 'HUMAN_REVIEW';
   return [
-    { id: 'ACCOUNT_CHECK_IN', description: 'Assign a human account check-in; no outreach is sent by this demo.', availability: 'demo_operational', eligible: priority && item.customer_id !== 'c01', contraindication: priority ? (item.customer_id === 'c01' ? 'Verified payment issue has a more relevant proposal.' : null) : 'Only offered with sufficient, fresh usage evidence.', fact_ids: priority ? item.fact_ids : [], estimated_cost: money(4000, currency), estimated_minutes: 20, approval_role: 'Manager', cooldown: '30 days after an executed check-in' },
-    { id: 'PAYMENT_RECOVERY', description: 'Assign a human payment-recovery task; no payment attempt is made.', availability: 'demo_operational', eligible: item.customer_id === 'c01', contraindication: item.customer_id === 'c01' ? null : 'Requires verified billing failure evidence.', fact_ids: item.customer_id === 'c01' ? item.fact_ids : [], estimated_cost: money(15000, currency), estimated_minutes: 15, approval_role: 'Manager', cooldown: '14 days after execution' },
+    { id: 'ACCOUNT_CHECK_IN', description: 'Assign a human account check-in task for the account team.', availability: 'demo_operational', eligible: priority, contraindication: priority ? null : 'Only offered with sufficient, fresh usage evidence.', fact_ids: priority ? item.fact_ids : [], estimated_cost: money(4000, currency), estimated_minutes: 20, approval_role: 'Manager', cooldown: '30 days after an executed check-in' },
+    { id: 'PAYMENT_RECOVERY', description: 'Assign a human payment-recovery review when billing evidence is verified.', availability: 'demo_operational', eligible: false, contraindication: 'Requires verified billing-failure evidence in the case.', fact_ids: [], estimated_cost: money(15000, currency), estimated_minutes: 15, approval_role: 'Manager', cooldown: '14 days after execution' },
     { id: 'DATA_INVESTIGATION', description: 'Investigate stale, missing, or conflicting source data before outreach.', availability: 'demo_operational', eligible: investigation, contraindication: investigation ? null : 'Reserved for data-quality review.', fact_ids: investigation ? item.fact_ids : [], estimated_cost: money(0, currency), estimated_minutes: 25, approval_role: 'Manager', cooldown: 'No automatic repeat while investigation remains open' },
     { id: 'NO_INTERVENTION', description: 'Record a reasoned no-action decision.', availability: 'simulation_only', eligible: priority || investigation, contraindication: priority || investigation ? null : 'No decision requested for this route.', fact_ids: item.fact_ids, estimated_cost: money(0, currency), estimated_minutes: 0, approval_role: 'Manager', cooldown: 'N/A' },
     { id: 'CONDITIONAL_DISCOUNT', description: 'Discount offer is not configured or approved.', availability: 'disabled', eligible: false, contraindication: 'No discount policy, approval, or fulfillment integration.', fact_ids: [], estimated_cost: null, estimated_minutes: 0, approval_role: 'Manager', cooldown: 'N/A' },
@@ -37,15 +105,20 @@ export function proposalsFor(item: DecisionCase): ActionProposal[] {
 export function getCapacity(): Capacity {
   const activeCases = cases.filter(active);
   const used = budget.map(limit => money(cases.reduce((sum, item) => sum + (active(item) && item.estimated_cost?.currency === limit.currency ? item.estimated_cost.amount_minor : 0), 0), limit.currency));
-  return { review_slots: 4, used_review_slots: activeCases.length, pending: cases.filter(item => ['PROPOSED', 'HUMAN_REVIEWED', 'DEFERRED'].includes(item.status)).length, overdue: null, staff_minutes_total: 120, staff_minutes_used: activeCases.reduce((sum, item) => sum + item.estimated_minutes, 0), budgets: clone(budget), budget_used: used, investigation_queue: cases.filter(item => item.route === 'HUMAN_REVIEW' && ['PROPOSED', 'DEFERRED'].includes(item.status)).length };
+  const pendingStatuses = ['PROPOSED', 'HUMAN_REVIEWED', 'DEFERRED'];
+  const cutoff = connectedAsOf;
+  const overdue = usingConnectedCases && cutoff
+    ? cases.filter(item => item.due_at && item.due_at < cutoff && pendingStatuses.includes(item.status)).length
+    : null;
+  return { review_slots: 4, used_review_slots: activeCases.length, pending: cases.filter(item => pendingStatuses.includes(item.status)).length, overdue, staff_minutes_total: 120, staff_minutes_used: activeCases.reduce((sum, item) => sum + item.estimated_minutes, 0), budgets: clone(budget), budget_used: used, investigation_queue: cases.filter(item => item.route === 'HUMAN_REVIEW' && ['PROPOSED', 'DEFERRED'].includes(item.status)).length };
 }
 
 export const decisionService = {
-  async listCases(signal?: AbortSignal): Promise<DecisionCase[]> { if (signal?.aborted) throw new DOMException('Aborted', 'AbortError'); return clone(cases); },
-  async getCase(id: string, signal?: AbortSignal): Promise<DecisionCase | null> { if (signal?.aborted) throw new DOMException('Aborted', 'AbortError'); return clone(cases.find(item => item.id === id) ?? null); },
-  async getCapacity(): Promise<Capacity> { return getCapacity(); },
+  async listCases(signal?: AbortSignal): Promise<DecisionCase[]> { if (signal?.aborted) throw new DOMException('Aborted', 'AbortError'); ensureFixtureCases(); return clone(cases); },
+  async getCase(id: string, signal?: AbortSignal): Promise<DecisionCase | null> { if (signal?.aborted) throw new DOMException('Aborted', 'AbortError'); ensureFixtureCases(); return clone(cases.find(item => item.id === id) ?? null); },
+  async getCapacity(): Promise<Capacity> { ensureFixtureCases(); return getCapacity(); },
   recordDecision(id: string, input: DecisionInput, role: Role): DecisionCase {
-    if (role !== 'Manager') throw new Error('Demo Manager role is required for decisions.');
+    if (role !== 'Manager') throw new Error('Manager role is required for decisions.');
     const item = cases.find(value => value.id === id);
     if (!item || !['PROPOSED', 'HUMAN_REVIEWED', 'DEFERRED'].includes(item.status)) throw new Error('This case cannot accept a new decision.');
     if (!input.reason.trim() || !input.actor.trim()) throw new Error('Reason and actor are required.');
@@ -55,11 +128,11 @@ export const decisionService = {
     if (approving && action) {
       const capacity = getCapacity();
       const newSlot = !active(item);
-      if (newSlot && capacity.used_review_slots >= capacity.review_slots) throw new Error('No demo review slots remain.');
-      if (capacity.staff_minutes_used + action.estimated_minutes > capacity.staff_minutes_total) throw new Error('Demo staff-minute capacity would be exceeded.');
+      if (newSlot && capacity.used_review_slots >= capacity.review_slots) throw new Error('No review slots remain.');
+      if (capacity.staff_minutes_used + action.estimated_minutes > capacity.staff_minutes_total) throw new Error('Staff-minute capacity would be exceeded.');
       const limit = capacity.budgets.find(value => value.currency === action.estimated_cost?.currency);
       const spent = capacity.budget_used.find(value => value.currency === action.estimated_cost?.currency);
-      if (limit && spent && action.estimated_cost && spent.amount_minor + action.estimated_cost.amount_minor > limit.amount_minor) throw new Error('Demo discretionary budget would be exceeded.');
+      if (limit && spent && action.estimated_cost && spent.amount_minor + action.estimated_cost.amount_minor > limit.amount_minor) throw new Error('Discretionary budget would be exceeded.');
       item.status = 'ASSIGNED'; if (input.owner?.trim()) item.owner = input.owner.trim(); item.selected_action = action.id; item.estimated_cost = action.estimated_cost; item.estimated_minutes = action.estimated_minutes; item.due_at = input.due_at || item.due_at;
     } else if (input.kind === 'REJECT') item.status = 'REJECTED';
     else if (input.kind === 'NO_INTERVENTION') item.status = 'CLOSED_NO_ACTION';
@@ -69,7 +142,7 @@ export const decisionService = {
     return clone(item);
   },
   recordExecution(id: string, input: ExecutionInput, role: Role): DecisionCase {
-    if (!['Manager', 'CSM'].includes(role)) throw new Error('Demo Manager or CSM role is required for execution.');
+    if (!['Manager', 'CSM'].includes(role)) throw new Error('Manager or CSM role is required for execution.');
     const item = cases.find(value => value.id === id);
     if (!item || item.status !== 'ASSIGNED') throw new Error('Only assigned cases can record execution.');
     if (!input.reason.trim() || !input.actor.trim()) throw new Error('Reason and actor are required.');
@@ -80,7 +153,7 @@ export const decisionService = {
     return clone(item);
   },
   recordFollowUp(id: string, reason: string, actor: string, role: Role): DecisionCase {
-    if (!['Manager', 'CSM'].includes(role)) throw new Error('Demo Manager or CSM role is required for follow-up.');
+    if (!['Manager', 'CSM'].includes(role)) throw new Error('Manager or CSM role is required for follow-up.');
     const item = cases.find(value => value.id === id);
     if (!item || !['EXECUTED', 'FOLLOW_UP_DUE'].includes(item.status)) throw new Error('This case has no follow-up to record.');
     if (!reason.trim() || !actor.trim()) throw new Error('Reason and actor are required.');
@@ -88,5 +161,18 @@ export const decisionService = {
     item.audit.push({ id: `demo_audit_${item.customer_id}_${sequence++}`, at: new Date().toISOString(), actor: actor.trim(), type: 'FOLLOW_UP_COMPLETE', detail: reason.trim() });
     return clone(item);
   },
-  resetDemo() { cases = clone(seeds); sequence = 2; },
+  resetDemo() { cases = clone(seeds); sequence = 2; usingConnectedCases = false; connectedCaseSignature = ''; connectedAsOf = null; },
 };
+
+export const connectedDecisionService = {
+  async listCases(signal?: AbortSignal): Promise<DecisionCase[]> { return (await getBackendCases(signal)).cases; },
+  async getCase(id: string, signal?: AbortSignal): Promise<DecisionCase | null> { return (await getBackendCases(signal)).cases.find(item => item.id === id) ?? null; },
+  async getCapacity(signal?: AbortSignal): Promise<Capacity> { return (await getBackendCases(signal)).capacity; },
+  async recordDecision(id: string, input: DecisionInput, role: Role): Promise<DecisionCase> { return postBackendDecision(id, input, role); },
+  async recordExecution(id: string, input: ExecutionInput, role: Role): Promise<DecisionCase> { return postBackendExecution(id, input, role); },
+  async recordFollowUp(id: string, reason: string, actor: string, role: Role): Promise<DecisionCase> { return postBackendFollowUp(id, reason, actor, role); },
+};
+
+export function decisionDataSource(mode: DataMode) {
+  return mode === 'connected' ? connectedDecisionService : decisionService;
+}
