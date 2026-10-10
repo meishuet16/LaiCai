@@ -54,6 +54,16 @@ from .label_builder import (
     OutcomeObservation,
     SUPPORTED_HORIZONS,
 )
+from .temporal_splits import (
+    SnapshotRecord,
+    SplitName,
+    TemporalPartition,
+    TemporalSplitBoundaries,
+    TemporalSplitConfig,
+    TemporalSplitManifest,
+    TemporalSplitResult,
+    TemporalSplitter,
+)
 from .point_in_time import (
     AvailabilityPolicy,
     BillingFact,
@@ -120,4 +130,12 @@ __all__ = [
     "LifecycleOutcomeSnapshot",
     "OutcomeObservation",
     "SUPPORTED_HORIZONS",
+    "SnapshotRecord",
+    "SplitName",
+    "TemporalPartition",
+    "TemporalSplitBoundaries",
+    "TemporalSplitConfig",
+    "TemporalSplitManifest",
+    "TemporalSplitResult",
+    "TemporalSplitter",
 ]
