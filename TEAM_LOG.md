@@ -72,6 +72,32 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T17:14:17Z — Member 2 AI coding assistant — Correct source-state attribution and assess FULL feasibility
+
+- **Workstream:** Part 2 / Part 1 integration / Docs / QA
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `fix(member2): distinguish unknown source health from disconnection` (Prompt 27 pending; not committed)
+- **Issue / task:** Member 2 Prompt 27; no ticket
+- **Files changed:** `src/retainiq_prediction/data_freshness.py`, `src/retainiq_prediction/sqlite_data_adapter.py`, `tests/test_data_freshness.py`, `tests/test_sqlite_data_adapter.py`, `tests/test_reliability.py`, `docs/MEMBER2_FULL_SYNTHETIC_FEASIBILITY.md`, `docs/MEMBER2_TO_MEMBER1_CONTRACT_REQUESTS.md`, `docs/MEMBER2_TRAINING_READINESS_DECISION.md`, and this log.
+- **What changed:**
+  - Prompt 26 was verified as precisely its four expected files and checkpointed locally as `c0948a2b6981711559c854bd53a52e7b883f43ca` (`docs(member2): formalize source health and model readiness contracts`). No other files were staged for that checkpoint.
+  - Confirmed the adapter inferred `connected=False` from missing account facts/coverage and freshness mislabeled silence `SOURCE_NOT_CONNECTED`/stale. `connected` is now tri-state with default unknown; the SQLite adapter does not infer connection from either events or coverage. Explicit `False` remains stale/blocking; absent health and absent watermark remain unknown. Complete available coverage can independently support coverage freshness. Reliability policy, status enums, thresholds, and canonical prediction schema are unchanged.
+  - Added regressions for event silence, independently verified zero usage coverage, explicit disconnection, unknown/future source health, serialized reasons, and continued reliability abstention.
+  - Inspected FULL profile code/config (20,000 accounts, four tenants, seed 2026 default, `[2024-10-01, 2026-10-01)`). The documented immutable FULL directory and DB are absent from the inspected private root; no FULL manifest or tenant authorization could be verified. `RETAINIQ_MODEL_TOKEN` was absent, so a bounded STANDARD authenticated pilot stopped before data API calls; no credentials were requested or created.
+  - Profiled the existing STANDARD preparation's recorded aggregate metrics rather than re-reading customer data: 234,495 authenticated calls / 950.910s; point-in-time reads 572.882s, outcome reads 120.845s. Proposed an authorized Member 1 batch API; no cache or alternate reader was added. FULL compute/storage projections are explicitly linear estimates, not measurements.
+  - Verified the existing STANDARD source manifest, preparation manifest, all 8 artifact hashes/sizes, and the SQLite file checksum by checksum-only reads. No SQLite records were queried or changed; private customer-level artifacts were not decompressed, parsed, or altered.
+- **Why it changed:** Prompt 27 requires truthful source-health attribution, a bounded FULL feasibility decision, and efficiency analysis without weakening data-quality or temporal safeguards.
+- **Contract / database / API impact:** Internal freshness evidence now permits unknown connection state. No canonical PredictionOutput fields/statuses, source database, Member 1 API/schema, frozen split, calibration threshold, or TEST policy changed. Member 1 must supply historical operational-health and completeness evidence and consider bounded authorized batch reads; shared cancellation/multi-subscription policy remains open.
+- **Tests / verification:**
+  - `.\.venv\Scripts\python.exe -B -m pytest -q tests\test_data_freshness.py tests\test_sqlite_data_adapter.py tests\test_reliability.py tests\test_historical_dataset_preparation.py tests\test_label_builder.py tests\test_temporal_splits.py tests\test_data_foundation.py tests\test_cross_member_integration.py tests\test_cross_member_policy_readiness.py --basetemp .pytest-tmp-p27-focused-final` — **PASS** — 173 passed.
+  - `.\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p27-final` — **PASS** — 454 passed, 0 failed/errors/skipped, 24 known SHAP warnings (9 explainability, 15 prediction pipeline), unsuppressed; 20.71s.
+  - Package imports — **PASS**. AST parse — **PASS**, 49 Python files. `git diff --check` — **PASS** (rerun after this log update before handoff).
+  - STANDARD source/preparation manifest SHA and all 8 artifact SHA/size checks — **PASS**. SQLite file checksum-only SHA-256 matches prior manifest `71bc6c18d9266c2b0c8b8e5008f6f6633a55804b1fe90a947f8ea24ca3ee5943`.
+  - Bounded authenticated pilot — **NOT RUN** — no `RETAINIQ_MODEL_TOKEN` in process environment. FULL pilot — **NOT RUN** — expected immutable dataset/database absent and tenant-01 authorization unverified.
+- **Data / model / ROI evidence:** **Synthetic only.** Existing STANDARD v1.2 tenant-01 preparation; no new records, labels, metrics, model, calibration, TEST outcome analysis, or performance claim. Historical handoff FULL counts/import time are cited only as unverified prior documentation. New FULL storage/runtime projections are estimates.
+- **Known issues / blockers:** Existing v4 aggregate freshness/reliability and 9,355 `SOURCE_NOT_CONNECTED` occurrences are pre-correction results and were not recomputed. STANDARD sample gates remain blocked; operational scoring remains blocked. No FULL manifest/tenant grants or usable reader credential. Member 1 historical heartbeat/completeness and batch-read interfaces remain dependencies.
+- **Next action / handoff:** Project lead/Member 1 to provide or locate the immutable FULL artifact, confirm exact tenant-01 authorization, and deliver historical source-health/completeness and bounded-read contracts. Only then run a bounded tenant-01 readiness pilot; do not train or alter frozen TEST/split/calibration policy without a separately authorized prompt.
+
 ### 2026-10-10T16:59:47Z — Member 2 AI coding assistant — Audit cross-member policy and readiness
 
 - **Workstream:** Part 2 / Part 1 integration / Docs / QA

@@ -240,6 +240,66 @@ def test_adapter_rejects_naive_cutoffs_and_exposes_freshness_limits(data):
     assert lifecycle.limitations
 
 
+def test_event_silence_does_not_map_to_source_disconnected(data):
+    create_customer(data.db, "tenant-a", "quiet-account")
+    map_customer_identity(data.db, "tenant-a", "source-a", "external-quiet", "quiet-account")
+
+    snapshot = data.adapter.snapshot_for("tenant-a", "quiet-account", AS_OF)
+    evidence = data.adapter.freshness_evidence_from(snapshot, ())
+    assessments = assess_data_freshness(
+        "tenant-a", "quiet-account", AS_OF, evidence, evaluated_at=AS_OF
+    )
+
+    assert snapshot.subscriptions == ()
+    assert snapshot.billing_events == ()
+    assert snapshot.usage_events == ()
+    assert all(item.connected is None for item in evidence)
+    assert assessments.status.value == "unknown"
+    assert all(
+        "SOURCE_NOT_CONNECTED" not in {code.value for code in item.reason_codes}
+        for item in assessments.source_assessments
+    )
+    assert all(item.status.value != "fresh" for item in assessments.source_assessments)
+
+
+def test_complete_zero_usage_coverage_is_not_missing_or_disconnected(data):
+    create_customer(data.db, "tenant-a", "zero-usage-account")
+    map_customer_identity(data.db, "tenant-a", "source-a", "external-zero", "zero-usage-account")
+    record_observation_coverage(
+        data.db, data.integration, {
+            "coverage_id": "zero-usage-coverage",
+            "customer_id": "zero-usage-account",
+            "source_category": "usage",
+            "covered_from": "2026-09-01T00:00:00Z",
+            "covered_through": "2026-10-10T00:00:00Z",
+            "coverage_status": "complete",
+            "coverage_completeness": 1.0,
+            "coverage_available_at": "2026-10-10T00:00:00Z",
+            "observation_policy_version": "coverage-v1",
+        },
+    )
+    snapshot = data.adapter.snapshot_for("tenant-a", "zero-usage-account", AS_OF)
+    assert snapshot.usage_events == ()
+    coverage = data.adapter.coverage_records_for("tenant-a", "zero-usage-account", AS_OF)
+    usage_evidence = next(
+        item for item in data.adapter.freshness_evidence_from(snapshot, coverage)
+        if item.source == "usage_coverage"
+    )
+
+    assert usage_evidence.connected is None
+    assert usage_evidence.complete is True
+    assert usage_evidence.watermark_at == AS_OF
+    # Complete coverage with no activity establishes observed zero usage;
+    # event silence alone does not.
+    assessment = assess_data_freshness(
+        "tenant-a", "zero-usage-account", AS_OF,
+        data.adapter.freshness_evidence_from(snapshot, coverage),
+        evaluated_at=AS_OF,
+    )
+    usage = next(item for item in assessment.source_assessments if item.source == "usage_coverage")
+    assert usage.status.value == "fresh"
+
+
 def test_adapter_defense_excludes_late_and_unknown_availability(data):
     base_api = data.adapter.reader_api
 

@@ -418,9 +418,14 @@ class SQLiteDataAdapter:
                 source_available_at=latest.source_available_at if latest else None,
                 received_at=latest.received_at if latest else None,
                 watermark_at=latest.point_in_time() if latest else None,
-                complete=None, connected=latest is not None,
+                # Member 1 exposes no historical connection-health fact here.
+                # Event presence/silence cannot establish current connectivity.
+                complete=None, connected=None,
                 source_record_refs=tuple(f.record_id for f in facts),
-                limitations=("No independent completeness watermark is exposed by Member 1.",),
+                limitations=(
+                    "No independent completeness watermark or historical connection-health "
+                    "evidence is exposed by Member 1.",
+                ),
             ))
         usages = [row for row in coverage if row.source_category == "usage"]
         latest_coverage = max(usages, key=lambda row: row.observed_to, default=None)
@@ -430,9 +435,13 @@ class SQLiteDataAdapter:
             source_available_at=latest_coverage.available_at if latest_coverage else None,
             watermark_at=latest_coverage.observed_to if latest_coverage else None,
             complete=all(row.complete for row in usages) if usages else None,
-            connected=bool(usages),
+            # Coverage can establish interval completeness/freshness, not
+            # operational connectivity. Member 1's health evidence is absent.
+            connected=None,
             source_record_refs=tuple(row.coverage_id for row in usages),
-            limitations=("No usage coverage is available at this cutoff.",) if not usages else (),
+            limitations=(
+                "No usage coverage or independent connection-health evidence is available at this cutoff.",
+            ) if not usages else (),
         ))
         return tuple(result)
 

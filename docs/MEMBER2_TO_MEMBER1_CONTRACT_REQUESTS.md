@@ -104,8 +104,14 @@ authorized service principal and `integration_health`; integration health is
 scoped to the caller's integration. This is operational sync telemetry, not a
 historical source watermark or proof that every lifecycle/billing account was
 observed. The Member 2 SQLite adapter does not consume this health API: it
-currently derives freshness from latest account event times and usage coverage.
-No explicit expected cadence, completeness heartbeat, historical
+derives freshness from latest account event times and usage coverage. Prompt 27
+confirmed a source-state attribution bug: absence of account-scoped lifecycle,
+billing, or usage-coverage rows was mapped to `connected=False`, emitting
+`SOURCE_NOT_CONNECTED` without operational health evidence. Member 2 now maps
+missing connection evidence to `null`/unknown; explicit `connected=False`
+remains stale and blocking. Silence is not inferred healthy, and no thresholds
+changed. Existing prepared aggregate counts have not been recomputed under
+this fix. No explicit expected cadence, completeness heartbeat, historical
 `observed_through`, or versioned source-health history is supplied.
 
 **Request:** provide a backward-compatible, authenticated read (or append-only
@@ -171,9 +177,13 @@ coverage reporting should count complete/partial/outage/delayed/not-created/
 censored/gapped intervals within tenant/source grants and never equate absent
 events with zero activity. The coverage contract currently has no
 `subscription_id`; add it only if source systems can prove it and downstream
-policy requires it. A bounded batch read could reduce the 234,495 calls from
-the STANDARD preparation, but must preserve the same per-account auth,
-source grants, as-of filters, and response limits. Member 1 owns API/query
-optimization; Member 2 will benchmark only after an authorized change. **P1
-nonblocking** for frozen tenant-01 artifacts; needed for scale/coverage
-diagnostics.
+policy requires it. Prompt 27's bounded STANDARD pilot could not run because
+the tenant-scoped reader credential was not present in the process
+environment; the previous run's aggregate counts remain the only measured
+baseline. The measured 234,495 calls/950.910 seconds are dominated by
+point-in-time reads (572.882s) and outcome reads (120.845s). A bounded,
+tenant-derived batch read for account snapshots, subscriptions, events and
+coverage is requested; batching must preserve per-account authorization and
+both event/availability-time filters. No cache or alternate reader was
+introduced. Member 1 owns API/query optimization. **P1 nonblocking** for frozen
+tenant-01 artifacts; needed for scale/coverage diagnostics.

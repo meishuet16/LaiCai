@@ -55,7 +55,11 @@ class SourceFreshnessEvidence(_FreshnessModel):
     last_sync_at: AwareDatetime | None = None
     watermark_at: AwareDatetime | None = None
     complete: bool | None = None
-    connected: bool = True
+    # `None` means the source's operational connection state was not
+    # independently observed. It must not be inferred from account event
+    # silence. Freshness can still be established from independently supplied
+    # complete, scoped coverage evidence without claiming connectivity.
+    connected: bool | None = None
     source_record_refs: tuple[str, ...] = ()
     limitations: tuple[str, ...] = ()
 
@@ -209,7 +213,7 @@ def _source_assessment(
                 "Source metadata after the prediction cutoff was excluded.",
             ),
         )
-    if not evidence.connected:
+    if evidence.connected is False:
         return SourceFreshnessAssessment(
             source=source,
             status=FreshnessStatus.STALE,
@@ -218,6 +222,18 @@ def _source_assessment(
             availability_basis=basis,
             evidence=evidence,
             limitations=("The source is not connected at the cutoff.",),
+        )
+    if evidence.connected is None and (available_at is None or evidence.watermark_at is None):
+        return SourceFreshnessAssessment(
+            source=source,
+            status=FreshnessStatus.UNKNOWN,
+            reason_codes=(FreshnessReasonCode.SOURCE_METADATA_MISSING,),
+            evidence=evidence,
+            missing=True,
+            limitations=(
+                "Operational connection state and source coverage are not established; "
+                "event silence is not evidence of disconnection or health.",
+            ),
         )
     if available_at is None or evidence.watermark_at is None:
         missing_reason = (

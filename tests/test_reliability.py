@@ -108,6 +108,7 @@ def freshness(
     tenant_id: str = "tenant-a",
     customer_id: str = "customer-a",
     stale_subscription: bool = False,
+    unknown_subscription: bool = False,
     usage_complete: bool = True,
 ) -> DataFreshnessAssessment:
     sources = [
@@ -115,10 +116,17 @@ def freshness(
             tenant_id=tenant_id,
             customer_id=customer_id,
             source=FreshnessSource.SUBSCRIPTION_LIFECYCLE.value,
-            source_available_at=at(9 if not stale_subscription else 1),
-            last_sync_at=at(9 if not stale_subscription else 1),
-            watermark_at=at(9 if not stale_subscription else 1),
+            source_available_at=(
+                None if unknown_subscription else at(9 if not stale_subscription else 1)
+            ),
+            last_sync_at=(
+                None if unknown_subscription else at(9 if not stale_subscription else 1)
+            ),
+            watermark_at=(
+                None if unknown_subscription else at(9 if not stale_subscription else 1)
+            ),
             complete=True,
+            connected=None if unknown_subscription else True,
         ),
         SourceFreshnessEvidence(
             tenant_id=tenant_id,
@@ -259,6 +267,18 @@ def test_stale_subscription_data_is_blocking():
 
     assert result.status is ReliabilityStatus.INSUFFICIENT_EVIDENCE
     assert ReliabilityReasonCode.ESSENTIAL_FRESHNESS_STALE in result.reason_codes
+
+
+def test_unknown_lifecycle_health_remains_abstention_eligible():
+    result = assess_reliability(
+        eligibility(), feature(), freshness(unknown_subscription=True)
+    )
+
+    assert result.status is ReliabilityStatus.INSUFFICIENT_EVIDENCE
+    assert result.abstention_required is True
+    assert ReliabilityReasonCode.ESSENTIAL_FRESHNESS_UNKNOWN in result.reason_codes
+    serialized = result.model_dump(mode="json")
+    assert "ESSENTIAL_FRESHNESS_UNKNOWN" in serialized["reason_codes"]
 
 
 def test_known_cancellation_is_preserved_and_not_scored():

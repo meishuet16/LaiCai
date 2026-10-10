@@ -109,16 +109,22 @@ Missing personal baseline and stale/coverage reasons overlap.
 
 Confirmed causes: every feature snapshot has partial usage coverage; the
 adapter builds lifecycle/billing watermarks from latest visible customer
-events, not a completeness heartbeat; the health API's `freshness_status` is
-explicitly `unknown`; and 9,355 aggregate reason occurrences say source not
-connected. In Member 2's adapter, `connected=False` is assigned when no
-account-scoped event exists in the as-of read; therefore `SOURCE_NOT_CONNECTED`
-is not a measured integration outage and cannot distinguish absent account
-events from source-health failure. Unknown cause: whether historical stale
-watermarks mean expected time-relative event silence, missing lifecycle/billing
-sync, outage, or an actual account coverage defect. Do not equate customer
-inactivity with source failure, and do not promote freshness without
-source-backed cadence and completeness evidence.
+events, not a completeness heartbeat; and the health API's `freshness_status`
+is explicitly `unknown`. The v4 manifest records 9,355
+`SOURCE_NOT_CONNECTED` reason occurrences. Prompt 27 traced these to
+`connected=False` being synthesized from no account-scoped event/coverage;
+they are not measured outages. The adapter now represents absent operational
+health as `connected=None` and returns unknown when no independent source
+availability/watermark exists. Explicit disconnected evidence remains stale;
+available complete coverage may establish freshness of that coverage without
+claiming connectivity. Reliability rules and thresholds are unchanged. This
+code-level correction has not been propagated through the private prepared
+outputs, so their aggregate freshness/reliability distributions remain the
+pre-correction results and must not be presented as corrected counts. Unknown
+cause remains whether stale historical watermarks reflect expected
+time-relative event silence, missing sync, outage, or an account coverage
+defect. Do not promote freshness without source-backed cadence and completeness
+evidence.
 
 ## Future data options (not executed)
 

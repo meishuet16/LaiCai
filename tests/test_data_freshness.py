@@ -152,6 +152,68 @@ def test_missing_freshness_metadata_is_unknown_not_fresh():
     assert FreshnessReasonCode.SOURCE_METADATA_MISSING in subscription.reason_codes
 
 
+def test_event_silence_with_unknown_connection_is_unknown_not_healthy_or_disconnected():
+    no_health = evidence(
+        FreshnessSource.SUBSCRIPTION_LIFECYCLE.value,
+        available_day=None,
+        watermark_day=None,
+        last_sync_day=None,
+        connected=None,
+    )
+
+    result = assess_data_freshness(
+        "tenant-a", "customer-a", at(10),
+        [no_health, evidence(FreshnessSource.USAGE_COVERAGE.value)],
+        evaluated_at=at(10),
+    )
+
+    lifecycle = next(
+        item for item in result.source_assessments
+        if item.source == FreshnessSource.SUBSCRIPTION_LIFECYCLE.value
+    )
+    assert lifecycle.status is FreshnessStatus.UNKNOWN
+    assert FreshnessReasonCode.SOURCE_NOT_CONNECTED not in lifecycle.reason_codes
+    assert lifecycle.evidence.connected is None
+    assert "not evidence of disconnection or health" in lifecycle.limitations[0]
+    assert result.status is FreshnessStatus.UNKNOWN
+    assert result.model_dump(mode="json")["source_assessments"][0]["evidence"]["connected"] is None
+
+
+def test_explicit_disconnection_remains_stale_and_distinct_from_unknown():
+    disconnected = evidence(
+        FreshnessSource.SUBSCRIPTION_LIFECYCLE.value,
+        connected=False,
+    )
+    result = assess_data_freshness(
+        "tenant-a", "customer-a", at(10),
+        [disconnected, evidence(FreshnessSource.USAGE_COVERAGE.value)],
+    )
+
+    lifecycle = result.source_assessments[0]
+    assert lifecycle.status is FreshnessStatus.STALE
+    assert FreshnessReasonCode.SOURCE_NOT_CONNECTED in lifecycle.reason_codes
+
+
+def test_unknown_connection_does_not_discard_independently_complete_recent_coverage():
+    coverage = evidence(
+        FreshnessSource.USAGE_COVERAGE.value,
+        connected=None,
+    )
+    result = assess_data_freshness(
+        "tenant-a", "customer-a", at(10),
+        [evidence(FreshnessSource.SUBSCRIPTION_LIFECYCLE.value), coverage],
+    )
+
+    usage = next(
+        item for item in result.source_assessments
+        if item.source == FreshnessSource.USAGE_COVERAGE.value
+    )
+    # This means the scoped coverage record is fresh, not that integration
+    # connectivity was independently measured.
+    assert usage.status is FreshnessStatus.FRESH
+    assert usage.evidence.connected is None
+
+
 def test_future_source_metadata_cannot_influence_past_assessment():
     result = assess_data_freshness(
         "tenant-a",
