@@ -406,6 +406,31 @@ Members may cover several workstreams. Update assignments through a logged commi
 - **Next action / handoff:** Review the orchestration and proposed explanation mapping with Members 1, 3, and 4; connect only authorized real artifacts and adapters before production exposure.
 - **Reviewer / pairing:** N/A
 
+### 2026-10-10T07:50:07Z — Member 2 AI coding assistant — Offline historical evaluation
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; Prompt 14 checkpoint is `e952291`
+- **Issue / task:** Member 2 Prompt 15; no ticket
+- **Files changed:** `src/retainiq_prediction/historical_evaluation.py`, `src/retainiq_prediction/__init__.py`, `tests/test_historical_evaluation.py`, `docs/MEMBER2_HISTORICAL_EVALUATION.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added a typed, offline evaluator for immutable `PredictionOutput`/candidate scores joined to `ChurnLabel` records by `(tenant_id, customer_id, as_of, horizon_days)`; duplicate and cross-tenant/customer joins are rejected.
+  - Enforced chronological partition membership, frozen TEST selection, version compatibility, evaluation-cutoff maturity, horizon-specific exclusion, deterministic top-K ranking, and explicit single-class/insufficient-sample metric states without converting unknown outcomes to zero.
+  - Added per-horizon PR-AUC, ROC-AUC, Brier, Precision@K, Recall@K, calibration bins, coverage/abstention, horizon-ordering audits, model-cohort comparison warnings, typed lead-time readiness, and conservative Revenue Captured@K handling requiring as-of MRR, one currency, and an explicit deduplication policy.
+  - Added a Prompt 14 scenario coverage audit and documented the 24 existing SHAP/LightGBM output-shape warnings as known compatibility warnings; the existing explainer normalizes supported output shapes and verifies additivity.
+  - Added the historical-evaluation documentation while preserving improvement backlog items 001–004 as pending.
+- **Why it changed:** Provide reproducible offline evaluation and governance evidence without retraining, estimator/calibrator fitting, threshold selection, API/database work, or causal/revenue-saved claims.
+- **Contract / database / API impact:** No database, API, canonical prediction schema, label definition, temporal-split policy, Decision Engine, or dashboard contract changed. The evaluator preserves `prediction_id` and `prediction_run_id` when present and records version/provenance metadata.
+- **Tests / verification:**
+  - `& .venv\Scripts\python.exe -m pytest -q tests/test_historical_evaluation.py --basetemp .pytest-tmp` — PASS — 15 tests passed.
+  - `& .venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp` — PASS — 230 tests passed; 24 known SHAP/LightGBM output-shape warnings.
+  - Focused evaluator/pipeline/explainability/calibration/reliability run — PASS — 75 tests passed; 24 known SHAP/LightGBM output-shape warnings.
+  - `git diff --check` and package import checks — run after the final log update below.
+- **Data / model / ROI evidence:** Synthetic evaluation fixtures only; no authorized longitudinal dataset, real performance metric, model-selection result, retention uplift, causal effect, saved revenue, or ROI claim. Real evaluation remains `BLOCKED` until Member 1 supplies authorized provenance and mature source-backed outcomes and the dataset readiness gate is PASS.
+- **Known issues / blockers:** Member 1 must provide frozen historical prediction/source joins, lifecycle outcome availability and correction semantics, mature outcome coverage, as-of MRR/currency and deduplication policy, and authorized dataset provenance. Lead-time analysis also requires a frozen alert-policy version and historical alert records. Personalized-baseline ablation remains pending and was not implemented.
+- **Next action / handoff:** Have Members 1, 3, and 4 review the typed evaluation report, coverage/abstention denominators, revenue exposure limitation, and synthetic-result exclusion before any authorized replay or dashboard integration.
+- **Reviewer / pairing:** N/A
+
 ## 6. Shared integration agreements — verify before changing
 
 - **Prediction anchor:** `prediction_id` = unique account forecast snapshot; `prediction_run_id` = inference batch/job ID.
