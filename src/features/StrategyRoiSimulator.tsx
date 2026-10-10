@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { AccountRecord, Currency } from '../domain/customer';
+import { customerLabel, type AccountRecord, type Currency } from '../domain/customer';
 import type { Capacity, DecisionCase } from '../domain/decision';
 import { calculateScenario } from '../domain/scenario';
 import { formatMoney, formatRisk, majorToMinor, minorToMajor } from '../domain/format';
@@ -152,7 +152,7 @@ export function StrategyRoiSimulator({ accounts, cases, capacity }: { accounts: 
     <section className="card simulator-candidates">
       <div className="section-head"><div><h2>Cases in the scenario</h2><p className="muted">The allocation updates as the resource sliders move.</p></div><span className="pill neutral">{sortedCandidates.length} candidates</span></div>
       {sortedCandidates.length ? <div className="tablewrap"><table><thead><tr><th>Rank</th><th>Account / case</th><th>p30</th><th>Exposure proxy</th><th>Eligible action</th><th>Estimated cost</th><th>Scenario result</th></tr></thead><tbody>
-        {sortedCandidates.map((candidate, index) => <tr key={candidate.item.id}><td>#{index + 1}</td><td>{candidate.account.customer_id}<small>{candidate.item.id}</small></td><td>{formatRisk(candidate.account.prediction, 30)}</td><td>{formatMoney(candidate.account.exposure_proxy)}</td><td>{candidate.action.id.replaceAll('_', ' ').toLowerCase()}</td><td>{formatMoney(candidate.action.estimated_cost)}</td><td><span className={`pill ${allocated.includes(candidate) ? 'good' : 'neutral'}`}>{allocated.includes(candidate) ? 'Fits plan' : 'Not allocated'}</span></td></tr>)}
+        {sortedCandidates.map((candidate, index) => <tr key={candidate.item.id}><td>#{index + 1}</td><td>{customerLabel(candidate.account)}<small>{candidate.account.customer_id} · {candidate.item.id}</small></td><td>{formatRisk(candidate.account.prediction, 30)}</td><td>{formatMoney(candidate.account.exposure_proxy)}</td><td>{candidate.action.id.replaceAll('_', ' ').toLowerCase()}</td><td>{formatMoney(candidate.action.estimated_cost)}</td><td><span className={`pill ${allocated.includes(candidate) ? 'good' : 'neutral'}`}>{allocated.includes(candidate) ? 'Fits plan' : 'Not allocated'}</span></td></tr>)}
       </tbody></table></div> : <p className="empty-trend">No eligible cases with an action cost in {scenarioCurrency} are available for this strategy.</p>}
       <p className="caption">This list follows the shared account search and currency filters. Revenue Captured @K and strategy performance are unavailable without historical replay and mature outcomes.</p>
     </section>
@@ -162,7 +162,7 @@ export function StrategyRoiSimulator({ accounts, cases, capacity }: { accounts: 
         <div className="section-head"><div><small className="simulator-step">02 · BREAK-EVEN</small><h2 id="roi-controls-title">Set ROI assumptions</h2></div><span className="pill amber">SCENARIO ONLY</span></div>
         {roiCases.length === 0 ? <p className="empty-trend">No case has valid MRR, p30, and an eligible action cost in this fixture.</p> : <>
           <div className="simulator-selects">
-            <label>Case<select value={roiCase?.id ?? ''} onChange={event => { setScenarioCaseId(event.target.value); setScenarioActionId(''); setScenarioCost(null); }}>{roiCases.map(item => <option key={item.id} value={item.id}>{item.customer_id} · {item.id}</option>)}</select></label>
+            <label>Case<select value={roiCase?.id ?? ''} onChange={event => { setScenarioCaseId(event.target.value); setScenarioActionId(''); setScenarioCost(null); }}>{roiCases.map(item => <option key={item.id} value={item.id}>{customerLabel(byId.get(item.customer_id)!)} · {item.id}</option>)}</select></label>
             <label>Eligible action<select value={roiAction?.id ?? ''} onChange={event => { setScenarioActionId(event.target.value); setScenarioCost(null); }}>{roiActions.map(action => <option key={action.id} value={action.id}>{action.id.replaceAll('_', ' ').toLowerCase()}</option>)}</select></label>
           </div>
           <div className="simulator-context"><span>MRR <b>{formatMoney(roiAccount?.mrr)}</b></span><span>Baseline p30 <b>{formatRisk(roiAccount?.prediction ?? null, 30)}</b></span><span>Proposal cost <b>{formatMoney(roiAction?.estimated_cost)}</b></span></div>

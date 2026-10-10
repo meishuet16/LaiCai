@@ -10,9 +10,9 @@ The shell does not claim an authenticated tenant, model cutoff, dataset identity
 
 ## Explicit data modes
 
-`connected` is the default. Services do not silently replace connection failures with fixtures. Customer/prediction, decision/capacity, and customer timeline reads report unavailable because this checkout has no browser-safe authenticated API adapter or corresponding read endpoints. Data Integration also stays unavailable because the health endpoints require service-principal authorization and the browser has no approved credential flow.
+`demo_fixture` is the initial view while customer/prediction and decision/capacity integrations are not connected. The user can explicitly select `connected`; services do not silently replace connection failures with fixtures. Customer/prediction, decision/capacity, and customer timeline reads then report unavailable because this checkout has no browser-safe authenticated API adapter or corresponding read endpoints. Data Integration also stays unavailable because the health endpoints require service-principal authorization and the browser has no approved credential flow.
 
-`demo_fixture` is opt-in from the shell. It is labeled `DEMO FIXTURE — SAMPLE DATA`; these local illustrative records are not Synthetic SaaS v1.2 records, trained model predictions, observed outcomes, or durable decisions. Fixture account IDs are display identifiers; company/contact/owner/tenant identity and prediction cutoff metadata are not invented. Case decisions remain browser-session simulations.
+`demo_fixture` is labeled `DEMO FIXTURE — SAMPLE DATA`; these local illustrative records are not Synthetic SaaS v1.2 records, trained model predictions, observed outcomes, or durable decisions. The original illustrative company names and sample owners remain in this mode only. Fixture account IDs are display identifiers; authenticated tenant identity and prediction cutoff metadata are not invented. Case decisions remain browser-session simulations.
 
 ## Domain and formatting
 

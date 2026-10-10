@@ -15,7 +15,7 @@ type AppState = {
 const Context = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [dataMode, setDataMode] = useState<AppState['dataMode']>('connected');
+  const [dataMode, setDataMode] = useState<AppState['dataMode']>('demo_fixture');
   const [route, setRoute] = useState<AppRoute>(() => routeFromPath(window.location.pathname));
   const [query, setQuery] = useState('');
   const [horizon, setHorizon] = useState<Horizon>(30);

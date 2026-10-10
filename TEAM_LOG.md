@@ -72,6 +72,27 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T17:11:19Z — Codex — Keep demo fixtures as the initial frontend view
+
+- **Workstream:** Frontend / QA / Docs
+- **Branch:** `member4`
+- **Commit subject:** `fix: keep demo fixtures visible until integrations exist`
+- **Issue / task:** Preserve the existing mock customer and case data while Members 2 and 3 integrations are unavailable.
+- **Files changed:** `src/app/AppContext.tsx`, `src/services/retainIQService.ts`, `src/services/decisionService.ts`, `src/features/DecisionCasesPage.tsx`, `src/features/StrategyRoiSimulator.tsx`, related service tests, `docs/FRONTEND_ARCHITECTURE.md`, and this log.
+- **What changed:**
+  - Made explicitly labelled `demo_fixture` the initial view; selecting Connected mode still shows its real unavailable state and never falls back silently.
+  - Restored the original illustrative company names and seeded owners in demo records, and displayed names with stable IDs in the work queue and slider simulator.
+- **Why it changed:** The backend customer/prediction and decision workflows are not yet integrated, and defaulting to unavailable pages hid the useful mock UI during frontend development.
+- **Contract / database / API impact:** None. No production identity, tenant, prediction cutoff, API response, or shared backend schema was changed.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - Safari local Vite check (`/cases` on port 5180) — PASS — a fresh load selected Demo fixture, showed Northwind Logistics/Janice and Meridian Foods/Jasmine, and displayed named cases with five sliders in Strategy & ROI Simulator.
+- **Data / model / ROI evidence:** Illustrative local fixtures and scenario assumptions only; no trained model output, authenticated tenant, production decision, measured outcome, or causal ROI.
+- **Known issues / blockers:** Member 2/3 browser-safe prediction and decision APIs are not connected. Demo case changes remain browser-session-only; Connected mode remains unavailable.
+- **Next action / handoff:** Replace the sample adapters only after authoritative tenant-scoped APIs and authentication are supplied; preserve the explicit demo/connected separation.
+- **Reviewer / pairing:** `N/A`
+
 ### 2026-10-10T17:01:33Z — Codex — Add slider-driven Strategy & ROI simulator
 
 - **Workstream:** Frontend / QA / Docs

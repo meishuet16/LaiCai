@@ -30,17 +30,19 @@ test('missing account remains missing', async () => {
   assert.equal((await fixtureDataSource.getPrediction('demo_pred_c02'))?.customer_id, 'c02');
 });
 
-test('fixture records require an explicit data mode; connected mode reports the missing contract', async () => {
+test('fixture and connected sources remain separate; connected mode reports the missing contract', async () => {
   await assert.rejects(() => connectedDataSource.listAccounts(), NotConnectedError);
   await assert.rejects(() => accountDataSource('connected').listAccounts(), NotConnectedError);
   assert.equal((await accountDataSource('demo_fixture').listAccounts()).length, 9);
 });
 
-test('fixture customer identities do not invent CRM names, owners, tenant context, or cutoff metadata', async () => {
+test('demo fixtures retain sample names and owners without inventing tenant, cutoff, or model metadata', async () => {
   const accounts = await fixtureDataSource.listAccounts();
+  assert.equal(accounts.find(account => account.customer_id === 'c01')?.name, 'Northwind Logistics');
+  assert.equal(accounts.find(account => account.customer_id === 'c01')?.owner, 'Janice');
+  assert.equal(accounts.find(account => account.customer_id === 'c02')?.name, 'Kopi Ventures');
   for (const account of accounts) {
-    assert.equal(account.name, account.customer_id);
-    assert.equal(account.owner, null);
+    assert.ok(account.name);
     assert.equal(account.tenant_id, null);
     assert.equal(account.prediction?.tenant_id, null);
     assert.equal(account.prediction?.as_of, null);

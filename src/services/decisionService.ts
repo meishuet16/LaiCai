@@ -15,7 +15,6 @@ const seeds: DecisionCase[] = [
   { id: 'demo_case_c05', customer_id: 'c05', route: 'OBSERVE', route_reason: 'Below review priority', status: 'OBSERVE', owner: 'Janice', created_at: '2026-10-09T08:00:00Z', due_at: null, fact_ids: ['usage_fact_501'], facts: ['Synthetic recent usage remains near baseline'], warnings: [], proposed_action: null, selected_action: null, estimated_cost: null, estimated_minutes: 0, actual_cost: null, actual_minutes: null, response_at: null, completed_at: null, follow_up_at: null, audit: audit('c05', 'Observe only; no review slot or action proposed.') },
   { id: 'demo_case_c09', customer_id: 'c09', route: 'NOT_ELIGIBLE', route_reason: 'No active paid subscription', status: 'NOT_ELIGIBLE', owner: null, created_at: '2026-10-09T08:00:00Z', due_at: null, fact_ids: ['subscription_fact_901'], facts: ['Synthetic trial has no active paid subscription'], warnings: [], proposed_action: null, selected_action: null, estimated_cost: null, estimated_minutes: 0, actual_cost: null, actual_minutes: null, response_at: null, completed_at: null, follow_up_at: null, audit: audit('c09', 'Ineligible under demo eligibility policy.') },
 ];
-for (const item of seeds) item.owner = null;
 let cases = structuredClone(seeds);
 let sequence = 2;
 const clone = <T,>(value: T): T => structuredClone(value);
