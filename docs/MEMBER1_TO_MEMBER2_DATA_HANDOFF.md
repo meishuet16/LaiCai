@@ -2,7 +2,7 @@
 
 **Status:** Canonical query/API contract is available; real historical dataset is **NOT_READY**.
 **Purpose:** Retention inference.
-**Database in this checkout:** Local SQLite prototype, not the production PostgreSQL requirement.
+**Database in this checkout:** Local SQLite prototype, not the production PostgreSQL requirement. Initialize/apply both `migrations/001_data_foundation.sql` and `migrations/002_authorized_services_and_subscription_owners.sql` with `python -m retaniq init-db --db ...`.
 
 ## 1. Dataset, permission and limitations
 
@@ -69,7 +69,7 @@ Schema source: `migrations/001_data_foundation.sql`; normalization source: `reta
 | Subscription | `subscription_created`, `subscription_updated` | Stable `subscription_id`; status, plan, lifecycle timestamps, billing interval/count and optional amount/discount/currency. These are append-only changes folded into an as-of state. |
 | Subscription lifecycle | `cancellation_requested`, `subscription_cancelled_effective`, `subscription_non_renewed_effective`, `subscription_involuntary_terminated` | A request is pending, not effective churn. Explicit effective events set status `ended` and `ended_at` to event occurrence time. |
 
-`subscription_id` identifies a subscription under a tenant, not a person or seat. `customer_id` is the internal canonical paying-account key. `external_customer_id` is a source-specific account key and must be mapped explicitly; there is no fuzzy or email merge. Source event idempotency uses `(tenant_id, source, source_event_id)`.
+`subscription_id` identifies one subscription under a tenant, not a person or seat. Its owner is stable: a source may add events for that subscription only when it maps to the same canonical `customer_id`. A same-tenant cross-customer collision returns `contract_conflict` and rolls back the canonical event, subtype history, and projection update. Migration 002 backfills the owner registry and refuses to guess if existing records claim different owners. `customer_id` is the internal canonical paying-account key. `external_customer_id` is a source-specific account key and must be mapped explicitly; there is no fuzzy or email merge. Source event idempotency uses `(tenant_id, source, source_event_id)`.
 
 ## 4. Time and point-in-time semantics
 
@@ -78,7 +78,23 @@ Schema source: `migrations/001_data_foundation.sql`; normalization source: `reta
 - `source_available_at`: optional first-known/available time in the original source. The importer accepts it only through an operator-approved mapping plus `--trust-source-availability`; a source export date or event occurrence date is not automatically equivalent.
 - `as_of`: the feature/prediction cutoff selected by Member 2. A record is visible only when both `occurred_at <= as_of` and `COALESCE(source_available_at, received_at) <= as_of`.
 
-For a tenant-authorized `IntegrationPrincipal`, Member 2 can use:
+An integration `IntegrationPrincipal` reads only events from that integration's source, even when it has `retention_inference`. For personalized features combining usage, billing, and subscriptions, provision a separate service principal with the exact source list and purpose grants:
+
+```powershell
+python -m retaniq create-service-principal --db .\data\retaniq.sqlite3 --tenant-id tenant_demo --role analyst --source product_app --source billing_app --source subscriptions_app --purpose retention_inference
+$env:RETAINIQ_M2_DATA_TOKEN = '<approved-service-token>'
+```
+
+All named sources must already have tenant-scoped integration records. The local provisioning command is trusted-operator only and is not exposed by HTTP. Authenticate that service token in Member 2's internal job:
+
+```python
+import os
+from retaniq.data_foundation import authenticate_service_principal
+
+principal = authenticate_service_principal(db_path, os.environ["RETAINIQ_M2_DATA_TOKEN"])
+```
+
+For a single source, Member 2 may use an integration principal as before:
 
 ```python
 from retaniq.data_foundation import (
@@ -94,13 +110,17 @@ events = get_events_as_of(db_path, principal, customer_id, as_of)
 subscriptions = get_subscriptions_as_of(db_path, principal, customer_id, as_of)
 ```
 
-The executable version is [`examples/member2_as_of_history.py`](../examples/member2_as_of_history.py). It demonstrates the current API using a temporary synthetic tenant and no labels or scores. Query helpers enforce tenant and purpose scope from the authenticated principal. A retention-only principal can read usage, billing status and subscription lifecycle; financial amounts, pricing fields and valuation are omitted unless the principal also has `billing_valuation`.
+The executable version is [`examples/member2_as_of_history.py`](../examples/member2_as_of_history.py). It demonstrates the current API using a temporary synthetic tenant and no labels or scores. Query helpers enforce tenant, exact source, and purpose scope from the authenticated principal. Account snapshots and eligibility enumeration additionally require an identity mapping from at least one authorized source; a token cannot probe a same-tenant customer mapped only through another source. A source integration can read usage, billing status and subscription lifecycle only from its own source. A service principal can aggregate its explicitly granted sources; a retention-only principal still receives billing status without financial amounts, pricing fields, or MRR unless it also has `billing_valuation`.
+
+`GET /v1/integrations` remains the source-token self-health endpoint. `GET /v1/admin/integrations` is a separate tenant-health read for a service token with `admin` or `operator` role and `integration_health` purpose, restricted to that token's exact source grants. No dashboard frontend is included.
 
 ## 5. Churn outcomes, censoring and personal-history features
 
-The canonical event model can represent verified effective end events as `subscription_cancelled_effective`, `subscription_non_renewed_effective`, or `subscription_involuntary_terminated`. Member 2 must define the multi-subscription account churn policy consistently; the current snapshot's eligibility is account-level and pending cancellation is a separate known-cancellation state. A failure, cancellation request, static churn class, or source competition label must not be recast as an effective end without verified semantics.
+The canonical event model can represent verified effective end events as `subscription_cancelled_effective`, `subscription_non_renewed_effective`, or `subscription_involuntary_terminated`. Member 2 must define the multi-subscription account churn policy consistently; the current snapshot's eligibility is account-level and pending cancellation is a separate known-cancellation state. Eligibility is reconstructed from subscription events available at `as_of`; the undated current `customers.account_status` field is intentionally ignored by historical eligibility queries. A failure, cancellation request, static churn class, or source competition label must not be recast as an effective end without verified semantics.
 
 No acquired source provides measured observation-through dates here. Member 2 therefore cannot distinguish mature 7/14/30 negatives from right-censored outcomes on actual records, compute actual positive coverage, or claim any horizon's feasibility. Incomplete outcomes remain `unknown` under the shared storage contract; this repository supplies storage validation, not a label builder.
+
+Feature snapshot and explanation JSON keeps the same shared storage shape, but string values are accepted only in bounded categorical fields from `SAFE_CATEGORICAL_FIELDS` in `retaniq/data_foundation.py` (or `*_category` fields), with field-specific enums where applicable. Numeric/boolean model features and numeric fitted-model contributions remain supported. Reliability reasons remain a list of strings but must use one of these stable codes: `short_personal_usage_history`, `missing_usage_source`, `missing_billing_source`, `missing_subscription_source`, `insufficient_identity_mapping`, `stale_source_data`, `partial_source_coverage`, `unsupported_dataset`, `insufficient_event_history`, `unverified_source_availability`, `unknown_observation_coverage`, `feature_quality_limited`, or `model_applicability_limited`. Member 2 should map descriptive text such as “Short personal usage history” to `short_personal_usage_history`; display text belongs in the consuming UI, not source-derived stored strings.
 
 If authorized records are later mapped with verified semantics, personalized as-of features may be derived from a tenant's own dated usage events, payment outcomes and subscription changes, plus freshness/availability timestamps. The implementation provides these point-in-time facts; it does not engineer rolling windows, cohort baselines, labels, model features, temporal splits, or predictions. Source-specific support tickets, intervention exposure and causal treatment effects are not present or implied.
 
@@ -112,5 +132,7 @@ When an integration has both `retention_inference` and `billing_valuation`, `get
 
 - `python -m examples.member2_as_of_history` — successful; output shows one synthetic eligible account, a prior usage event and no post-cutoff event.
 - `python -m unittest discover -s tests -p test_member2_handoff.py -v` — passed the synthetic example's eligibility and cutoff assertions.
-- `tests/test_data_foundation.py` exercises synthetic API authentication/idempotency, tenant and purpose scope, late availability, subscription cutoff reconstruction, payment failure handling, MRR/currency, label/prediction storage, CSV normalization, availability trust gating, and replay ordering/visibility.
+- `python -m unittest discover -s tests -v` — PASS, 39 tests; all fixtures are synthetic. Includes same-tenant cross-source isolation/aggregation, unauthorized account-mapping probe rejection, unsafe feature and explanation rejection, subscription-owner collision rollback, status-history cutoff behavior, operator health authorization, and version-1 migration/backfill/conflict refusal.
+- `python -m compileall -q retaniq tests examples` — PASS. `python -m retaniq --help` — PASS; no configured linter or type checker exists in this checkout.
+- `tests/test_data_foundation.py` also exercises synthetic API authentication/idempotency, tenant and purpose scope, late availability, subscription cutoff reconstruction, payment failure handling, MRR/currency, label/prediction storage, CSV normalization, availability trust gating, and replay ordering/visibility.
 - No real-source mapping, real-data import, actual candidate coverage report, label generation, temporal split, model fit, or predictive evaluation has been executed. These require a legitimately authorized source and reviewed adapter.

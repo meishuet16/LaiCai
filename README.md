@@ -2,7 +2,7 @@
 
 This checkout had no application framework, database layer, migrations, tests, or source dataset. Part 1 is implemented with Python's standard library, WSGI, and SQLite so the data contracts can be exercised without adding dependencies. The SQL file is a SQLite migration for this local MVP; it is not a production PostgreSQL migration.
 
-The implementation provides authenticated, tenant-scoped event ingestion; explicit account identity mapping; allowlisted usage, billing, and subscription normalization; append-only subscription history; point-in-time queries; account MRR; CSV import/replay; integration health; and shared feature, label, and prediction storage contracts. It does not implement Member 2's feature engineering, label builder, or model, or Member 3's routing and ROI logic.
+The implementation provides authenticated, tenant-scoped event ingestion; explicit account identity mapping; allowlisted usage, billing, and subscription normalization; append-only subscription history; point-in-time, source-scoped queries; account MRR; CSV import/replay; source-scoped integration health; separately authorized tenant health; and shared feature, label, and prediction storage contracts. It does not implement Member 2's feature engineering, label builder, or model, or Member 3's routing and ROI logic.
 
 See [DATASET_CARD.md](DATASET_CARD.md) for the evidence gate. No empirical customer data or model-performance claims are included.
 
@@ -17,18 +17,19 @@ Run commands from this directory:
 python -m retaniq init-db --db .\data\retaniq.sqlite3
 python -m retaniq create-tenant --db .\data\retaniq.sqlite3 --tenant-id tenant_demo
 python -m retaniq create-integration --db .\data\retaniq.sqlite3 --tenant-id tenant_demo --source product_app --purpose retention_inference --purpose billing_valuation
+python -m retaniq create-service-principal --db .\data\retaniq.sqlite3 --tenant-id tenant_demo --role analyst --source product_app --purpose retention_inference
 python -m retaniq create-customer --db .\data\retaniq.sqlite3 --tenant-id tenant_demo --customer-id customer_001
 python -m retaniq map-customer --db .\data\retaniq.sqlite3 --tenant-id tenant_demo --source product_app --external-customer-id acct_001 --customer-id customer_001
 python -m retaniq serve --db .\data\retaniq.sqlite3
 ```
 
-`create-integration` prints a newly generated bearer token once. Save it in an approved secret store; the database keeps only its SHA-256 digest. The default local HTTP server listens on `127.0.0.1:8000`. It does not provide TLS; deployments need a trusted TLS-terminating proxy and restrictive operating-system access to the SQLite file. The CLI provisioning commands are trusted local-operator actions and are not public APIs.
+`create-integration` and `create-service-principal` print a newly generated bearer token once. Save it in an approved secret store; the database keeps only its SHA-256 digest. Service principals are provisioned only by the trusted local CLI, never by an HTTP endpoint. Each service principal is bound to one tenant, one of `analyst`, `admin`, or `operator`, an exact list of existing source integrations, and explicit purposes. An `admin` or `operator` needs the `integration_health` purpose to read tenant integration health. The default local HTTP server listens on `127.0.0.1:8000`. It does not provide TLS; deployments need a trusted TLS-terminating proxy and restrictive operating-system access to the SQLite file. The CLI provisioning commands are trusted local-operator actions and are not public APIs.
 
 The local SQLite database is not encrypted at rest by this implementation. Do not put contact identity, payment credentials, or unrestricted source payloads in it. A production deployment needs managed encrypted storage and a reviewed service/database boundary.
 
 ## Public API
 
-Every endpoint requires `Authorization: Bearer <integration-token>`. A token is scoped to one tenant, one source, and its configured purposes. The server derives `tenant_id` from the token. Request bodies containing `tenant_id` or `source_available_at` are rejected.
+The ingestion and source-health endpoints require `Authorization: Bearer <integration-token>`. Each integration token is scoped to one tenant, one source, and its configured purposes. The server derives `tenant_id` from the token. Request bodies containing `tenant_id` or `source_available_at` are rejected. Tenant-wide analytics must use a separately provisioned service principal; an integration token cannot widen its source access by holding `retention_inference`.
 
 ### `POST /v1/ingest/events`
 
@@ -64,11 +65,23 @@ Unknown event types, extra fields, raw contact/card data, malformed timestamps, 
 
 Purpose grants are checked at data access as well as ingestion. Usage reads and feature/label/prediction writes require `retention_inference`; billing status is available to retention readers with amount and currency redacted. Pricing fields and MRR are returned only when the principal also has `billing_valuation`. Account snapshot and subscription helpers keep the lifecycle fields available to retention readers and omit the valuation for them.
 
-Retention-only integrations cannot persist financial value fields inside feature snapshots or prediction explanations; billing-scoped integrations can. Prediction `input_data_as_of` must be at or before its `as_of` cutoff. Reliability reasons remain short explanatory text, but contact or credential values, sensitive key/value fragments, control characters, and overlong strings are rejected.
+As-of query helpers enforce both tenant and source grants. An integration principal sees events only from its own source. An internal service principal may combine multiple sources only when each is explicitly listed in that principal's tenant-scoped grants; purpose redaction still applies.
+
+Account-specific snapshots and eligible-account enumeration also require an explicit customer identity mapping from at least one source granted to the principal. A caller cannot probe canonical customer IDs that are mapped only through another source in the same tenant. Silent accounts remain enumerable when their authorized source mapping exists and their dated subscription history establishes eligibility.
+
+Feature snapshots and prediction explanations accept numeric, boolean, null, and bounded categorical values under approved categorical fields. Arbitrary strings, free-form source errors, notes, contact details, credential values, and payment-card values are rejected before persistence. Reliability reasons are predefined codes such as `short_personal_usage_history`, `stale_source_data`, and `unknown_observation_coverage`; a client must translate these codes to approved display text. Financial value fields still require `billing_valuation`. Prediction `input_data_as_of` must be at or before its `as_of` cutoff.
 
 ### `GET /v1/integrations`
 
 Returns only the authenticated integration's tenant/source, authorized purposes, schema/mapping versions, last successful ingestion, last safe failure code, and an evidence-based availability state. Freshness is reported as `unknown` until a source-specific freshness policy exists. Tokens and token digests are never returned.
+
+### `GET /v1/admin/integrations`
+
+Accepts a service-principal token with `admin` or `operator` role and the `integration_health` purpose. The response contains only integrations from that principal's exact authorized source list in its tenant. An integration token, an `analyst` service principal, a service principal without the health purpose, or a token from another tenant cannot use this route. Provision an operator after the relevant integration sources exist:
+
+```powershell
+python -m retaniq create-service-principal --db .\data\retaniq.sqlite3 --tenant-id tenant_demo --role operator --source product_app --purpose integration_health
+```
 
 ## Historical CSV import and replay
 
@@ -106,10 +119,14 @@ Authenticated internal data helpers take an `IntegrationPrincipal` produced by t
 - `get_events_as_of(...)` returns typed facts satisfying occurrence and availability cutoffs.
 - `get_subscriptions_as_of(...)` folds append-only subscription changes available by the cutoff.
 - `list_eligible_accounts_as_of(db, principal, as_of)` enumerates active eligible accounts, including accounts with no recent usage events.
+
+The principal must have an identity mapping for the requested account through at least one authorized source; enumeration derives candidates from the principal's authorized source mappings. A same-tenant account mapped only through another source returns `not_found` to a source token.
 - `feature_snapshots` stores `tenant_id`, `customer_id`, `as_of`, feature version, data cutoff, minimized feature values, and data-quality status. The writer rejects common contact/secret fields.
 - `churn_labels` stores the shared 7/14/30 horizon contract (`0`, `1`, or `unknown`), observation-through time, outcome, and label-policy version. A negative must have a fully observed horizon. This repository does not generate labels.
 
 Known cancellation is separate from predictive features. The account policy in this implementation defines churn as loss of the last active paid subscription. An account is `known_cancellation` only when every currently active entitlement subscription has a known cancellation request; cancellation of one subscription while another remains active leaves the account eligible. Member 2 must not use cancellation-request time/status as a predictive feature.
+
+Historical eligibility uses the dated subscription-event history as its authority. `customers.account_status` is currently an undated operational/provisioning field, so as-of queries intentionally ignore it; changing that current field cannot rewrite a prior eligibility cutoff. A future requirement for dated account-level suspension/closure semantics needs an append-only, source-backed account lifecycle event contract.
 
 ## Part 3 valuation handoff
 
@@ -129,7 +146,7 @@ The 52-week and 365-day factors define the v1 average-month convention. `amount_
 
 ## Storage and implementation boundary
 
-`migrations/001_data_foundation.sql` creates tenant-aware tables for customers, identities, integrations, the idempotent canonical event ledger, usage/billing/subscription records, append-only subscription events, feature snapshots, churn labels, and unified predictions. Subscription current state is a projection; historical state and price are rebuilt from available subscription events. Prediction storage uses one `prediction_id` per account/cutoff plus a separate `prediction_run_id` and flat `p_churn_7d`, `p_churn_14d`, and `p_churn_30d` fields.
+`migrations/001_data_foundation.sql` creates the initial tenant-aware data tables. `migrations/002_authorized_services_and_subscription_owners.sql` adds separately scoped service principals and a tenant-scoped subscription-owner registry with composite foreign keys from billing events, subscription history, and the current projection. Initialization backfills owner records from existing data and refuses to guess if a subscription ID is already associated with multiple customers. Subscription current state remains a projection; historical state and price are rebuilt from available subscription events. Prediction storage keeps one `prediction_id` per account/cutoff, a separate `prediction_run_id`, and flat `p_churn_7d`, `p_churn_14d`, and `p_churn_30d` fields.
 
 This is a local reference implementation, not a deployed service. It has no scheduled daily worker, external identity provider, managed database, encryption-at-rest integration, production TLS, or PostgreSQL adapter. Those infrastructure capabilities remain unverified. No real dataset exists in this checkout, so imports/replay and tests can demonstrate engineering behavior only.
 

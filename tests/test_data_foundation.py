@@ -1,5 +1,6 @@
 import io
 import json
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -102,6 +103,102 @@ class DataFoundationTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
+    def test_schema_001_upgrade_preserves_history_and_refuses_conflicting_owners(self):
+        migration_001 = (Path(__file__).resolve().parents[1] / "migrations" / "001_data_foundation.sql").read_text(
+            encoding="utf-8",
+        )
+
+        def prepare_legacy(path, conflicting_owner):
+            connection = sqlite3.connect(path)
+            connection.execute(
+                "CREATE TABLE schema_migrations (version TEXT PRIMARY KEY, applied_at TEXT NOT NULL)",
+            )
+            connection.executescript(
+                "BEGIN IMMEDIATE;\n" + migration_001 +
+                "\nINSERT INTO schema_migrations(version, applied_at) "
+                "VALUES ('001_data_foundation', '2026-10-01T00:00:00Z');\nCOMMIT;"
+            )
+            with connection:
+                connection.execute("INSERT INTO tenants(tenant_id) VALUES ('tenant-a')")
+                connection.execute(
+                    "INSERT INTO customers(tenant_id, customer_id, account_status, created_at) "
+                    "VALUES ('tenant-a', 'customer-a', 'active', ?)", (T0,),
+                )
+                connection.execute(
+                    "INSERT INTO canonical_events(event_id, tenant_id, source, source_event_id, customer_id, "
+                    "category, event_type, occurred_at, received_at, source_available_at, schema_version, "
+                    "mapping_version, normalized_payload_sha256) VALUES (1, 'tenant-a', 'product_app', "
+                    "'legacy-sub-1', 'customer-a', 'subscription', 'subscription_created', ?, ?, NULL, '1.0', "
+                    "'canonical-v1', 'hash-1')", (T0, T0),
+                )
+                connection.execute(
+                    "INSERT INTO subscription_events(tenant_id, event_id, subscription_id, customer_id, "
+                    "event_type, changed_fields_json, status, started_at, occurred_at, received_at) "
+                    "VALUES ('tenant-a', 1, 'sub-legacy', 'customer-a', 'subscription_created', "
+                    "'[\"status\",\"started_at\"]', 'active', ?, ?, ?)", (T0, T0, T0),
+                )
+                connection.execute(
+                    "INSERT INTO subscriptions(tenant_id, subscription_id, customer_id, status, started_at, updated_at) "
+                    "VALUES ('tenant-a', 'sub-legacy', 'customer-a', 'active', ?, ?)", (T0, T0),
+                )
+                if conflicting_owner:
+                    connection.execute(
+                        "INSERT INTO customers(tenant_id, customer_id, account_status, created_at) "
+                        "VALUES ('tenant-a', 'customer-other', 'active', ?)", (T0,),
+                    )
+                    connection.execute(
+                        "INSERT INTO canonical_events(event_id, tenant_id, source, source_event_id, customer_id, "
+                        "category, event_type, occurred_at, received_at, source_available_at, schema_version, "
+                        "mapping_version, normalized_payload_sha256) VALUES (2, 'tenant-a', 'billing_app', "
+                        "'legacy-sub-2', 'customer-other', 'subscription', 'subscription_updated', ?, ?, NULL, '1.0', "
+                        "'canonical-v1', 'hash-2')", (T1, T1),
+                    )
+                    connection.execute(
+                        "INSERT INTO subscription_events(tenant_id, event_id, subscription_id, customer_id, "
+                        "event_type, changed_fields_json, status, started_at, occurred_at, received_at) "
+                        "VALUES ('tenant-a', 2, 'sub-legacy', 'customer-other', 'subscription_updated', "
+                        "'[\"status\"]', 'active', ?, ?, ?)", (T0, T1, T1),
+                    )
+            connection.close()
+
+        legacy_path = str(Path(self.temp.name) / "legacy-v1.sqlite3")
+        prepare_legacy(legacy_path, conflicting_owner=False)
+        initialize_database(legacy_path)
+        connection = sqlite3.connect(legacy_path)
+        try:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM subscription_events").fetchone()[0], 1)
+            self.assertEqual(
+                connection.execute(
+                    "SELECT customer_id FROM subscription_owners WHERE tenant_id='tenant-a' AND subscription_id='sub-legacy'",
+                ).fetchone()[0], "customer-a",
+            )
+            self.assertIn(
+                "subscription_owners",
+                {row[2] for row in connection.execute("PRAGMA foreign_key_list(subscription_events)")},
+            )
+            self.assertIsNotNone(connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='service_principals'",
+            ).fetchone())
+        finally:
+            connection.close()
+
+        conflicted_path = str(Path(self.temp.name) / "legacy-conflicted.sqlite3")
+        prepare_legacy(conflicted_path, conflicting_owner=True)
+        with self.assertRaises(DataFoundationError) as caught:
+            initialize_database(conflicted_path)
+        self.assertEqual(caught.exception.code, "contract_conflict")
+        connection = sqlite3.connect(conflicted_path)
+        try:
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM schema_migrations WHERE version LIKE '002_%'").fetchone()[0],
+                0,
+            )
+            self.assertIsNone(connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='subscription_owners'",
+            ).fetchone())
+        finally:
+            connection.close()
+
     def test_ingest_endpoint_rejects_missing_authentication(self):
         response = post_wsgi(create_app(self.db), "/v1/ingest/events", usage_event())
         self.assertTrue(response["status"].startswith("401"))
@@ -193,11 +290,7 @@ class DataFoundationTests(unittest.TestCase):
                 self.assertEqual(caught.exception.code, "purpose_not_authorized")
 
     def test_retention_only_reader_can_read_usage_but_not_valuation_data(self):
-        token = create_integration(
-            self.db, "tenant-a", "retention_reader", authorized_purposes=("retention_inference",),
-        )
-        principal = authenticate_integration(self.db, token)
-        ingest_event(self.db, self.principal_a, usage_event(), received_at=T1)
+        ingest_event(self.db, self.principal_a, usage_event(), received_at=T0)
         self.add_subscription(
             "evt-retention-reader-sub", "subscription_created", T0,
             {"subscription_id": "sub-retention-reader", "status": "active", "started_at": T0,
@@ -211,6 +304,16 @@ class DataFoundationTests(unittest.TestCase):
             "schema_version": "1.0",
         }
         ingest_event(self.db, self.principal_a, payment, received_at=T1)
+        connection = sqlite3.connect(self.db)
+        try:
+            connection.execute(
+                "UPDATE integrations SET authorized_purposes_json='[\"retention_inference\"]' "
+                "WHERE integration_id=?", (self.principal_a.integration_id,),
+            )
+            connection.commit()
+        finally:
+            connection.close()
+        principal = authenticate_integration(self.db, self.token_a)
 
         usage = get_events_as_of(self.db, principal, "customer-a", T2, category="usage")
         self.assertEqual(len(usage), 1)
@@ -244,6 +347,309 @@ class DataFoundationTests(unittest.TestCase):
                  "data_freshness_status": "unknown", "explanations_by_horizon": {"mrr_minor": 2500}},
             )
         self.assertEqual(financial_explanation.exception.code, "invalid_contract")
+
+    def test_integration_reads_are_source_scoped_and_service_reads_aggregate_only_granted_sources(self):
+        from retaniq import data_foundation as foundation
+
+        billing_token = create_integration(
+            self.db, "tenant-a", "billing_app", authorized_purposes=("retention_inference",),
+        )
+        excluded_token = create_integration(
+            self.db, "tenant-a", "support_app", authorized_purposes=("retention_inference",),
+        )
+        map_customer_identity(self.db, "tenant-a", "billing_app", "acct-a-billing", "customer-a")
+        map_customer_identity(self.db, "tenant-a", "support_app", "acct-a-support", "customer-a")
+        billing_principal = authenticate_integration(self.db, billing_token)
+        excluded_principal = authenticate_integration(self.db, excluded_token)
+        billing_subscription = {
+            "source": "billing_app", "source_event_id": "evt-sub-from-billing",
+            "external_customer_id": "acct-a-billing", "event_type": "subscription_created",
+            "occurred_at": T0,
+            "attributes": {"subscription_id": "sub-billing", "status": "active", "started_at": T0},
+            "schema_version": "1.0",
+        }
+        ingest_event(self.db, billing_principal, billing_subscription, received_at=T0)
+        ingest_event(
+            self.db, self.principal_a,
+            usage_event("evt-usage-from-product"), received_at=T1,
+        )
+        ingest_event(
+            self.db, excluded_principal,
+            {"source": "support_app", "source_event_id": "evt-usage-ungranted",
+             "external_customer_id": "acct-a-support", "event_type": "feature_used",
+             "occurred_at": T1, "attributes": {"feature": "reports"}, "schema_version": "1.0"},
+            received_at=T1,
+        )
+
+        # A source token in the same tenant must not see billing's subscription.
+        self.assertEqual(
+            get_events_as_of(self.db, self.principal_a, "customer-a", T2, category="subscription"), [],
+        )
+        self.assertEqual(get_subscriptions_as_of(self.db, self.principal_a, "customer-a", T2), [])
+        self.assertFalse(get_account_snapshot_as_of(self.db, self.principal_a, "customer-a", T2)["eligible"])
+        self.assertEqual(list_eligible_accounts_as_of(self.db, self.principal_a, T2), [])
+        self.assertEqual(
+            [event["source"] for event in iter_replay_events(self.db, self.principal_a, T0, T2)],
+            ["product_app"],
+        )
+
+        service_token = foundation.create_service_principal(
+            self.db, "tenant-a", role="analyst", authorized_sources=("product_app", "billing_app"),
+            authorized_purposes=("retention_inference",),
+        )
+        service = foundation.authenticate_service_principal(self.db, service_token)
+        with self.assertRaises(DataFoundationError) as service_write:
+            ingest_event(self.db, service, usage_event("evt-service-cannot-ingest"), received_at=T2)
+        self.assertEqual(service_write.exception.code, "unauthorized")
+        events = get_events_as_of(self.db, service, "customer-a", T2)
+        self.assertEqual({event["source"] for event in events}, {"product_app", "billing_app"})
+        self.assertNotIn("support_app", {event["source"] for event in events})
+        self.assertEqual(
+            {event["source"] for event in iter_replay_events(self.db, service, T0, T2)},
+            {"product_app", "billing_app"},
+        )
+        snapshot = get_account_snapshot_as_of(self.db, service, "customer-a", T2)
+        self.assertTrue(snapshot["eligible"])
+        self.assertEqual([row["subscription_id"] for row in snapshot["subscriptions"]], ["sub-billing"])
+        self.assertEqual(
+            [row["customer_id"] for row in list_eligible_accounts_as_of(self.db, service, T2)],
+            ["customer-a"],
+        )
+
+    def test_account_snapshot_requires_an_authorized_source_identity_mapping(self):
+        from retaniq import data_foundation as foundation
+
+        billing_token = create_integration(
+            self.db, "tenant-a", "billing_app", authorized_purposes=("retention_inference",),
+        )
+        billing = authenticate_integration(self.db, billing_token)
+        create_customer(self.db, "tenant-a", "billing-only-customer")
+        map_customer_identity(
+            self.db, "tenant-a", "billing_app", "billing-only-account", "billing-only-customer",
+        )
+        ingest_event(
+            self.db, billing,
+            {"source": "billing_app", "source_event_id": "evt-billing-only-subscription",
+             "external_customer_id": "billing-only-account", "event_type": "subscription_created",
+             "occurred_at": T0, "attributes": {"subscription_id": "sub-billing-only",
+             "status": "active", "started_at": T0}, "schema_version": "1.0"},
+            received_at=T0,
+        )
+
+        # Tenant membership alone must not authorize probing another source's account ID.
+        with self.assertRaises(DataFoundationError) as denied:
+            get_account_snapshot_as_of(self.db, self.principal_a, "billing-only-customer", T2)
+        self.assertEqual(denied.exception.code, "not_found")
+        self.assertNotIn(
+            "billing-only-customer",
+            {row["customer_id"] for row in list_eligible_accounts_as_of(self.db, self.principal_a, T2)},
+        )
+
+        service_token = foundation.create_service_principal(
+            self.db, "tenant-a", role="analyst", authorized_sources=("billing_app",),
+            authorized_purposes=("retention_inference",),
+        )
+        service = foundation.authenticate_service_principal(self.db, service_token)
+        self.assertTrue(
+            get_account_snapshot_as_of(self.db, service, "billing-only-customer", T2)["eligible"],
+        )
+
+    def test_feature_and_explanation_storage_accepts_typed_values_and_rejects_free_text(self):
+        safe_features = {
+            "sessions_7d": 17,
+            "usage_ratio_30d": 0.72,
+            "is_new_account": False,
+            "subscription_status": "active",
+            "plan_id": "growth-v2",
+        }
+        snapshot_id = store_feature_snapshot(
+            self.db, self.principal_a, "customer-a", T1, "features-safe-v1", T1,
+            safe_features, "available",
+        )
+        self.assertTrue(snapshot_id)
+
+        safe_prediction = {
+            "prediction_id": "pred-safe-explanation", "prediction_run_id": "run-safe-explanation",
+            "customer_id": "customer-a", "as_of": T1, "generated_at": T2, "status": "scored",
+            "p_churn_7d": 0.1, "p_churn_14d": 0.2, "p_churn_30d": 0.3,
+            "feature_version": "features-safe-v1", "model_version": "model-v1",
+            "calibration_version": "cal-v1", "reliability_status": "limited_evidence",
+            "data_freshness_status": "fresh", "feature_snapshot_id": snapshot_id,
+            "reliability_reasons": ["short_personal_usage_history"],
+            "explanations_by_horizon": {
+                "30d": [
+                    {"feature": "sessions_7d", "contribution": 0.24},
+                    {"feature": "usage_ratio_30d", "contribution": -0.13},
+                ],
+            },
+        }
+        self.assertEqual(store_prediction(self.db, self.principal_a, safe_prediction), "pred-safe-explanation")
+
+        unsafe_feature_values = (
+            {"source_note": "The customer said they may leave next month."},
+            {"api_key": "sk_live_123456789012345678"},
+            {"card_number": "4111111111111111"},
+            {"sessions_7d": 4111111111111111},
+            {"support_comment": "call me at +60123456789"},
+        )
+        for index, features in enumerate(unsafe_feature_values):
+            with self.subTest(feature=features):
+                with self.assertRaises(DataFoundationError):
+                    store_feature_snapshot(
+                        self.db, self.principal_a, "customer-a", T1, f"unsafe-feature-{index}", T1,
+                        features, "available",
+                    )
+
+        unsafe_explanations = (
+            {"30d": {"summary": "The customer said they may leave next month."}},
+            {"30d": [{"feature": "Authorization: Bearer sk_live_123456789012345678", "contribution": 0.2}]},
+            {"30d": {"private_note": "cancel this account"}},
+            {"30d": {"card_number": "4111111111111111"}},
+            {"30d": {"sessions_7d": 4111111111111111}},
+            {"30d": [{"feature": "60123456789", "contribution": 0.15}]},
+            {"30d": [{"feature": "user@example.invalid", "contribution": 0.15}]},
+        )
+        for index, explanations in enumerate(unsafe_explanations):
+            customer_id = f"customer-unsafe-explanation-{index}"
+            create_customer(self.db, "tenant-a", customer_id)
+            with self.subTest(explanation=explanations):
+                with self.assertRaises(DataFoundationError):
+                    store_prediction(
+                        self.db, self.principal_a,
+                        {**safe_prediction, "prediction_id": f"pred-unsafe-explanation-{index}",
+                         "customer_id": customer_id, "as_of": T2, "feature_snapshot_id": None,
+                         "explanations_by_horizon": explanations},
+                    )
+
+        for index, free_text in enumerate((
+            "Short personal usage history", "Provider error: secret = abc123",
+            "Contact at user@example.invalid",
+        )):
+            customer_id = f"customer-unsafe-reason-{index}"
+            create_customer(self.db, "tenant-a", customer_id)
+            with self.subTest(reason=free_text):
+                with self.assertRaises(DataFoundationError):
+                    store_prediction(
+                        self.db, self.principal_a,
+                        {**safe_prediction, "prediction_id": f"pred-unsafe-reason-{index}",
+                         "customer_id": customer_id, "as_of": T2, "feature_snapshot_id": None,
+                         "reliability_reasons": [free_text]},
+                    )
+
+    def test_subscription_id_cannot_move_between_accounts_in_same_tenant(self):
+        self.add_subscription(
+            "evt-owner-created", "subscription_created", T0,
+            {"subscription_id": "sub-stable-owner", "status": "active", "started_at": T0,
+             "plan_id": "owner-plan"},
+        )
+        create_customer(self.db, "tenant-a", "customer-other")
+        billing_token = create_integration(
+            self.db, "tenant-a", "billing_app", authorized_purposes=("retention_inference",),
+        )
+        map_customer_identity(self.db, "tenant-a", "billing_app", "acct-other", "customer-other")
+        billing_principal = authenticate_integration(self.db, billing_token)
+        conflicting_event = {
+            "source": "billing_app", "source_event_id": "evt-owner-collision",
+            "external_customer_id": "acct-other", "event_type": "subscription_updated",
+            "occurred_at": T1,
+            "attributes": {"subscription_id": "sub-stable-owner", "plan_id": "other-plan"},
+            "schema_version": "1.0",
+        }
+        with self.assertRaises(DataFoundationError) as caught:
+            ingest_event(self.db, billing_principal, conflicting_event, received_at=T1)
+        self.assertEqual(caught.exception.code, "contract_conflict")
+
+        connection = sqlite3.connect(self.db)
+        try:
+            self.assertEqual(connection.execute(
+                "SELECT COUNT(*) FROM canonical_events WHERE source='billing_app' AND source_event_id='evt-owner-collision'",
+            ).fetchone()[0], 0)
+            self.assertEqual(connection.execute(
+                "SELECT COUNT(*) FROM subscription_events WHERE tenant_id='tenant-a' AND subscription_id='sub-stable-owner'",
+            ).fetchone()[0], 1)
+            projection = connection.execute(
+                "SELECT customer_id, plan_id FROM subscriptions WHERE tenant_id='tenant-a' AND subscription_id='sub-stable-owner'",
+            ).fetchone()
+        finally:
+            connection.close()
+        self.assertEqual(projection, ("customer-a", "owner-plan"))
+        snapshot = get_account_snapshot_as_of(self.db, self.principal_a, "customer-a", T2)
+        self.assertEqual(snapshot["subscriptions"][0]["customer_id"], "customer-a")
+        self.assertEqual(snapshot["subscriptions"][0]["plan_id"], "owner-plan")
+
+    def test_later_account_status_change_does_not_rewrite_historical_eligibility(self):
+        self.add_subscription(
+            "evt-temporal-status", "subscription_created", T0,
+            {"subscription_id": "sub-temporal-status", "status": "active", "started_at": T0},
+        )
+        before_status_change = get_account_snapshot_as_of(self.db, self.principal_a, "customer-a", T1)
+        self.assertTrue(before_status_change["eligible"])
+        connection = sqlite3.connect(self.db)
+        try:
+            connection.execute(
+                "UPDATE customers SET account_status='inactive' WHERE tenant_id='tenant-a' AND customer_id='customer-a'",
+            )
+        finally:
+            connection.close()
+        prior_cutoff = get_account_snapshot_as_of(self.db, self.principal_a, "customer-a", T1)
+        later_cutoff = get_account_snapshot_as_of(self.db, self.principal_a, "customer-a", T3)
+        self.assertEqual(prior_cutoff["status"], "eligible")
+        self.assertEqual(later_cutoff["status"], "eligible")
+        self.assertEqual(
+            [account["customer_id"] for account in list_eligible_accounts_as_of(self.db, self.principal_a, T1)],
+            ["customer-a"],
+        )
+
+    def test_tenant_integration_health_requires_operator_role_purpose_and_tenant_scope(self):
+        from dataclasses import replace
+        from retaniq import data_foundation as foundation
+
+        billing_token = create_integration(
+            self.db, "tenant-a", "billing_app", authorized_purposes=("retention_inference",),
+        )
+        narrow_token = create_integration(
+            self.db, "tenant-a", "usage_narrow", authorized_purposes=("retention_inference",),
+        )
+        narrow_principal = authenticate_integration(self.db, narrow_token)
+        with self.assertRaises(DataFoundationError):
+            foundation.get_tenant_integration_health(self.db, narrow_principal)
+
+        analyst_token = foundation.create_service_principal(
+            self.db, "tenant-a", role="analyst", authorized_sources=("product_app", "billing_app"),
+            authorized_purposes=("integration_health",),
+        )
+        analyst = foundation.authenticate_service_principal(self.db, analyst_token)
+        with self.assertRaises(DataFoundationError):
+            foundation.get_tenant_integration_health(self.db, analyst)
+
+        narrow_operator_token = foundation.create_service_principal(
+            self.db, "tenant-a", role="operator", authorized_sources=("product_app", "billing_app"),
+            authorized_purposes=("retention_inference",),
+        )
+        narrow_operator = foundation.authenticate_service_principal(self.db, narrow_operator_token)
+        with self.assertRaises(DataFoundationError) as narrow_health:
+            foundation.get_tenant_integration_health(self.db, narrow_operator)
+        self.assertEqual(narrow_health.exception.code, "purpose_not_authorized")
+
+        operator_token = foundation.create_service_principal(
+            self.db, "tenant-a", role="operator", authorized_sources=("product_app", "billing_app"),
+            authorized_purposes=("integration_health",),
+        )
+        operator = foundation.authenticate_service_principal(self.db, operator_token)
+        health = foundation.get_tenant_integration_health(self.db, operator)
+        self.assertEqual({item["source"] for item in health}, {"product_app", "billing_app"})
+        self.assertTrue(all(item["tenant_id"] == "tenant-a" for item in health))
+        self.assertNotIn(operator_token, json.dumps(health))
+        self.assertNotIn("token_digest", json.dumps(health))
+        with self.assertRaises(DataFoundationError):
+            foundation.get_tenant_integration_health(self.db, replace(operator, tenant_id="tenant-b"))
+
+        self.assertTrue(
+            get_wsgi(create_app(self.db), "/v1/admin/integrations", self.token_a)["status"].startswith("401"),
+        )
+        self.assertTrue(
+            get_wsgi(create_app(self.db), "/v1/admin/integrations", operator_token)["status"].startswith("200"),
+        )
 
     def test_tenant_scopes_event_reads_and_identity_writes(self):
         ingest_event(self.db, self.principal_b, usage_event(), received_at=T1)

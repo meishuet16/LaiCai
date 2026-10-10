@@ -29,7 +29,8 @@ SLUG_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$")
 CURRENCY_PATTERN = re.compile(r"^[A-Z]{3}$")
 SENSITIVE_KEY_PARTS = (
     "email", "phone", "address", "card", "cvv", "password", "secret",
-    "token", "contact", "name", "private", "raw_payload",
+    "token", "contact", "name", "private", "raw_payload", "api_key",
+    "api_secret", "authorization", "auth_header", "note", "comment", "message",
 )
 FINANCIAL_KEY_PARTS = (
     "mrr", "arr", "amount", "currency", "price", "discount", "revenue",
@@ -42,6 +43,31 @@ SENSITIVE_VALUE_PATTERN = re.compile(
     r"(?i)\b(?:e-?mail|phone(?:\s+number)?|telephone(?:\s+number)?|mobile(?:\s+number)?|address|"
     r"card(?:\s+number)?|cvv|password|secret|token|api[\s_-]+(?:key|secret|token)|authorization|bearer|"
     r"contact|full\s+name|first\s+name|last\s+name|raw\s+payload)\b\s*[:=]\s*\S+"
+)
+SAFE_RELIABILITY_REASON_CODES = frozenset({
+    "short_personal_usage_history", "missing_usage_source", "missing_billing_source",
+    "missing_subscription_source", "insufficient_identity_mapping", "stale_source_data",
+    "partial_source_coverage", "unsupported_dataset", "insufficient_event_history",
+    "unverified_source_availability", "unknown_observation_coverage",
+    "feature_quality_limited", "model_applicability_limited",
+})
+SERVICE_ROLES = frozenset({"analyst", "admin", "operator"})
+PURPOSES = frozenset({
+    "retention_inference", "billing_valuation", "operational_contact", "identity_mapping",
+    "integration_health",
+})
+SAFE_CATEGORICAL_FIELDS = frozenset({
+    "feature", "plan_id", "status", "subscription_status", "billing_interval", "currency",
+    "source", "event_type", "unit", "direction", "trend", "cohort", "tier", "plan_tier",
+    "payment_status", "data_quality_status",
+    "reliability_status", "data_freshness_status", "reason_code",
+})
+SAFE_CATEGORY_SUFFIXES = ("_category",)
+SAFE_CATEGORY_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$")
+SENSITIVE_CATEGORY_MARKERS = (
+    "sk_live_", "sk_test_", "pk_live_", "pk_test_", "bearer", "authorization",
+    "password", "secret", "token", "api_key", "api-key", "api_secret", "api-secret",
+    "ghp_", "gho_", "github_pat_", "xoxb-", "xoxp-", "ya29.", "akia",
 )
 
 EVENT_TYPES: dict[str, tuple[str, set[str]]] = {
@@ -114,6 +140,20 @@ class IntegrationPrincipal:
     authorized_purposes: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class ServicePrincipal:
+    """Separately provisioned, tenant-scoped internal service authority."""
+
+    service_principal_id: str
+    tenant_id: str
+    role: str
+    authorized_sources: tuple[str, ...]
+    authorized_purposes: tuple[str, ...]
+
+
+ReadPrincipal = IntegrationPrincipal | ServicePrincipal
+
+
 def _utc_now() -> str:
     return _format_timestamp(datetime.now(timezone.utc))
 
@@ -152,20 +192,42 @@ def _db(path: str | Path):
 def initialize_database(path: str | Path) -> None:
     db_path = Path(path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    migration = Path(__file__).resolve().parent.parent / "migrations" / "001_data_foundation.sql"
+    migrations_dir = Path(__file__).resolve().parent.parent / "migrations"
     with _db(db_path) as connection:
         connection.execute(
             "CREATE TABLE IF NOT EXISTS schema_migrations "
             "(version TEXT PRIMARY KEY, applied_at TEXT NOT NULL)"
         )
-        applied = connection.execute(
-            "SELECT 1 FROM schema_migrations WHERE version = '001_data_foundation'"
-        ).fetchone()
-        if applied is None:
-            connection.executescript(migration.read_text(encoding="utf-8"))
-            connection.execute(
-                "INSERT INTO schema_migrations(version, applied_at) VALUES (?, ?)",
-                ("001_data_foundation", _utc_now()),
+        migrations = (
+            ("001_data_foundation", migrations_dir / "001_data_foundation.sql"),
+            (
+                "002_authorized_services_and_subscription_owners",
+                migrations_dir / "002_authorized_services_and_subscription_owners.sql",
+            ),
+        )
+        for version, migration in migrations:
+            applied = connection.execute(
+                "SELECT 1 FROM schema_migrations WHERE version = ?", (version,),
+            ).fetchone()
+            if applied is not None:
+                continue
+            if version == "002_authorized_services_and_subscription_owners":
+                conflicts = connection.execute(
+                    "WITH claims AS ("
+                    " SELECT tenant_id, subscription_id, customer_id FROM subscriptions"
+                    " UNION SELECT tenant_id, subscription_id, customer_id FROM subscription_events"
+                    " UNION SELECT tenant_id, subscription_id, customer_id FROM billing_events"
+                    " WHERE subscription_id IS NOT NULL) "
+                    "SELECT tenant_id, subscription_id FROM claims "
+                    "GROUP BY tenant_id, subscription_id HAVING COUNT(DISTINCT customer_id) > 1 LIMIT 1"
+                ).fetchone()
+                if conflicts is not None:
+                    raise DataFoundationError("contract_conflict")
+            script = migration.read_text(encoding="utf-8")
+            applied_at = _utc_now().replace("'", "''")
+            connection.executescript(
+                "BEGIN IMMEDIATE;\n" + script +
+                f"\nINSERT INTO schema_migrations(version, applied_at) VALUES ('{version}', '{applied_at}');\nCOMMIT;"
             )
 
 
@@ -293,6 +355,73 @@ def authenticate_integration(path: str | Path, token: str | None) -> Integration
     )
 
 
+def create_service_principal(
+    path: str | Path,
+    tenant_id: str,
+    *,
+    role: str,
+    authorized_sources: tuple[str, ...] | list[str],
+    authorized_purposes: tuple[str, ...] | list[str],
+) -> str:
+    """Provision an internal bearer credential with exact tenant/source/purpose grants.
+
+    This local operator provisioning function must not be exposed as an application endpoint.
+    """
+    tenant_id = _validate_id(tenant_id)
+    if not isinstance(role, str) or role not in SERVICE_ROLES:
+        raise DataFoundationError("invalid_contract")
+    if not isinstance(authorized_sources, (tuple, list)) or not authorized_sources:
+        raise DataFoundationError("invalid_contract")
+    if not isinstance(authorized_purposes, (tuple, list)) or not authorized_purposes:
+        raise DataFoundationError("invalid_contract")
+    if any(not isinstance(purpose, str) for purpose in authorized_purposes):
+        raise DataFoundationError("invalid_contract")
+    sources = tuple(sorted({_validate_id(source) for source in authorized_sources}))
+    purposes = tuple(sorted(set(authorized_purposes)))
+    if any(purpose not in PURPOSES for purpose in purposes):
+        raise DataFoundationError("invalid_contract")
+    token = secrets.token_urlsafe(32)
+    token_digest = hashlib.sha256(token.encode("ascii")).hexdigest()
+    service_principal_id = secrets.token_urlsafe(18)
+    with _db(path) as connection:
+        tenant = connection.execute("SELECT 1 FROM tenants WHERE tenant_id = ?", (tenant_id,)).fetchone()
+        if tenant is None:
+            raise DataFoundationError("not_found")
+        known_sources = {
+            row["source"] for row in connection.execute(
+                "SELECT source FROM integrations WHERE tenant_id = ?", (tenant_id,),
+            ).fetchall()
+        }
+        if not set(sources).issubset(known_sources):
+            raise DataFoundationError("source_not_authorized")
+        connection.execute(
+            "INSERT INTO service_principals(service_principal_id, tenant_id, token_digest, role, "
+            "authorized_sources_json, authorized_purposes_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (service_principal_id, tenant_id, token_digest, role,
+             json.dumps(sources, separators=(",", ":")),
+             json.dumps(purposes, separators=(",", ":")), _utc_now()),
+        )
+    return token
+
+
+def authenticate_service_principal(path: str | Path, token: str | None) -> ServicePrincipal:
+    if not isinstance(token, str) or len(token) < 32 or len(token) > 256:
+        raise DataFoundationError("unauthorized")
+    digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    with _db(path) as connection:
+        row = connection.execute(
+            "SELECT service_principal_id, tenant_id, role, authorized_sources_json, authorized_purposes_json "
+            "FROM service_principals WHERE token_digest = ?", (digest,),
+        ).fetchone()
+    if row is None:
+        raise DataFoundationError("unauthorized")
+    return ServicePrincipal(
+        row["service_principal_id"], row["tenant_id"], row["role"],
+        tuple(json.loads(row["authorized_sources_json"])),
+        tuple(json.loads(row["authorized_purposes_json"])),
+    )
+
+
 def _assert_principal(connection: sqlite3.Connection, principal: IntegrationPrincipal) -> sqlite3.Row:
     if not isinstance(principal, IntegrationPrincipal):
         raise DataFoundationError("unauthorized")
@@ -307,6 +436,41 @@ def _assert_principal(connection: sqlite3.Connection, principal: IntegrationPrin
             or principal.authorized_purposes != tuple(json.loads(row["authorized_purposes_json"]))):
         raise DataFoundationError("unauthorized")
     return row
+
+
+def _assert_service_principal(connection: sqlite3.Connection, principal: ServicePrincipal) -> sqlite3.Row:
+    if not isinstance(principal, ServicePrincipal):
+        raise DataFoundationError("unauthorized")
+    row = connection.execute(
+        "SELECT service_principal_id, tenant_id, role, authorized_sources_json, authorized_purposes_json "
+        "FROM service_principals WHERE service_principal_id = ? AND tenant_id = ?",
+        (principal.service_principal_id, principal.tenant_id),
+    ).fetchone()
+    if row is None:
+        raise DataFoundationError("unauthorized")
+    sources = tuple(json.loads(row["authorized_sources_json"]))
+    purposes = tuple(json.loads(row["authorized_purposes_json"]))
+    if (principal.role != row["role"] or principal.authorized_sources != sources
+            or principal.authorized_purposes != purposes):
+        raise DataFoundationError("unauthorized")
+    known_sources = {
+        item["source"] for item in connection.execute(
+            "SELECT source FROM integrations WHERE tenant_id = ?", (principal.tenant_id,),
+        ).fetchall()
+    }
+    if not set(sources).issubset(known_sources):
+        raise DataFoundationError("unauthorized")
+    return row
+
+
+def _assert_read_principal(connection: sqlite3.Connection, principal: ReadPrincipal) -> tuple[str, ...]:
+    if isinstance(principal, IntegrationPrincipal):
+        _assert_principal(connection, principal)
+        return (principal.source,)
+    row = _assert_service_principal(connection, principal)
+    if row["role"] not in SERVICE_ROLES:
+        raise DataFoundationError("unauthorized")
+    return tuple(json.loads(row["authorized_sources_json"]))
 
 
 def update_mapping_version(
@@ -356,8 +520,8 @@ def _currency(value: Any) -> str:
     return value
 
 
-def _require_purposes(principal: IntegrationPrincipal, *purposes: str) -> None:
-    if not isinstance(principal, IntegrationPrincipal) or any(
+def _require_purposes(principal: ReadPrincipal, *purposes: str) -> None:
+    if not isinstance(principal, (IntegrationPrincipal, ServicePrincipal)) or any(
         purpose not in principal.authorized_purposes for purpose in purposes
     ):
         raise DataFoundationError("purpose_not_authorized")
@@ -464,6 +628,8 @@ def _normalize_envelope(
     *,
     trusted_source_available_at: str | None,
 ) -> dict[str, Any]:
+    if not isinstance(principal, IntegrationPrincipal):
+        raise DataFoundationError("unauthorized")
     if not isinstance(payload, dict):
         raise DataFoundationError("invalid_event")
     required = {
@@ -507,6 +673,26 @@ def _event_hash(event: dict[str, Any]) -> str:
     }
     encoded = json.dumps(fields, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _claim_subscription_owner(
+    connection: sqlite3.Connection,
+    tenant_id: str,
+    subscription_id: str,
+    customer_id: str,
+) -> None:
+    owner = connection.execute(
+        "SELECT customer_id FROM subscription_owners WHERE tenant_id = ? AND subscription_id = ?",
+        (tenant_id, subscription_id),
+    ).fetchone()
+    if owner is not None:
+        if owner["customer_id"] != customer_id:
+            raise DataFoundationError("contract_conflict")
+        return
+    connection.execute(
+        "INSERT INTO subscription_owners(tenant_id, subscription_id, customer_id) VALUES (?, ?, ?)",
+        (tenant_id, subscription_id, customer_id),
+    )
 
 
 def _record_subscription_event(
@@ -572,7 +758,7 @@ def _rebuild_subscription_projection(
         "INSERT INTO subscriptions(tenant_id, subscription_id, customer_id, status, plan_id, started_at, "
         "current_period_end, ended_at, cancellation_requested_at, billing_interval, billing_interval_count, "
         "amount_minor, discount_minor, currency, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
-        "ON CONFLICT(tenant_id, subscription_id) DO UPDATE SET customer_id=excluded.customer_id, "
+        "ON CONFLICT(tenant_id, subscription_id) DO UPDATE SET "
         "plan_id=excluded.plan_id, status=excluded.status, started_at=excluded.started_at, "
         "current_period_end=excluded.current_period_end, ended_at=excluded.ended_at, "
         "cancellation_requested_at=excluded.cancellation_requested_at, billing_interval=excluded.billing_interval, "
@@ -628,6 +814,11 @@ def ingest_event(
                     "event_id": prior["event_id"], "customer_id": identity["customer_id"],
                     "duplicate": True, "status": "duplicate",
                 }
+            subscription_id = event["attributes"].get("subscription_id")
+            if subscription_id is not None:
+                _claim_subscription_owner(
+                    connection, principal.tenant_id, subscription_id, identity["customer_id"],
+                )
             cursor = connection.execute(
                 "INSERT INTO canonical_events(tenant_id, source, source_event_id, customer_id, category, "
                 "event_type, occurred_at, received_at, source_available_at, schema_version, mapping_version, "
@@ -686,7 +877,7 @@ def _as_of_query() -> str:
 
 def get_events_as_of(
     path: str | Path,
-    principal: IntegrationPrincipal,
+    principal: ReadPrincipal,
     customer_id: str,
     as_of: str,
     *,
@@ -699,7 +890,8 @@ def get_events_as_of(
     _require_purposes(principal, "retention_inference")
     include_billing = "billing_valuation" in principal.authorized_purposes
     with _db(path) as connection:
-        _assert_principal(connection, principal)
+        authorized_sources = _assert_read_principal(connection, principal)
+        source_placeholders = ",".join("?" for _ in authorized_sources)
         sql = (
             "SELECT ce.*, COALESCE(ce.source_available_at, ce.received_at) AS available_at, "
             "u.feature, u.quantity, u.unit, b.subscription_id AS billing_subscription_id, "
@@ -712,9 +904,10 @@ def get_events_as_of(
             "LEFT JOIN usage_events u ON u.tenant_id=ce.tenant_id AND u.event_id=ce.event_id "
             "LEFT JOIN billing_events b ON b.tenant_id=ce.tenant_id AND b.event_id=ce.event_id "
             "LEFT JOIN subscription_events se ON se.tenant_id=ce.tenant_id AND se.event_id=ce.event_id "
-            f"WHERE ce.tenant_id = ? AND ce.customer_id = ? AND {_as_of_query()}"
+            f"WHERE ce.tenant_id = ? AND ce.customer_id = ? AND ce.source IN ({source_placeholders}) "
+            f"AND {_as_of_query()}"
         )
-        params: list[Any] = [principal.tenant_id, customer_id, cutoff, cutoff]
+        params: list[Any] = [principal.tenant_id, customer_id, *authorized_sources, cutoff, cutoff]
         if category:
             sql += " AND ce.category = ?"
             params.append(category)
@@ -787,23 +980,25 @@ def _subscription_mrr_minor(state: dict[str, Any]) -> int | None:
 
 def get_subscriptions_as_of(
     path: str | Path,
-    principal: IntegrationPrincipal,
+    principal: ReadPrincipal,
     customer_id: str,
     as_of: str,
 ) -> list[dict[str, Any]]:
     customer_id = _validate_id(customer_id)
     cutoff = normalize_timestamp(as_of)
     with _db(path) as connection:
-        _assert_principal(connection, principal)
+        authorized_sources = _assert_read_principal(connection, principal)
         _require_purposes(principal, "retention_inference")
+        source_placeholders = ",".join("?" for _ in authorized_sources)
         rows = connection.execute(
             "SELECT se.*, ce.occurred_at AS parent_occurred_at, ce.received_at AS parent_received_at, "
             "ce.source_available_at AS parent_source_available_at, ce.event_id AS parent_event_id "
             "FROM subscription_events se JOIN canonical_events ce "
             "ON ce.tenant_id=se.tenant_id AND ce.event_id=se.event_id "
-            f"WHERE se.tenant_id = ? AND se.customer_id = ? AND {_as_of_query()} "
+            f"WHERE se.tenant_id = ? AND se.customer_id = ? AND ce.source IN ({source_placeholders}) "
+            f"AND {_as_of_query()} "
             "ORDER BY ce.occurred_at, COALESCE(ce.source_available_at, ce.received_at), ce.event_id",
-            (principal.tenant_id, customer_id, cutoff, cutoff),
+            (principal.tenant_id, customer_id, *authorized_sources, cutoff, cutoff),
         ).fetchall()
     grouped: dict[str, list[sqlite3.Row]] = {}
     for row in rows:
@@ -864,18 +1059,20 @@ def _account_valuation(subscriptions: list[dict[str, Any]]) -> dict[str, Any]:
 
 def get_account_snapshot_as_of(
     path: str | Path,
-    principal: IntegrationPrincipal,
+    principal: ReadPrincipal,
     customer_id: str,
     as_of: str,
 ) -> dict[str, Any]:
     customer_id = _validate_id(customer_id)
     cutoff = normalize_timestamp(as_of)
     with _db(path) as connection:
-        _assert_principal(connection, principal)
+        authorized_sources = _assert_read_principal(connection, principal)
         _require_purposes(principal, "retention_inference")
+        source_placeholders = ",".join("?" for _ in authorized_sources)
         customer = connection.execute(
-            "SELECT account_status FROM customers WHERE tenant_id = ? AND customer_id = ?",
-            (principal.tenant_id, customer_id),
+            "SELECT 1 FROM customer_identities WHERE tenant_id = ? AND customer_id = ? "
+            f"AND source IN ({source_placeholders}) LIMIT 1",
+            (principal.tenant_id, customer_id, *authorized_sources),
         ).fetchone()
     if customer is None:
         raise DataFoundationError("not_found")
@@ -890,7 +1087,9 @@ def get_account_snapshot_as_of(
         row.get("status") == "pending_cancel" or row.get("cancellation_requested_at") is not None
         for row in active
     )
-    if customer["account_status"] != "active" or not active:
+    # `customers.account_status` has no effective timestamp. Historical eligibility is
+    # therefore reconstructed exclusively from dated, source-backed subscription state.
+    if not active:
         status = "not_eligible"
     elif has_known_cancel:
         status = "known_cancellation"
@@ -917,18 +1116,20 @@ def get_account_snapshot_as_of(
 
 def list_eligible_accounts_as_of(
     path: str | Path,
-    principal: IntegrationPrincipal,
+    principal: ReadPrincipal,
     as_of: str,
 ) -> list[dict[str, Any]]:
     """Enumerate active accounts, including silent accounts, at a trusted cutoff."""
     cutoff = normalize_timestamp(as_of)
     with _db(path) as connection:
-        _assert_principal(connection, principal)
+        authorized_sources = _assert_read_principal(connection, principal)
         _require_purposes(principal, "retention_inference")
+        source_placeholders = ",".join("?" for _ in authorized_sources)
         customers = connection.execute(
-            "SELECT customer_id FROM customers WHERE tenant_id = ? AND account_status = 'active' "
+            "SELECT DISTINCT customer_id FROM customer_identities "
+            f"WHERE tenant_id = ? AND source IN ({source_placeholders}) "
             "ORDER BY customer_id",
-            (principal.tenant_id,),
+            (principal.tenant_id, *authorized_sources),
         ).fetchall()
     snapshots = [
         get_account_snapshot_as_of(path, principal, row["customer_id"], cutoff)
@@ -946,10 +1147,51 @@ def _assert_customer(connection: sqlite3.Connection, principal: IntegrationPrinc
         raise DataFoundationError("not_found")
 
 
-def _check_feature_tree(value: Any, *, allow_billing: bool = False) -> None:
+def _has_sensitive_category_value(value: str) -> bool:
+    folded = value.casefold()
+    if (EMAIL_VALUE_PATTERN.search(value) or SENSITIVE_VALUE_PATTERN.search(value)
+            or any(marker in folded for marker in SENSITIVE_CATEGORY_MARKERS)):
+        return True
+    digits = "".join(character for character in value if character.isdigit())
+    if digits == value and len(digits) >= 7:
+        # Numeric category strings have no useful distinction from phone/card values;
+        # numeric facts must be submitted as numbers under their typed feature field.
+        return True
+    return False
+
+
+def _looks_like_payment_card_number(value: int) -> bool:
+    digits = str(abs(value))
+    if len(digits) not in range(13, 20):
+        return False
+    total = 0
+    parity = len(digits) % 2
+    for index, character in enumerate(digits):
+        digit = int(character)
+        if index % 2 == parity:
+            digit *= 2
+            if digit > 9:
+                digit -= 9
+        total += digit
+    return total % 10 == 0
+
+
+def _check_feature_tree(
+    value: Any,
+    *,
+    allow_billing: bool = False,
+    field_name: str | None = None,
+    depth: int = 0,
+    nodes: list[int] | None = None,
+) -> None:
+    if nodes is None:
+        nodes = [0]
+    nodes[0] += 1
+    if nodes[0] > 2048 or depth > 8:
+        raise DataFoundationError("invalid_contract")
     if isinstance(value, dict):
         for key, nested in value.items():
-            if not isinstance(key, str):
+            if not isinstance(key, str) or not SAFE_CATEGORY_PATTERN.fullmatch(key):
                 raise DataFoundationError("invalid_contract")
             normalized_key = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", key).casefold()
             if any(part in normalized_key for part in SENSITIVE_KEY_PARTS):
@@ -959,16 +1201,52 @@ def _check_feature_tree(value: Any, *, allow_billing: bool = False) -> None:
                 f"_{part}_" in f"_{financial_key}_" for part in FINANCIAL_KEY_PARTS
             ):
                 raise DataFoundationError("invalid_contract")
-            _check_feature_tree(nested, allow_billing=allow_billing)
+            _check_feature_tree(
+                nested, allow_billing=allow_billing, field_name=normalized_key,
+                depth=depth + 1, nodes=nodes,
+            )
     elif isinstance(value, list):
         for nested in value:
-            _check_feature_tree(nested, allow_billing=allow_billing)
+            _check_feature_tree(
+                nested, allow_billing=allow_billing, field_name=field_name,
+                depth=depth + 1, nodes=nodes,
+            )
     elif isinstance(value, str):
-        if EMAIL_VALUE_PATTERN.search(value):
+        if (field_name is None
+                or not (field_name in SAFE_CATEGORICAL_FIELDS
+                        or any(field_name.endswith(suffix) for suffix in SAFE_CATEGORY_SUFFIXES))
+                or not SAFE_CATEGORY_PATTERN.fullmatch(value)
+                or _has_sensitive_category_value(value)):
             raise DataFoundationError("invalid_contract")
-    elif value is None or isinstance(value, (bool, int)):
+        if field_name in {"status", "subscription_status"} and value not in SUBSCRIPTION_STATUSES | {"unknown"}:
+            raise DataFoundationError("invalid_contract")
+        if field_name == "payment_status" and value not in {"failed", "succeeded", "unknown"}:
+            raise DataFoundationError("invalid_contract")
+        if field_name == "billing_interval" and value not in INTERVALS:
+            raise DataFoundationError("invalid_contract")
+        if field_name == "currency" and value not in ISO4217_CURRENT_CODES:
+            raise DataFoundationError("invalid_contract")
+        if field_name == "reliability_status" and value not in RELIABILITY_STATUSES:
+            raise DataFoundationError("invalid_contract")
+        if field_name == "data_freshness_status" and value not in FRESHNESS_STATUSES:
+            raise DataFoundationError("invalid_contract")
+        if field_name == "data_quality_status" and value not in {"available", "limited", "insufficient", "unknown"}:
+            raise DataFoundationError("invalid_contract")
+        if field_name == "reason_code" and value not in SAFE_RELIABILITY_REASON_CODES:
+            raise DataFoundationError("invalid_contract")
+        if field_name == "direction" and value not in {"positive", "negative", "increasing", "decreasing"}:
+            raise DataFoundationError("invalid_contract")
+        if field_name == "trend" and value not in {"increasing", "decreasing", "stable", "flat", "unknown"}:
+            raise DataFoundationError("invalid_contract")
+    elif value is None or isinstance(value, bool):
+        return
+    elif isinstance(value, int):
+        if _looks_like_payment_card_number(value):
+            raise DataFoundationError("invalid_contract")
         return
     elif isinstance(value, float) and math.isfinite(value):
+        if value.is_integer() and _looks_like_payment_card_number(int(value)):
+            raise DataFoundationError("invalid_contract")
         return
     else:
         raise DataFoundationError("invalid_contract")
@@ -978,10 +1256,7 @@ def _check_reliability_reasons(reasons: Any) -> None:
     if not isinstance(reasons, list):
         raise DataFoundationError("invalid_contract")
     for reason in reasons:
-        if (not isinstance(reason, str) or len(reason) > 200
-                or any(ord(character) < 32 for character in reason)
-                or EMAIL_VALUE_PATTERN.search(reason)
-                or SENSITIVE_VALUE_PATTERN.search(reason)):
+        if not isinstance(reason, str) or reason not in SAFE_RELIABILITY_REASON_CODES:
             raise DataFoundationError("invalid_contract")
 
 
@@ -1175,6 +1450,44 @@ def get_integration_health(
             "last_successful_ingestion_at, last_failure_at, last_failure_code "
             "FROM integrations WHERE tenant_id = ? AND integration_id = ? ORDER BY source",
             (principal.tenant_id, principal.integration_id),
+        ).fetchall()
+    result = []
+    for row in rows:
+        success = row["last_successful_ingestion_at"]
+        failure = row["last_failure_at"]
+        if not success and not failure:
+            state = "unknown"
+        elif failure and (not success or failure > success):
+            state = "degraded"
+        else:
+            state = "observed"
+        result.append({
+            "tenant_id": row["tenant_id"], "source": row["source"],
+            "schema_version": row["schema_version"], "mapping_version": row["mapping_version"],
+            "authorized_purposes": json.loads(row["authorized_purposes_json"]),
+            "last_successful_ingestion_at": success, "last_failure_at": failure,
+            "last_failure_code": row["last_failure_code"], "availability_status": state,
+            "freshness_status": "unknown",
+        })
+    return result
+
+
+def get_tenant_integration_health(
+    path: str | Path,
+    principal: ServicePrincipal,
+) -> list[dict[str, Any]]:
+    """Return health only for exact sources granted to an internal Admin/Operator."""
+    if not isinstance(principal, ServicePrincipal) or principal.role not in {"admin", "operator"}:
+        raise DataFoundationError("unauthorized")
+    _require_purposes(principal, "integration_health")
+    with _db(path) as connection:
+        _assert_service_principal(connection, principal)
+        placeholders = ",".join("?" for _ in principal.authorized_sources)
+        rows = connection.execute(
+            "SELECT tenant_id, source, authorized_purposes_json, schema_version, mapping_version, created_at, "
+            "last_successful_ingestion_at, last_failure_at, last_failure_code "
+            f"FROM integrations WHERE tenant_id = ? AND source IN ({placeholders}) ORDER BY source",
+            (principal.tenant_id, *principal.authorized_sources),
         ).fetchall()
     result = []
     for row in rows:

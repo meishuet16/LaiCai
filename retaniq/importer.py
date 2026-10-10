@@ -10,8 +10,10 @@ from typing import Any, Iterator
 
 from .data_foundation import (
     DataFoundationError,
-    IntegrationPrincipal,
+    ReadPrincipal,
     _db,
+    _assert_read_principal,
+    _require_purposes,
     _validate_id,
     authenticate_integration,
     get_events_as_of,
@@ -122,7 +124,7 @@ def import_csv_with_token(
 
 def iter_replay_events(
     database_path: str,
-    principal: IntegrationPrincipal,
+    principal: ReadPrincipal,
     available_from: str,
     available_through: str,
 ) -> Iterator[dict[str, Any]]:
@@ -131,9 +133,13 @@ def iter_replay_events(
     if end < start:
         raise DataFoundationError("invalid_contract")
     with _db(database_path) as connection:
+        authorized_sources = _assert_read_principal(connection, principal)
+        _require_purposes(principal, "retention_inference")
+        source_placeholders = ",".join("?" for _ in authorized_sources)
         rows = connection.execute(
-            "SELECT DISTINCT customer_id FROM canonical_events WHERE tenant_id = ?",
-            (principal.tenant_id,),
+            "SELECT DISTINCT customer_id FROM canonical_events "
+            f"WHERE tenant_id = ? AND source IN ({source_placeholders})",
+            (principal.tenant_id, *authorized_sources),
         ).fetchall()
     replay: list[dict[str, Any]] = []
     for row in rows:

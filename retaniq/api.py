@@ -11,7 +11,9 @@ from .data_foundation import (
     DataFoundationError,
     SAFE_MESSAGES,
     authenticate_integration,
+    authenticate_service_principal,
     get_integration_health,
+    get_tenant_integration_health,
     ingest_event,
     record_integration_failure,
     initialize_database,
@@ -60,10 +62,19 @@ def create_app(database_path: str):
     def application(environ, start_response):
         method = environ.get("REQUEST_METHOD", "GET").upper()
         path = environ.get("PATH_INFO", "")
-        if (method, path) not in {("POST", "/v1/ingest/events"), ("GET", "/v1/integrations")}:
+        if (method, path) not in {
+            ("POST", "/v1/ingest/events"), ("GET", "/v1/integrations"),
+            ("GET", "/v1/admin/integrations"),
+        }:
             return _response(start_response, HTTPStatus.NOT_FOUND, {"error": "not_found"})
         principal = None
         try:
+            if (method, path) == ("GET", "/v1/admin/integrations"):
+                principal = authenticate_service_principal(database_path, _bearer(environ))
+                return _response(
+                    start_response, HTTPStatus.OK,
+                    {"integrations": get_tenant_integration_health(database_path, principal)},
+                )
             principal = authenticate_integration(database_path, _bearer(environ))
             if method == "GET":
                 return _response(start_response, HTTPStatus.OK, {"integrations": get_integration_health(database_path, principal)})

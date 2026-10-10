@@ -14,6 +14,7 @@ from .data_foundation import (
     authenticate_integration,
     create_customer,
     create_integration,
+    create_service_principal,
     create_tenant,
     initialize_database,
     map_customer_identity,
@@ -41,6 +42,19 @@ def _parser() -> argparse.ArgumentParser:
         choices=("retention_inference", "billing_valuation", "operational_contact", "identity_mapping"),
         help="explicitly grant one purpose; repeat to grant multiple purposes",
     )
+
+    service = commands.add_parser(
+        "create-service-principal", help="provision an internal, tenant/source-scoped service credential",
+    )
+    service.add_argument("--db", required=True)
+    service.add_argument("--tenant-id", required=True)
+    service.add_argument("--role", required=True, choices=("analyst", "admin", "operator"))
+    service.add_argument("--source", action="append", required=True,
+                         help="explicitly grant one existing source; repeat for multiple sources")
+    service.add_argument("--purpose", action="append", required=True,
+                         choices=("retention_inference", "billing_valuation", "operational_contact",
+                                  "identity_mapping", "integration_health"),
+                         help="explicitly grant one purpose; repeat to grant multiple purposes")
 
     customer = commands.add_parser("create-customer", help="create a paying account (trusted local operator only)")
     customer.add_argument("--db", required=True)
@@ -90,6 +104,17 @@ def main(argv: list[str] | None = None) -> int:
             purposes = tuple(args.purpose) if args.purpose else ("retention_inference", "billing_valuation")
             token = create_integration(args.db, args.tenant_id, args.source, authorized_purposes=purposes)
             print(json.dumps({"source": args.source, "token": token, "store_this_token_securely": True}))
+        elif args.command == "create-service-principal":
+            initialize_database(args.db)
+            token = create_service_principal(
+                args.db, args.tenant_id, role=args.role, authorized_sources=tuple(args.source),
+                authorized_purposes=tuple(args.purpose),
+            )
+            print(json.dumps({
+                "tenant_id": args.tenant_id, "role": args.role,
+                "authorized_sources": sorted(set(args.source)), "token": token,
+                "store_this_token_securely": True,
+            }))
         elif args.command == "create-customer":
             create_customer(args.db, args.tenant_id, args.customer_id,
                             account_status="inactive" if args.inactive else "active")
