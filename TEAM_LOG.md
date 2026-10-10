@@ -72,6 +72,22 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T21:32:02Z — Member 2 AI coding assistant — Prompt 34 deadline status correction
+
+- **Workstream:** Part 2 / Prompt 34 / Docs / handoff
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `docs(member2): record interrupted Prompt 34 preparation status`
+- **Issue / task:** Member 2 Prompt 34 emergency delivery
+- **Files changed:** `docs/MEMBER2_PROMPT34_CALIBRATED_DEMO_REPORT.md` and this log.
+- **What changed:** Recorded the intentional deadline interruption at the latest verified progress checkpoint (25/25 cutoffs), the exact available partial private files, and the absence of a finalized preparation manifest or support report. Explicitly states that no Prompt 34 model training, calibration, held-out evaluation, or real model-backed replay is claimed, and distinguishes the existing Prompt 31 artifacts.
+- **Why it changed:** The user directed immediate stop and truthful final delivery before the reduced preparation completed finalization.
+- **Contract / database / API impact:** None. Existing synthetic source dataset, imported SQLite database, private preparation files, and logs were preserved. No generated/private data or model artifact was added to Git.
+- **Tests / verification:** No tests rerun by instruction; the last focused evidence remains as recorded in the prior Prompt 34 entry. `git diff --check` run before commit.
+- **Data / model / ROI evidence:** Synthetic-only. Latest verified preparation progress: cutoff 25/25, `2026-08-17`, 125,000 candidate checks, 63,296 historical and 55,039 eligible snapshots at that cutoff. These are progress counters, not finalized split or support counts. No Prompt 34 model artifacts exist.
+- **Known issues / blockers:** `preparation_manifest.json` is absent; private prepared outputs are incomplete, including a `.tmp` calibration feature file. TRAIN/VALIDATION/CALIBRATION support gates were not finalized. Training, calibration, TEST evaluation, and real model-backed replay remain unverified and unclaimed.
+- **Next action / handoff:** Resume only with a separately authorized, versioned recovery plan; do not train from the incomplete private files.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T20:53:46Z — Member 2 AI coding assistant — Emergency Prompt 34 reduced demo workflow and truthful handoff
 
 - **Workstream:** Part 2 / ML / Integration / QA / Docs
