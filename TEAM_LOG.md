@@ -72,6 +72,28 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T20:42:20Z — ChatGPT / Docs — Publish complete judging-ready LaiCai README
+
+- **Workstream:** Docs / Track 1 Pitch & Integration
+- **Branch:** `main`
+- **Commit subject:** `docs: publish rubric-aligned LaiCai project README`
+- **Issue / task:** User-requested complete README aligned with RetainIQ v2 requirements, Track 1 judging rubric, and final three-minute pitch script.
+- **Files changed:** `README.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Replaced Part 1-only README with full project presentation: problem and verified Recurly/Unbounce sources, customer success personas, Connect–Predict–Decide–Learn flow, features, dashboard routes, and example journey.
+  - Documented multi-horizon modeling, personal baseline, reliability, human-governed MRR-prioritized review, break-even math, mature feedback, data integration, local setup, evidence standards, demo walkthrough, and rubric mapping.
+  - Separated specification/design, current synthetic UI/data foundation, unsupported real-data/model claims, and integration gates.
+- **Why it changed:** Provide a complete and understandable judge-facing project README consistent with the four-part requirements and actual repository boundaries.
+- **Contract / database / API impact:** Documentation only; no code, API schema, database, model, credential, or deployed service changed.
+- **Tests / verification:**
+  - README static content and Markdown section checks — PASS — core requirements, primary story, evidence caveats, documented routes, citations, and formulas included.
+  - GitHub `main` HEAD, `README.md`, `TEAM_LOG.md`, `DATASET_CARD.md`, `package.json`, frontend routes and services inspected — PASS — README reflects verified repository state.
+  - Runtime build/unit tests — NOT RUN — documentation-only remote GitHub update; prior reported results are not represented as newly executed.
+- **Data / model / ROI evidence:** Third-party cited statistics, local synthetic demonstration, arithmetic scenario assumptions, and existing DATASET_CARD limitations; no invented held-out metrics or causally saved revenue.
+- **Known issues / blockers:** Real-data acceptance, real measured LightGBM performance, production API/UI integration and complete deployment not established in main.
+- **Next action / handoff:** Team to validate demo/deployment and update measured evidence, links, and implementation status only when supported; maintain same-commit log discipline.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T15:09:47Z — Codex — Add five-page RetainIQ frontend dashboard
 
 - **Workstream:** Frontend
