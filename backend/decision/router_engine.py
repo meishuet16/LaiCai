@@ -167,5 +167,7 @@ def build_route_result(
         currency=currency,
         p_churn_30d=prediction.p_churn_30d,
         p_churn_7d=prediction.p_churn_7d,
+        reliability_status=prediction.reliability.status.value,
+        data_freshness_status=prediction.data_freshness.status.value,
         cooldown_active=cooldown_active,
     )

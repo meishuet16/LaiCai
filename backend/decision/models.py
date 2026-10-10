@@ -166,6 +166,8 @@ class RouteResult(BaseModel):
     currency: Optional[str] = None
     p_churn_30d: Optional[float] = None
     p_churn_7d: Optional[float] = None
+    reliability_status: Optional[str] = None
+    data_freshness_status: Optional[str] = None
     cooldown_active: bool = False
 
 
@@ -243,6 +245,96 @@ class ROICard(BaseModel):
     scenario_label: ScenarioLabel = ScenarioLabel.SCENARIO_ONLY
     unavailable_reason: Optional[str] = None   # set when output is N/A
     notes: list[str] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Action Proposal & Customer Facts Models (§7.4, §7.5)
+# ---------------------------------------------------------------------------
+
+class SupportingFactRef(BaseModel):
+    """Reference to an underlying data row (e.g. usage_events, billing_events)."""
+    table: str
+    id: str
+    description: str
+
+
+class ActionProposal(BaseModel):
+    """
+    An executable or human-reviewable proposed action for a decision case.
+    Must include supporting fact references — never fabricated.
+    """
+    proposal_id: str
+    case_id: str
+    customer_id: str
+    action_code: ActionCode
+    catalogue_version: str = "action_catalog_v1"
+    mode: ActionMode = ActionMode.OPERATIONAL
+    eligibility_reason: str
+    supporting_fact_refs: list[SupportingFactRef] = Field(default_factory=list)
+    estimated_cost_minor: int = 0
+    currency: str = "MYR"
+    estimated_staff_minutes: int = 0
+    cooldown_days: Optional[int] = None
+    approval_role: str = "retention_agent"
+
+
+class DisabledAction(BaseModel):
+    """An action catalog entry that cannot produce live executable proposals."""
+    action_code: ActionCode
+    mode: ActionMode
+    reason: str
+
+
+class CaseProposalsResponse(BaseModel):
+    """Response schema for GET /v1/decisions/cases/{case_id}/proposals."""
+    case_id: str
+    customer_id: str
+    proposals: list[ActionProposal] = Field(default_factory=list)
+    disabled_actions: list[DisabledAction] = Field(default_factory=list)
+
+
+class CustomerFacts(BaseModel):
+    """
+    Point-in-time observed facts for an account at cutoff as_of.
+    Used for candidate action generation without resorting to SHAP causal attribution.
+    """
+    tenant_id: str
+    customer_id: str
+    as_of: datetime
+
+    # Usage observations (Part 1 usage_events)
+    has_usage_deviation: bool = False
+    usage_event_id: Optional[str] = None
+    usage_deviation_detail: Optional[str] = None
+
+    # Billing observations (Part 1 billing_events)
+    has_failed_billing: bool = False
+    billing_event_id: Optional[str] = None
+    billing_detail: Optional[str] = None
+
+    # Feature / onboarding observations (Part 1 feature events)
+    has_feature_gap: bool = False
+    feature_event_id: Optional[str] = None
+    feature_gap_detail: Optional[str] = None
+
+    # Evidence and data quality flags
+    data_quality_issues: list[str] = Field(default_factory=list)
+    is_evidence_insufficient: bool = False
+
+    # Account contraindications
+    contradictory_status: bool = False
+    has_open_action: bool = False
+    active_cooldown_actions: list[ActionCode] = Field(default_factory=list)
+
+
+class BudgetConfigRecord(BaseModel):
+    """Admin-configured reviewer capacity and budget caps (§7.5)."""
+    tenant_id: str
+    currency: str = "MYR"
+    policy_period: str = "daily"  # "daily" | "weekly"
+    k_slots: int = 10
+    staff_minutes_cap: int = 480
+    monetary_budget_minor: int = 100000
 
 
 # ---------------------------------------------------------------------------

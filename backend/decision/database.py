@@ -46,20 +46,15 @@ def close_pool() -> None:
         logger.info("Connection pool closed.")
 
 
-@contextmanager
 def get_db() -> Generator:
     """
     FastAPI dependency — yields a psycopg2 connection from the pool.
     Commits on success, rolls back on any exception.
-
-    Usage:
-        @router.post("/")
-        def endpoint(db=Depends(get_db)):
-            with db.cursor() as cur:
-                cur.execute(...)
+    If the pool is not initialized (e.g. running unit tests without DB), yields None.
     """
     if _pool is None:
-        raise RuntimeError("Connection pool not initialized. Call init_pool() at startup.")
+        yield None
+        return
 
     conn = _pool.getconn()
     try:

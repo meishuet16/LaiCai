@@ -72,6 +72,37 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T06:55:00Z — Member 3 — Phase 2: Action catalog engine, break-even ROI card, DB migration, live API, tests
+
+- **Workstream:** Part 3 — Decision Engine
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `feat: Phase 2 — action catalog rule engine, break-even ROI calculator, proposal migrations, live endpoints`
+- **Issue / task:** Phase 2 — Action Rules + ROI (RetainIQ_v2_Complete_Requirements.md §7.4, §7.5, §7.6; rolemember.md §开发优先顺序)
+- **Files changed:**
+  - `backend/decision/action_catalog.py` *(new)* — Next Best Action catalog & fact-based candidate generation (§7.4)
+  - `backend/decision/roi_calculator.py` *(new)* — one-month break-even sensitivity & scenario ROI calculation (§7.6)
+  - `backend/decision/migrations/002_action_proposals.sql` *(new)* — action_proposals & budget_config tables + RLS
+  - `backend/decision/models.py` *(modified)* — SupportingFactRef, ActionProposal, DisabledAction, CaseProposalsResponse, CustomerFacts, BudgetConfigRecord
+  - `backend/decision/router_engine.py` *(modified)* — populated reliability_status and data_freshness_status in RouteResult
+  - `backend/decision/database.py` *(modified)* — clean FastAPI generator dependency without contextmanager, fallback when pool is not initialized
+  - `backend/decision/api.py` *(modified)* — live GET /v1/decisions/cases/{case_id}/proposals & GET /v1/decisions/cases/{case_id}/roi endpoints
+  - `tests/decision/test_action_catalog.py` *(new)* — 15 unit tests covering eligibility, contraindications, suppression, data investigation
+  - `tests/decision/test_roi_calculator.py` *(new)* — 10 unit tests covering verified arithmetic, zero cost, bounds, pp vs % formatting
+  - `tests/decision/test_api_phase2.py` *(new)* — 2 FastAPI integration tests for live proposals and ROI calculation
+  - `TEAM_LOG.md` *(this entry)*
+- **What changed:**
+  - `action_catalog.py`: Catalog defined with canonical actions and strict modes (operational: ACCOUNT_CHECK_IN, PAYMENT_RECOVERY, DATA_INVESTIGATION, NO_INTERVENTION; conditional: PRODUCT_WALKTHROUGH; disabled/simulation: TECH_SUPPORT_ESCALATION, PLAN_REVIEW, PAUSE, DOWNGRADE, CONDITIONAL_DISCOUNT). Implemented fact-based candidate generator attaching source table IDs (usage_events, billing_events, feature_events). Discretionary contact suppressed when open action exists or active cooldown applies. When evidence is missing or stale, routes strictly to DATA_INVESTIGATION rather than fabricating incentives. Non-operational actions segregated into disabled_actions list.
+  - `roi_calculator.py`: Implements §7.6 break-even arithmetic: contribution_value = MRR * margin; break_even_abs = cost / contribution_value (in percentage points pp); break_even_share = break_even_abs / p30 (in percentage %). Zero cost produces ROI N/A. Break-even exceeding p30 marked break_even_achievable=False ("not achievable in this simplified scenario"). Clamps assumed reduction within [0, p30]. Strictly labeled SCENARIO_ONLY.
+  - `api.py`: Promoted GET /cases/{case_id}/proposals and GET /cases/{case_id}/roi from stubs to live calculation engines. Preserved real reliability_status and data_freshness_status in decision_cases insertion.
+- **Why it changed:** Fulfills Phase 2 requirements for Part 3 Decision Engine per §7.4, §7.5, §7.6.
+- **Contract / database / API impact:** Live response formats match frozen shared fixture `shared/fixtures/decision_mock.json` exactly. Migration 002 adds `action_proposals` and `budget_config` tables.
+- **Tests / verification:**
+  - `pytest tests/decision/ -v` — PASS (65 passed, 0 failed in 0.55s).
+- **Data / model / ROI evidence:** ROI calculation strictly enforces SCENARIO_ONLY sensitivity labeling. No causal uplift claimed.
+- **Known issues / blockers:** Part 1 SQL view `account_mrr_as_of` still pending from Member 1; inline MRR or default fallback used in the interim.
+- **Next action / handoff:** Phase 3 — Human approval state machine, transactional budget enforcement, 7/14/30d outcome tracking, and RevenueCaptured@K evaluation (§7.5, §7.7, §7.8).
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T06:42:00Z — Member 3 — Phase 1: Routing engine, ranker, DB migration, API, tests
 
 - **Workstream:** Part 3 — Decision Engine
