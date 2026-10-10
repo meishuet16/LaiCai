@@ -72,6 +72,32 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T16:32:31Z — Member 1 / Data & Backend Engineer — 06E dual-database contract conformance
+
+- **Workstream:** Part 1 / Data Foundation, PostgreSQL parity, security regression
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** N/A — Prompt 06E changes intentionally uncommitted
+- **Issue / task:** Prompt 06E — final dual-database contract conformance and Milestone 06 assessment; stop before Phase 07.
+- **06D-3 checkpoint:** `106cc67e86219d14995529a6c91515c0358130e7` — `feat(member1): complete PostgreSQL persistence replay and API parity`, local commit created at the start of this prompt after auditing and staging the exact 15-file 06D-3 set.
+- **Files changed in 06E:** new `tests/test_dual_database_contracts.py`, new `docs/MEMBER1_DUAL_DATABASE_CONTRACT_MATRIX.md`, new `docs/MEMBER1_POSTGRESQL_MIGRATION_ACCEPTANCE.md`, updated `tests/test_postgresql_import_replay.py`, and this entry.
+- **What changed:**
+  - Added seven shared fixture runners executing the same deterministic authenticated scenario on fresh SQLite and PostgreSQL databases and strictly comparing normalized business outputs.
+  - Covered event digests/idempotency/conflicts, as-of event availability/replay, artifact persistence/auth, MRR/payment/cancellation/coverage/source grants, existing WSGI routes and rejection atomicity, concurrent identical/conflicting ingestion, subscription-owner races, and subtype-trigger rollback.
+  - Added a direct check that the Member 2 synthetic workflow principal intentionally receives only `retention_inference` and `model_artifact_write` by default, with no `billing_valuation` unless explicitly requested.
+  - Added a PASS/GAP contract matrix, principal permission matrix, and formal Milestone 06 acceptance/Phase 07A recommendation.
+- **Why it changed:** Verify cross-backend behavior with identical inputs and make the distinction between storage parity, explicit untested contract variants, operational data readiness, and production security auditable.
+- **Contract / database / API impact:** No application implementation, schema migration, applied migration checksum, endpoint, or shared payload contract changed in 06E. Tests use backend-specific DB triggers only to inject subtype persistence failure; the public event API is invoked on each engine. Timestamp normalization is restricted to UTC representation; API health processing times are validated per backend because they arise from separate real executions.
+- **Tests / verification:**
+  - 06D-3 baseline before 06E edits on fresh guarded PostgreSQL 16.15 — **PASS** — 150 passed, 0 failed/errors/skips, 63.665s; 34 live PostgreSQL tests.
+  - Focused differential suite — **PASS** — 7 shared comparisons, each run on SQLite and live PostgreSQL; final focused run 13.395s.
+  - Final full unittest discovery with PostgreSQL 16.15 / psycopg 3.3.6 — **PASS** — 157 passed, 0 failed, 0 errors, 0 skipped, 75.887s; 41 unique live PostgreSQL tests ran.
+  - SQLite-only full suite — **PASS** — 157 total, 116 passed, 41 expected PostgreSQL-guarded skips, 15.012s.
+  - `compileall`, package import smoke, and `git diff --check` — **PASS**. No Python warnings; expected unauthorized/invalid-request test logs only.
+- **Data / model / ROI evidence:** Synthetic engineering fixtures only. The import fixture is bounded quick profile; no STANDARD-scale, real-customer, model, performance, or ROI claim.
+- **Known issues / blockers:** No critical parity mismatch found. Noncritical coverage-state enumeration and strict MRR cross-output variants remain gaps (see matrix); richer label evidence/status/evaluation metadata and a full uncertainty object are not represented by current storage. RLS, external identity, production hosting, real-data permission/provenance, full-scale import, and Member 2's previously reported maturity/coverage/freshness/heartbeat blockers remain outside this prompt. Member 2's current corrections were not assumed or independently verified.
+- **Next action / handoff:** Milestone 06 is **CONDITIONALLY_ACCEPTED**: core dual-backend conformance is verified, with specified noncritical gaps. The exact task-created database `retaniq_test_06e_20261011` was dropped, the differential child database was dropped by test teardown, and only the task-owned PostgreSQL cluster was stopped; the unrelated Windows service was untouched. Recommended next scope is Phase 07A Supabase tenant-security/RLS foundation after policy review; do not begin it automatically. Leave 06E changes uncommitted; no push, merge, or deployment.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T16:11:05Z — Member 1 / Data & Backend Engineer — 06D-3 PostgreSQL artifacts, import, replay, and WSGI parity
 
 - **Workstream:** Part 1 / Data Foundation & PostgreSQL parity

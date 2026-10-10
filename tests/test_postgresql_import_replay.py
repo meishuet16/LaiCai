@@ -114,6 +114,11 @@ class PostgreSQLImportReplayTests(unittest.TestCase):
         pg_reader = provision_member2_reader(self.dataset, self.postgres, tenant_id)
         sqlite_reader = provision_member2_reader(self.dataset, self.sqlite, tenant_id)
         self.assertNotIn("billing_valuation", pg_reader["authorized_purposes"])
+        self.assertEqual(
+            set(pg_reader["authorized_purposes"]),
+            {"retention_inference", "model_artifact_write"},
+        )
+        self.assertEqual(set(sqlite_reader["authorized_purposes"]), set(pg_reader["authorized_purposes"]))
         self.assertNotIn("token", pg_result)
         pg_principal = authenticate_service_principal(self.postgres, pg_reader["token"])
         sqlite_principal = authenticate_service_principal(self.sqlite, sqlite_reader["token"])
