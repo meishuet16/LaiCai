@@ -7,14 +7,14 @@ import json
 import time
 from pathlib import Path
 
-from .canonical_adapter import import_dataset
+from .canonical_adapter import import_dataset, provision_member2_reader
 from .config import SyntheticConfig
 from .generator import generate_dataset
 from .validator import validate_dataset
 
 
 def _default_output() -> Path:
-    return Path.home() / "RetainIQ-private" / "synthetic_saas_v1"
+    return Path.home() / "RetainIQ-private" / "synthetic_saas_v1_2"
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -42,6 +42,11 @@ def _parser() -> argparse.ArgumentParser:
         if name == "import":
             command.add_argument("--db", type=Path, required=True)
             command.add_argument("--verify-idempotency", action="store_true")
+    reader = commands.add_parser("provision-reader", help="create a one-time, tenant/source-scoped Member 2 credential")
+    reader.add_argument("--dataset", type=Path, required=True)
+    reader.add_argument("--db", type=Path, required=True)
+    reader.add_argument("--tenant-id", required=True)
+    reader.add_argument("--billing-valuation", action="store_true")
     return parser
 
 
@@ -80,12 +85,17 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "validate":
             result = validate_dataset(_resolve_dataset(args))
             result["elapsed_seconds"] = round(time.perf_counter() - started, 3)
-        else:
+        elif args.command == "import":
             result = import_dataset(
                 _resolve_dataset(args), args.db,
                 verify_idempotency=args.verify_idempotency,
             )
             result["elapsed_seconds"] = round(time.perf_counter() - started, 3)
+        else:
+            result = provision_member2_reader(
+                args.dataset, args.db, args.tenant_id,
+                include_billing_valuation=args.billing_valuation,
+            )
         print(json.dumps(result, ensure_ascii=True, sort_keys=True))
         return 0 if result.get("status") not in {"FAIL", "PARTIAL"} else 1
     except (OSError, ValueError) as exc:

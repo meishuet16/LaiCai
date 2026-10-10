@@ -1,13 +1,14 @@
 # RetainIQ v2 dataset card
 
-**Dataset readiness: `NOT_READY`**
+**Real-data readiness: `NOT_READY`**
+**Synthetic SaaS v1.2 readiness: `READY_FOR_SYNTHETIC_MODEL_DEVELOPMENT`**
 **Assessment date:** 2026-10-10
 **Selected real dataset:** None
 **Real records imported:** 0
 
 ## Decision
 
-No dataset currently available to this project is both authorized for this use and verified to support the canonical subscription-churn target. No source file was imported. Actual account/event counts, event date ranges, subscription coverage, observation completeness, and 7/14/30-day label counts are **not measured**. Synthetic examples and unit tests are engineering checks only.
+No real dataset currently available to this project is both authorized for this use and verified to support the canonical subscription-churn target. No real source file was imported. Actual real account/event counts, event date ranges, subscription coverage, observation completeness, and 7/14/30-day label counts are **not measured**. The separately generated Synthetic SaaS v1.2 family is ready for synthetic development only; it does not change this real-data decision.
 
 The closest technical candidate was KKBox's WSDM churn competition. Its public challenge describes dated membership transactions and usage logs and asks for a churn outcome around subscription expiration. Its rules limit use to competition participation, forum participation, academic research, and education; access is under the competition terms and redistribution to nonparticipants is barred. We did not accept terms, obtain a participant-authorized download, or verify that this Dormathon project and downstream handoff fit the permitted purpose. It is therefore **not selected or authorized for import**. See the [official challenge](https://www.kaggle.com/c/kkbox-churn-prediction-challenge), [competition rules](https://www.kaggle.com/c/kkbox-churn-prediction-challenge/rules), and [WSDM task description](https://www.wsdm-conference.org/2018/call-for-participants.html).
 
@@ -67,7 +68,7 @@ This is a gated future instruction; it was **not run**, and it does not establis
 
 ## Local evidence and limitations
 
-`python -m examples.member2_as_of_history` exercises existing SQLite ingestion and point-in-time queries with explicitly synthetic records. It demonstrates a pre-cutoff usage event and exclusion of a synthetic future event. It creates no labels or probabilities. This confirms API usability only; it is not real-data integration, training, evaluation, or model-readiness evidence.
+`python -m examples.member2_as_of_history` remains a small API fixture. Separately, Synthetic SaaS v1.2 QUICK, STANDARD, and FULL artifacts passed validation; STANDARD and FULL passed isolated canonical import and Member 2 read-only smoke checks. The v1.2 handoff includes synthetic horizon and chronological evidence. This is synthetic integration and training readiness only; no model has been trained and it does not establish real-data integration, real-world validation, or model performance on real customers. See [`docs/SYNTHETIC_SAAS_DATASET.md`](docs/SYNTHETIC_SAAS_DATASET.md) and [`docs/MEMBER1_TO_MEMBER2_SYNTHETIC_HANDOFF.md`](docs/MEMBER1_TO_MEMBER2_SYNTHETIC_HANDOFF.md).
 
 The implementation stores event occurrence, receipt, and optional verified source-availability times; as-of visibility requires both occurrence and availability to be no later than the cutoff. It reconstructs subscription state from append-only events. The database is SQLite, not the PostgreSQL storage required by the integrated production requirements. There is no acquired historical dataset, source-specific mapping, or training pipeline.
 

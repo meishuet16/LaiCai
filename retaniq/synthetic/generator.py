@@ -13,6 +13,7 @@ import math
 import os
 import random
 import shutil
+from calendar import monthrange
 from collections import Counter
 from contextlib import ExitStack
 from datetime import date, datetime, timedelta, timezone
@@ -64,6 +65,36 @@ COVERAGE_FIELDS = (
 
 def _iso(value: datetime) -> str:
     return value.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def add_billing_period(value: str, interval: str, count: int = 1) -> str:
+    """Add a calendar billing period, preserving end-of-month anchors."""
+    if isinstance(count, bool) or not isinstance(count, int) or count < 1:
+        raise ValueError("billing interval count must be a positive integer")
+    candidate = value[:-1] + "+00:00" if isinstance(value, str) and value.endswith("Z") else value
+    try:
+        instant = datetime.fromisoformat(candidate)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("billing period timestamp must be ISO 8601") from exc
+    if instant.tzinfo is None or instant.utcoffset() is None:
+        raise ValueError("billing period timestamp must include a timezone")
+    instant = instant.astimezone(timezone.utc)
+    if interval == "day":
+        result = instant + timedelta(days=count)
+    elif interval == "week":
+        result = instant + timedelta(weeks=count)
+    elif interval in {"month", "quarter", "year"}:
+        months = count * {"month": 1, "quarter": 3, "year": 12}[interval]
+        month_index = instant.year * 12 + instant.month - 1 + months
+        year, zero_month = divmod(month_index, 12)
+        month = zero_month + 1
+        source_last_day = instant.day == monthrange(instant.year, instant.month)[1]
+        target_last_day = monthrange(year, month)[1]
+        day = target_last_day if source_last_day else min(instant.day, target_last_day)
+        result = instant.replace(year=year, month=month, day=day)
+    else:
+        raise ValueError("unsupported billing interval")
+    return _iso(result)
 
 
 def _at_noon(value: date) -> datetime:
@@ -656,3 +687,11 @@ def generate_dataset(config: SyntheticConfig, output_root: Path | str) -> dict[s
         if staging.exists():
             shutil.rmtree(staging)
         raise
+
+
+# Keep the public generator import stable for callers while switching the
+# implementation to the source-backed v1.2 format. The billing-period helper
+# above remains the shared calendar arithmetic implementation.
+from .v12_generator import generate_dataset as _generate_dataset_v12
+
+generate_dataset = _generate_dataset_v12

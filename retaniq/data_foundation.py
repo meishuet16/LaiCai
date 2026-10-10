@@ -215,6 +215,10 @@ def initialize_database(path: str | Path) -> None:
                 "003_integration_event_categories",
                 migrations_dir / "003_integration_event_categories.sql",
             ),
+            (
+                "004_dataset_identity_and_observation_coverage",
+                migrations_dir / "004_dataset_identity_and_observation_coverage.sql",
+            ),
         )
         for version, migration in migrations:
             applied = connection.execute(
@@ -246,6 +250,64 @@ def _validate_id(value: Any) -> str:
     if not isinstance(value, str) or not ID_PATTERN.fullmatch(value):
         raise DataFoundationError("invalid_contract")
     return value
+
+
+def bind_dataset_identity(
+    path: str | Path,
+    *,
+    dataset_id: str,
+    dataset_version: str,
+    dataset_type: str,
+    target_policy_version: str,
+    generator_version: str,
+    manifest_sha256: str,
+) -> dict[str, str]:
+    """Bind an empty database to one immutable synthetic dataset manifest."""
+    values = {
+        "dataset_id": _validate_id(dataset_id),
+        "dataset_version": _validate_id(dataset_version),
+        "dataset_type": dataset_type,
+        "target_policy_version": _validate_id(target_policy_version),
+        "generator_version": _validate_id(generator_version),
+        "manifest_sha256": manifest_sha256,
+    }
+    if dataset_type != "synthetic_saas" or not isinstance(manifest_sha256, str) or not re.fullmatch(
+        r"[0-9a-f]{64}", manifest_sha256,
+    ):
+        raise ValueError("dataset identity fields are invalid")
+    with _db(path) as connection:
+        existing = connection.execute("SELECT * FROM dataset_identity WHERE singleton_id = 1").fetchone()
+        if existing is not None:
+            if any(existing[key] != value for key, value in values.items()):
+                raise ValueError("dataset identity mismatch")
+            return values
+        populated = connection.execute(
+            "SELECT (SELECT COUNT(*) FROM tenants) + (SELECT COUNT(*) FROM canonical_events) "
+            "+ (SELECT COUNT(*) FROM service_principals)"
+        ).fetchone()[0]
+        if populated:
+            raise ValueError("dataset identity cannot be bound to a non-empty database")
+        connection.execute(
+            "INSERT INTO dataset_identity(singleton_id, dataset_id, dataset_version, dataset_type, "
+            "target_policy_version, generator_version, manifest_sha256, bound_at) "
+            "VALUES (1, ?, ?, ?, ?, ?, ?, ?)",
+            (*values.values(), _utc_now()),
+        )
+    return values
+
+
+def get_dataset_identity(path: str | Path, principal: ReadPrincipal) -> dict[str, str]:
+    """Return immutable dataset provenance to an authorized tenant reader."""
+    _require_purposes(principal, "retention_inference")
+    with _db(path) as connection:
+        _assert_read_principal(connection, principal)
+        row = connection.execute("SELECT * FROM dataset_identity WHERE singleton_id = 1").fetchone()
+        if row is None or row["dataset_type"] != "synthetic_saas":
+            raise DataFoundationError("not_found")
+    return {key: row[key] for key in (
+        "dataset_id", "dataset_version", "dataset_type", "target_policy_version",
+        "generator_version", "manifest_sha256",
+    )}
 
 
 def _validate_slug(value: Any) -> str:
@@ -353,6 +415,115 @@ def create_customer(
             "VALUES (?, ?, ?, ?)",
             (tenant_id, customer_id, account_status, _utc_now()),
         )
+
+
+def provision_synthetic_identities(
+    path: str | Path,
+    *,
+    dataset_id: str,
+    customers: list[tuple[str, str]],
+    identities: list[tuple[str, str, str, str]],
+) -> None:
+    """Provision generated tenant/customer/source identities in one validated transaction."""
+    dataset_id = _validate_id(dataset_id)
+    normalized_customers = [(_validate_id(tenant), _validate_id(customer)) for tenant, customer in customers]
+    normalized_identities = [
+        (_validate_id(tenant), _validate_id(source), _validate_id(external), _validate_id(customer))
+        for tenant, source, external, customer in identities
+    ]
+    if (len(set(normalized_customers)) != len(normalized_customers)
+            or len({(tenant, source, external) for tenant, source, external, _ in normalized_identities}) != len(normalized_identities)):
+        raise DataFoundationError("invalid_contract")
+    customer_keys = set(normalized_customers)
+    timestamp = _utc_now()
+    with _db(path) as connection:
+        identity = connection.execute(
+            "SELECT dataset_type FROM dataset_identity WHERE singleton_id=1 AND dataset_id=?",
+            (dataset_id,),
+        ).fetchone()
+        if identity is None or identity["dataset_type"] != "synthetic_saas":
+            raise DataFoundationError("invalid_contract")
+        connection.execute("BEGIN IMMEDIATE")
+        tenants = sorted({tenant for tenant, _ in normalized_customers})
+        connection.executemany("INSERT OR IGNORE INTO tenants(tenant_id) VALUES (?)", ((tenant,) for tenant in tenants))
+        connection.executemany(
+            "INSERT OR IGNORE INTO customers(tenant_id, customer_id, account_status, created_at) VALUES (?, ?, 'active', ?)",
+            ((tenant, customer, timestamp) for tenant, customer in normalized_customers),
+        )
+        for tenant, source, external, customer in normalized_identities:
+            if (tenant, customer) not in customer_keys:
+                raise DataFoundationError("not_found")
+            existing = connection.execute(
+                "SELECT customer_id FROM customer_identities WHERE tenant_id=? AND source=? AND external_customer_id=?",
+                (tenant, source, external),
+            ).fetchone()
+            if existing is not None and existing["customer_id"] != customer:
+                raise DataFoundationError("contract_conflict")
+        connection.executemany(
+            "INSERT OR IGNORE INTO customer_identities(tenant_id, source, external_customer_id, customer_id, created_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            ((*identity_row, timestamp) for identity_row in normalized_identities),
+        )
+
+
+def provision_synthetic_integration_token(
+    path: str | Path,
+    *,
+    dataset_id: str,
+    tenant_id: str,
+    source: str,
+    category: str,
+) -> str:
+    """Issue a temporary importer token with a fixed, exact synthetic source grant.
+
+    Existing credentials are rotated only when their grants already match the
+    importer contract; this function cannot widen a pre-existing integration.
+    """
+    dataset_id = _validate_id(dataset_id)
+    tenant_id = _validate_id(tenant_id)
+    source = _validate_id(source)
+    if category not in EVENT_CATEGORIES:
+        raise DataFoundationError("invalid_contract")
+    purposes = ("billing_valuation", "identity_mapping", "retention_inference")
+    purposes_json = json.dumps(purposes, separators=(",", ":"))
+    token = secrets.token_urlsafe(32)
+    token_digest = hashlib.sha256(token.encode("ascii")).hexdigest()
+    integration_id = secrets.token_urlsafe(18)
+    with _db(path) as connection:
+        identity = connection.execute(
+            "SELECT dataset_type FROM dataset_identity WHERE singleton_id=1 AND dataset_id=?",
+            (dataset_id,),
+        ).fetchone()
+        if identity is None or identity["dataset_type"] != "synthetic_saas":
+            raise DataFoundationError("invalid_contract")
+        connection.execute("BEGIN IMMEDIATE")
+        existing = connection.execute(
+            "SELECT integration_id, authorized_purposes_json FROM integrations WHERE tenant_id=? AND source=?",
+            (tenant_id, source),
+        ).fetchone()
+        if existing is None:
+            connection.execute(
+                "INSERT INTO integrations(integration_id, tenant_id, source, token_digest, authorized_purposes_json, "
+                "schema_version, mapping_version, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (integration_id, tenant_id, source, token_digest, purposes_json, SCHEMA_VERSION,
+                 DEFAULT_MAPPING_VERSION, _utc_now()),
+            )
+            connection.execute(
+                "INSERT INTO integration_event_categories(tenant_id, source, category) VALUES (?, ?, ?)",
+                (tenant_id, source, category),
+            )
+        else:
+            current_categories = tuple(row["category"] for row in connection.execute(
+                "SELECT category FROM integration_event_categories WHERE tenant_id=? AND source=? ORDER BY category",
+                (tenant_id, source),
+            ).fetchall())
+            if tuple(json.loads(existing["authorized_purposes_json"])) != purposes or current_categories != (category,):
+                raise DataFoundationError("contract_conflict")
+            connection.execute(
+                "UPDATE integrations SET token_digest=? WHERE integration_id=?",
+                (token_digest, existing["integration_id"]),
+            )
+    return token
 
 
 def map_customer_identity(
@@ -771,6 +942,8 @@ def _record_subscription_event(
     customer_id: str,
     event: dict[str, Any],
     received_at: str,
+    *,
+    rebuild_projection: bool = True,
 ) -> None:
     attributes = event["attributes"]
     subscription_id = attributes["subscription_id"]
@@ -787,7 +960,8 @@ def _record_subscription_event(
          json.dumps(changed_fields, separators=(",", ":")), *columns,
          event["occurred_at"], received_at, event["source_available_at"]),
     )
-    _rebuild_subscription_projection(connection, tenant_id, customer_id, subscription_id)
+    if rebuild_projection:
+        _rebuild_subscription_projection(connection, tenant_id, customer_id, subscription_id)
 
 
 def _fold_subscription_rows(rows: Iterable[sqlite3.Row], subscription_id: str, customer_id: str) -> dict[str, Any]:
@@ -942,6 +1116,201 @@ def ingest_event(
         raise DataFoundationError("invalid_event") from None
 
 
+def ingest_events_batch(
+    path: str | Path,
+    records: list[dict[str, Any]],
+    *,
+    dataset_id: str,
+    stream_name: str,
+    first_row_number: int,
+    last_row_number: int,
+) -> dict[str, int]:
+    """Validate and ingest a bounded batch in one transaction with a resume checkpoint.
+
+    Each row follows the same envelope normalization, source/category grant,
+    customer mapping, subscription ownership and idempotency checks as
+    ``ingest_event``. Subscription projections rebuild once per touched
+    subscription after all rows in this atomic batch are inserted.
+    """
+    dataset_id = _validate_id(dataset_id)
+    stream_name = _validate_id(stream_name)
+    if (not isinstance(records, list) or not records or len(records) > 2000
+            or isinstance(first_row_number, bool) or isinstance(last_row_number, bool)
+            or not isinstance(first_row_number, int) or not isinstance(last_row_number, int)
+            or first_row_number < 1 or last_row_number < first_row_number
+            or last_row_number - first_row_number + 1 != len(records)):
+        raise DataFoundationError("invalid_contract")
+    received = _utc_now()
+    normalized_records: list[tuple[IntegrationPrincipal, dict[str, Any], str]] = []
+    failing_principal: IntegrationPrincipal | None = None
+    try:
+        for record in records:
+            if not isinstance(record, dict) or set(record) - {
+                "principal", "payload", "trusted_source_available_at",
+            } or "principal" not in record or "payload" not in record:
+                raise DataFoundationError("invalid_event")
+            principal = record["principal"]
+            failing_principal = principal
+            event = _normalize_envelope(
+                principal, record["payload"],
+                trusted_source_available_at=record.get("trusted_source_available_at"),
+            )
+            if event["category"] not in principal.authorized_categories:
+                raise DataFoundationError("event_category_not_authorized")
+            required_purposes = {"retention_inference"}
+            if any(key in event["attributes"] for key in ("amount_minor", "discount_minor", "currency")):
+                required_purposes.add("billing_valuation")
+            if not required_purposes.issubset(principal.authorized_purposes):
+                raise DataFoundationError("source_not_authorized")
+            normalized_records.append((principal, event, _event_hash(event)))
+
+        with _db(path) as connection:
+            identity_row = connection.execute(
+                "SELECT dataset_id FROM dataset_identity WHERE singleton_id = 1",
+            ).fetchone()
+            if identity_row is None or identity_row["dataset_id"] != dataset_id:
+                raise DataFoundationError("invalid_contract")
+            connection.execute("BEGIN IMMEDIATE")
+            checkpoint = connection.execute(
+                "SELECT last_row_number FROM synthetic_import_checkpoints WHERE dataset_id=? AND stream_name=?",
+                (dataset_id, stream_name),
+            ).fetchone()
+            checkpoint_row = int(checkpoint["last_row_number"]) if checkpoint else 0
+            replay = last_row_number <= checkpoint_row
+            if not replay and first_row_number != checkpoint_row + 1:
+                raise DataFoundationError("invalid_contract")
+            if not replay and first_row_number <= checkpoint_row:
+                raise DataFoundationError("invalid_contract")
+
+            integration_rows: dict[str, sqlite3.Row] = {}
+            touched_subscriptions: set[tuple[str, str, str]] = set()
+            accepted = duplicates = 0
+            for principal, event, digest in normalized_records:
+                integration = integration_rows.get(principal.integration_id)
+                if integration is None:
+                    integration = _assert_principal(connection, principal)
+                    integration_rows[principal.integration_id] = integration
+                if event["category"] not in principal.authorized_categories:
+                    raise DataFoundationError("event_category_not_authorized")
+                identity = connection.execute(
+                    "SELECT customer_id FROM customer_identities WHERE tenant_id=? AND source=? AND external_customer_id=?",
+                    (principal.tenant_id, principal.source, event["external_customer_id"]),
+                ).fetchone()
+                if identity is None:
+                    raise DataFoundationError("identity_not_mapped")
+                customer_id = identity["customer_id"]
+                prior = connection.execute(
+                    "SELECT event_id, normalized_payload_sha256 FROM canonical_events "
+                    "WHERE tenant_id=? AND source=? AND source_event_id=?",
+                    (principal.tenant_id, principal.source, event["source_event_id"]),
+                ).fetchone()
+                if prior is not None:
+                    if prior["normalized_payload_sha256"] != digest:
+                        raise DataFoundationError("idempotency_conflict")
+                    duplicates += 1
+                    continue
+                subscription_id = event["attributes"].get("subscription_id")
+                if subscription_id is not None:
+                    _claim_subscription_owner(connection, principal.tenant_id, subscription_id, customer_id)
+                cursor = connection.execute(
+                    "INSERT INTO canonical_events(tenant_id, source, source_event_id, customer_id, category, "
+                    "event_type, occurred_at, received_at, source_available_at, schema_version, mapping_version, "
+                    "normalized_payload_sha256) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (principal.tenant_id, principal.source, event["source_event_id"], customer_id,
+                     event["category"], event["event_type"], event["occurred_at"], received,
+                     event["source_available_at"], event["schema_version"], integration["mapping_version"], digest),
+                )
+                event_id = int(cursor.lastrowid)
+                attrs = event["attributes"]
+                if event["category"] == "usage":
+                    connection.execute(
+                        "INSERT INTO usage_events(tenant_id, event_id, customer_id, event_type, feature, quantity, unit, "
+                        "occurred_at, received_at, source_available_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (principal.tenant_id, event_id, customer_id, event["event_type"], attrs.get("feature"),
+                         attrs.get("quantity"), attrs.get("unit"), event["occurred_at"], received,
+                         event["source_available_at"]),
+                    )
+                elif event["category"] == "billing":
+                    connection.execute(
+                        "INSERT INTO billing_events(tenant_id, event_id, customer_id, subscription_id, event_type, "
+                        "payment_status, amount_minor, currency, occurred_at, received_at, source_available_at) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (principal.tenant_id, event_id, customer_id, attrs.get("subscription_id"), event["event_type"],
+                         attrs["payment_status"], attrs.get("amount_minor"), attrs.get("currency"),
+                         event["occurred_at"], received, event["source_available_at"]),
+                    )
+                else:
+                    _record_subscription_event(
+                        connection, principal.tenant_id, event_id, customer_id, event, received,
+                        rebuild_projection=False,
+                    )
+                    touched_subscriptions.add((principal.tenant_id, customer_id, subscription_id))
+                accepted += 1
+
+            for tenant_id, customer_id, subscription_id in touched_subscriptions:
+                _rebuild_subscription_projection(connection, tenant_id, customer_id, subscription_id)
+            for integration_id in integration_rows:
+                connection.execute(
+                    "UPDATE integrations SET last_successful_ingestion_at=?, last_failure_code=NULL WHERE integration_id=?",
+                    (received, integration_id),
+                )
+            if not replay:
+                connection.execute(
+                    "INSERT INTO synthetic_import_checkpoints(dataset_id, stream_name, last_row_number, accepted_count, "
+                    "duplicate_count, rejected_count, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?) "
+                    "ON CONFLICT(dataset_id, stream_name) DO UPDATE SET last_row_number=excluded.last_row_number, "
+                    "accepted_count=synthetic_import_checkpoints.accepted_count+excluded.accepted_count, "
+                    "duplicate_count=synthetic_import_checkpoints.duplicate_count+excluded.duplicate_count, "
+                    "updated_at=excluded.updated_at",
+                    (dataset_id, stream_name, last_row_number, accepted, duplicates, received),
+                )
+            return {
+                "accepted": accepted, "duplicates": duplicates,
+                "last_row_number": max(checkpoint_row, last_row_number),
+            }
+    except DataFoundationError as exc:
+        if failing_principal is not None and exc.code != "unauthorized":
+            try:
+                record_integration_failure(path, failing_principal, exc.code, received)
+            except DataFoundationError:
+                pass
+        raise
+    except sqlite3.IntegrityError:
+        if failing_principal is not None:
+            record_integration_failure(path, failing_principal, "invalid_event", received)
+        raise DataFoundationError("invalid_event") from None
+
+
+def get_synthetic_import_checkpoint(
+    path: str | Path,
+    *,
+    dataset_id: str,
+    stream_name: str,
+) -> dict[str, int]:
+    """Read a local operator checkpoint for a bound synthetic dataset import."""
+    dataset_id = _validate_id(dataset_id)
+    stream_name = _validate_id(stream_name)
+    with _db(path) as connection:
+        identity = connection.execute(
+            "SELECT dataset_id FROM dataset_identity WHERE singleton_id=1",
+        ).fetchone()
+        if identity is None or identity["dataset_id"] != dataset_id:
+            raise DataFoundationError("invalid_contract")
+        checkpoint = connection.execute(
+            "SELECT last_row_number, accepted_count, duplicate_count, rejected_count "
+            "FROM synthetic_import_checkpoints WHERE dataset_id=? AND stream_name=?",
+            (dataset_id, stream_name),
+        ).fetchone()
+        event_count = connection.execute("SELECT COUNT(*) FROM canonical_events").fetchone()[0]
+        coverage_count = connection.execute("SELECT COUNT(*) FROM observation_coverage").fetchone()[0]
+    if checkpoint is None:
+        return {"last_row_number": 0, "accepted_count": 0, "duplicate_count": 0, "rejected_count": 0,
+                "database_event_count": int(event_count), "database_coverage_count": int(coverage_count)}
+    return {key: int(checkpoint[key]) for key in (
+        "last_row_number", "accepted_count", "duplicate_count", "rejected_count",
+    )} | {"database_event_count": int(event_count), "database_coverage_count": int(coverage_count)}
+
+
 def _as_of_query() -> str:
     return "ce.occurred_at <= ? AND COALESCE(ce.source_available_at, ce.received_at) <= ?"
 
@@ -1028,6 +1397,301 @@ def get_events_as_of(
                 item["currency"] = row["billing_currency"]
         result.append(item)
     return result
+
+
+def record_observation_coverage(
+    path: str | Path,
+    principal: IntegrationPrincipal,
+    record: dict[str, Any],
+) -> dict[str, Any]:
+    """Store one source-granted, versioned observation interval for the synthetic importer."""
+    if not isinstance(principal, IntegrationPrincipal):
+        raise DataFoundationError("unauthorized")
+    if not isinstance(record, dict) or set(record) != {
+        "coverage_id", "customer_id", "source_category", "covered_from", "covered_through",
+        "coverage_status", "coverage_completeness", "coverage_available_at", "observation_policy_version",
+    }:
+        raise DataFoundationError("invalid_contract")
+    coverage_id = _validate_id(record["coverage_id"])
+    customer_id = _validate_id(record["customer_id"])
+    category = record["source_category"]
+    status = record["coverage_status"]
+    policy = _validate_id(record["observation_policy_version"])
+    if category not in EVENT_CATEGORIES or category not in principal.authorized_categories:
+        raise DataFoundationError("event_category_not_authorized")
+    if status not in {
+        "complete", "partial", "outage", "delayed", "missing_historical_backfill",
+        "not_created", "entitlement_ended", "censored",
+    }:
+        raise DataFoundationError("invalid_contract")
+    completeness = record["coverage_completeness"]
+    if isinstance(completeness, bool) or not isinstance(completeness, (int, float)) or not math.isfinite(completeness):
+        raise DataFoundationError("invalid_contract")
+    completeness = float(completeness)
+    if not 0 <= completeness <= 1 or (status == "complete" and completeness < 1):
+        raise DataFoundationError("invalid_contract")
+    covered_from = normalize_timestamp(record["covered_from"])
+    covered_through = normalize_timestamp(record["covered_through"])
+    available = normalize_timestamp(record["coverage_available_at"])
+    if covered_from >= covered_through or available < covered_through:
+        raise DataFoundationError("invalid_contract")
+    normalized = {
+        "tenant_id": principal.tenant_id,
+        "source": principal.source,
+        "coverage_id": coverage_id,
+        "customer_id": customer_id,
+        "source_category": category,
+        "covered_from": covered_from,
+        "covered_through": covered_through,
+        "coverage_status": status,
+        "coverage_completeness": completeness,
+        "coverage_available_at": available,
+        "observation_policy_version": policy,
+    }
+    digest = hashlib.sha256(
+        json.dumps(normalized, sort_keys=True, separators=(",", ":")).encode("utf-8"),
+    ).hexdigest()
+    _require_purposes(principal, "identity_mapping")
+    with _db(path) as connection:
+        _assert_principal(connection, principal)
+        if connection.execute("SELECT 1 FROM dataset_identity WHERE singleton_id = 1").fetchone() is None:
+            raise DataFoundationError("invalid_contract")
+        identity = connection.execute(
+            "SELECT 1 FROM customer_identities WHERE tenant_id = ? AND source = ? AND customer_id = ?",
+            (principal.tenant_id, principal.source, customer_id),
+        ).fetchone()
+        if identity is None:
+            raise DataFoundationError("identity_not_mapped")
+        existing = connection.execute(
+            "SELECT normalized_payload_sha256 FROM observation_coverage "
+            "WHERE tenant_id = ? AND source = ? AND coverage_id = ?",
+            (principal.tenant_id, principal.source, coverage_id),
+        ).fetchone()
+        if existing is not None:
+            if existing["normalized_payload_sha256"] != digest:
+                raise DataFoundationError("idempotency_conflict")
+            return {"coverage_id": coverage_id, "duplicate": True, "status": "duplicate"}
+        connection.execute(
+            "INSERT INTO observation_coverage(tenant_id, source, coverage_id, customer_id, source_category, "
+            "covered_from, covered_through, coverage_status, coverage_completeness, coverage_available_at, "
+            "observation_policy_version, normalized_payload_sha256) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (*normalized.values(), digest),
+        )
+    return {"coverage_id": coverage_id, "duplicate": False, "status": "accepted"}
+
+
+def record_observation_coverage_batch(
+    path: str | Path,
+    records: list[dict[str, Any]],
+    *,
+    dataset_id: str,
+    stream_name: str,
+    first_row_number: int,
+    last_row_number: int,
+) -> dict[str, int]:
+    """Validate and import a bounded coverage batch with an atomic resume point."""
+    dataset_id = _validate_id(dataset_id)
+    stream_name = _validate_id(stream_name)
+    if (not isinstance(records, list) or not records or len(records) > 2000
+            or isinstance(first_row_number, bool) or isinstance(last_row_number, bool)
+            or not isinstance(first_row_number, int) or not isinstance(last_row_number, int)
+            or first_row_number < 1 or last_row_number < first_row_number
+            or last_row_number - first_row_number + 1 != len(records)):
+        raise DataFoundationError("invalid_contract")
+    received = _utc_now()
+    normalized_records: list[tuple[IntegrationPrincipal, dict[str, Any], str]] = []
+    failing_principal: IntegrationPrincipal | None = None
+    try:
+        for item in records:
+            if not isinstance(item, dict) or set(item) != {"principal", "record"}:
+                raise DataFoundationError("invalid_contract")
+            principal = item["principal"]
+            failing_principal = principal
+            record = item["record"]
+            if not isinstance(principal, IntegrationPrincipal) or not isinstance(record, dict) or set(record) != {
+                "coverage_id", "customer_id", "source_category", "covered_from", "covered_through",
+                "coverage_status", "coverage_completeness", "coverage_available_at", "observation_policy_version",
+            }:
+                raise DataFoundationError("invalid_contract")
+            category = record["source_category"]
+            status = record["coverage_status"]
+            if category not in EVENT_CATEGORIES or category not in principal.authorized_categories:
+                raise DataFoundationError("event_category_not_authorized")
+            if status not in {
+                "complete", "partial", "outage", "delayed", "missing_historical_backfill",
+                "not_created", "entitlement_ended", "censored",
+            }:
+                raise DataFoundationError("invalid_contract")
+            completeness = record["coverage_completeness"]
+            if isinstance(completeness, bool) or not isinstance(completeness, (int, float)) or not math.isfinite(completeness):
+                raise DataFoundationError("invalid_contract")
+            completeness = float(completeness)
+            if not 0 <= completeness <= 1 or (status == "complete" and completeness < 1):
+                raise DataFoundationError("invalid_contract")
+            covered_from = normalize_timestamp(record["covered_from"])
+            covered_through = normalize_timestamp(record["covered_through"])
+            available = normalize_timestamp(record["coverage_available_at"])
+            if covered_from >= covered_through or available < covered_through:
+                raise DataFoundationError("invalid_contract")
+            normalized = {
+                "tenant_id": principal.tenant_id,
+                "source": principal.source,
+                "coverage_id": _validate_id(record["coverage_id"]),
+                "customer_id": _validate_id(record["customer_id"]),
+                "source_category": category,
+                "covered_from": covered_from,
+                "covered_through": covered_through,
+                "coverage_status": status,
+                "coverage_completeness": completeness,
+                "coverage_available_at": available,
+                "observation_policy_version": _validate_id(record["observation_policy_version"]),
+            }
+            _require_purposes(principal, "identity_mapping")
+            digest = hashlib.sha256(
+                json.dumps(normalized, sort_keys=True, separators=(",", ":")).encode("utf-8"),
+            ).hexdigest()
+            normalized_records.append((principal, normalized, digest))
+
+        with _db(path) as connection:
+            identity = connection.execute(
+                "SELECT dataset_id FROM dataset_identity WHERE singleton_id=1",
+            ).fetchone()
+            if identity is None or identity["dataset_id"] != dataset_id:
+                raise DataFoundationError("invalid_contract")
+            connection.execute("BEGIN IMMEDIATE")
+            checkpoint = connection.execute(
+                "SELECT last_row_number FROM synthetic_import_checkpoints WHERE dataset_id=? AND stream_name=?",
+                (dataset_id, stream_name),
+            ).fetchone()
+            checkpoint_row = int(checkpoint["last_row_number"]) if checkpoint else 0
+            replay = last_row_number <= checkpoint_row
+            if not replay and first_row_number != checkpoint_row + 1:
+                raise DataFoundationError("invalid_contract")
+            if not replay and first_row_number <= checkpoint_row:
+                raise DataFoundationError("invalid_contract")
+
+            principal_groups: dict[tuple[str, str], tuple[IntegrationPrincipal, set[str]]] = {}
+            seen_input: dict[tuple[str, str, str], str] = {}
+            for principal, normalized, digest in normalized_records:
+                source_key = (principal.tenant_id, principal.source)
+                if source_key not in principal_groups:
+                    _assert_principal(connection, principal)
+                    customer_rows = connection.execute(
+                        "SELECT customer_id FROM customer_identities WHERE tenant_id=? AND source=?",
+                        source_key,
+                    ).fetchall()
+                    principal_groups[source_key] = (principal, {row["customer_id"] for row in customer_rows})
+                if normalized["customer_id"] not in principal_groups[source_key][1]:
+                    raise DataFoundationError("identity_not_mapped")
+                input_key = (normalized["tenant_id"], normalized["source"], normalized["coverage_id"])
+                previous = seen_input.get(input_key)
+                if previous is not None and previous != digest:
+                    raise DataFoundationError("idempotency_conflict")
+                seen_input[input_key] = digest
+
+            existing_hashes: dict[tuple[str, str, str], str] = {}
+            grouped_ids: dict[tuple[str, str], list[str]] = {}
+            for tenant_source_coverage in seen_input:
+                tenant_id, source, coverage_id = tenant_source_coverage
+                grouped_ids.setdefault((tenant_id, source), []).append(coverage_id)
+            for (tenant_id, source), coverage_ids in grouped_ids.items():
+                for offset in range(0, len(coverage_ids), 400):
+                    block = coverage_ids[offset:offset + 400]
+                    placeholders = ",".join("?" for _ in block)
+                    rows = connection.execute(
+                        "SELECT coverage_id, normalized_payload_sha256 FROM observation_coverage "
+                        f"WHERE tenant_id=? AND source=? AND coverage_id IN ({placeholders})",
+                        (tenant_id, source, *block),
+                    ).fetchall()
+                    for row in rows:
+                        existing_hashes[(tenant_id, source, row["coverage_id"])] = row["normalized_payload_sha256"]
+
+            accepted = duplicates = 0
+            pending: list[tuple[Any, ...]] = []
+            pending_keys: set[tuple[str, str, str]] = set()
+            for principal, normalized, digest in normalized_records:
+                key = (normalized["tenant_id"], normalized["source"], normalized["coverage_id"])
+                existing = existing_hashes.get(key)
+                if existing is not None:
+                    if existing != digest:
+                        raise DataFoundationError("idempotency_conflict")
+                    duplicates += 1
+                    continue
+                # A repeated identical ID within this batch is an idempotent duplicate.
+                if key in pending_keys:
+                    duplicates += 1
+                    continue
+                pending.append((*normalized.values(), digest))
+                pending_keys.add(key)
+                accepted += 1
+            if replay and accepted:
+                raise DataFoundationError("invalid_contract")
+            connection.executemany(
+                "INSERT INTO observation_coverage(tenant_id, source, coverage_id, customer_id, source_category, "
+                "covered_from, covered_through, coverage_status, coverage_completeness, coverage_available_at, "
+                "observation_policy_version, normalized_payload_sha256) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                pending,
+            )
+            for principal, _ in principal_groups.values():
+                connection.execute(
+                    "UPDATE integrations SET last_successful_ingestion_at=?, last_failure_code=NULL "
+                    "WHERE integration_id=?", (received, principal.integration_id),
+                )
+            if not replay:
+                connection.execute(
+                    "INSERT INTO synthetic_import_checkpoints(dataset_id, stream_name, last_row_number, accepted_count, "
+                    "duplicate_count, rejected_count, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?) "
+                    "ON CONFLICT(dataset_id, stream_name) DO UPDATE SET last_row_number=excluded.last_row_number, "
+                    "accepted_count=synthetic_import_checkpoints.accepted_count+excluded.accepted_count, "
+                    "duplicate_count=synthetic_import_checkpoints.duplicate_count+excluded.duplicate_count, "
+                    "updated_at=excluded.updated_at",
+                    (dataset_id, stream_name, last_row_number, accepted, duplicates, received),
+                )
+            return {"accepted": accepted, "duplicates": duplicates,
+                    "last_row_number": max(checkpoint_row, last_row_number)}
+    except DataFoundationError as exc:
+        if failing_principal is not None and exc.code != "unauthorized":
+            try:
+                record_integration_failure(path, failing_principal, exc.code, received)
+            except DataFoundationError:
+                pass
+        raise
+    except sqlite3.IntegrityError:
+        if failing_principal is not None:
+            record_integration_failure(path, failing_principal, "invalid_event", received)
+        raise DataFoundationError("invalid_event") from None
+
+
+def get_observation_coverage_as_of(
+    path: str | Path,
+    principal: ReadPrincipal,
+    customer_id: str,
+    as_of: str,
+    *,
+    source_category: str | None = None,
+) -> list[dict[str, Any]]:
+    """Read only source- and tenant-authorized coverage evidence available at the cutoff."""
+    customer_id = _validate_id(customer_id)
+    cutoff = normalize_timestamp(as_of)
+    if source_category is not None and source_category not in EVENT_CATEGORIES:
+        raise DataFoundationError("invalid_contract")
+    _require_purposes(principal, "retention_inference")
+    with _db(path) as connection:
+        sources = _assert_read_principal(connection, principal)
+        placeholders = ",".join("?" for _ in sources)
+        sql = (
+            "SELECT tenant_id, source, coverage_id, customer_id, source_category, covered_from, covered_through, "
+            "coverage_status, coverage_completeness, coverage_available_at, observation_policy_version "
+            "FROM observation_coverage WHERE tenant_id = ? AND customer_id = ? "
+            f"AND source IN ({placeholders}) AND coverage_available_at <= ?"
+        )
+        params: list[Any] = [principal.tenant_id, customer_id, *sources, cutoff]
+        if source_category is not None:
+            sql += " AND source_category = ?"
+            params.append(source_category)
+        sql += " ORDER BY covered_from, covered_through, source"
+        rows = connection.execute(sql, params).fetchall()
+    return [dict(row) for row in rows]
 
 
 def _subscription_mrr_minor(state: dict[str, Any]) -> int | None:

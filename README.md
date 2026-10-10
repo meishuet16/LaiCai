@@ -5,12 +5,13 @@
 RetainIQ includes a deterministic, streamed synthetic SaaS lifecycle generator for tenant-safe end-to-end demonstration. See [the dataset guide](docs/SYNTHETIC_SAAS_DATASET.md), [hybrid isolation policy](docs/HYBRID_DATASET_STRATEGY.md), and [Member 2 synthetic handoff](docs/MEMBER1_TO_MEMBER2_SYNTHETIC_HANDOFF.md).
 
 ```powershell
-python -m retaniq.synthetic generate --profile quick --seed 2026
-python -m retaniq.synthetic validate --profile quick
-python -m retaniq.synthetic import --profile quick --db "$HOME\RetainIQ-private\synthetic_saas_v1\quick.sqlite3" --verify-idempotency
+python -m retaniq.synthetic validate --dataset 'C:\Users\User\RetainIQ-private\synthetic_saas_v1_2\quick\synthetic-saas-v1-2-quick-s2026-3d3b2b710cf3'
+python -m retaniq.synthetic import --dataset 'C:\Users\User\RetainIQ-private\synthetic_saas_v1_2\quick\synthetic-saas-v1-2-quick-s2026-3d3b2b710cf3' --db 'C:\Users\User\RetainIQ-private\synthetic_saas_v1_2\db\synthetic-saas-v1-2-quick-s2026-3d3b2b710cf3.sqlite3'
 ```
 
-This checkout had no application framework, database layer, migrations, tests, or source dataset. Part 1 is implemented with Python's standard library, WSGI, and SQLite so the data contracts can be exercised without adding dependencies. The SQL file is a SQLite migration for this local MVP; it is not a production PostgreSQL migration.
+Generated files and local SQLite imports stay outside Git. To generate a fresh immutable profile, see the full v1.2 CLI options in [the dataset guide](docs/SYNTHETIC_SAAS_DATASET.md); use the resulting exact dataset ID and its separate database path. The v1.2 daily-window, account-level coverage, dataset identity, and Member 2 import/smoke commands are documented in [the synthetic handoff](docs/MEMBER1_TO_MEMBER2_SYNTHETIC_HANDOFF.md).
+
+Part 1 uses Python's standard library, WSGI, and SQLite so the data contracts can be exercised without adding dependencies. The SQL files are SQLite migrations for this local MVP; they are not production PostgreSQL migrations.
 
 The implementation provides authenticated, tenant-scoped event ingestion; explicit account identity mapping; allowlisted usage, billing, and subscription normalization; append-only subscription history; point-in-time, source-scoped queries; account MRR; CSV import/replay; source-scoped integration health; separately authorized tenant health; and shared feature, label, and prediction storage contracts. It does not implement Member 2's feature engineering, label builder, or model, or Member 3's routing and ROI logic.
 

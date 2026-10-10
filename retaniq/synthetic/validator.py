@@ -30,6 +30,15 @@ def _timestamp(value: str) -> datetime:
 
 def validate_dataset(dataset_path: Path | str) -> dict[str, Any]:
     path = Path(dataset_path).resolve()
+    manifest_path = path / "dataset_manifest.json"
+    if manifest_path.is_file():
+        try:
+            version = json.loads(manifest_path.read_text(encoding="utf-8")).get("dataset_version")
+        except (OSError, json.JSONDecodeError):
+            version = None
+        if version == "1.2.0":
+            from .v12_validation import validate_v12_dataset
+            return validate_v12_dataset(path)
     errors: list[str] = []
     warnings: list[str] = []
     measured: Counter[str] = Counter()

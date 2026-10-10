@@ -11,14 +11,22 @@ from retaniq.data_foundation import (
     authenticate_integration,
     create_customer,
     create_integration,
+    create_service_principal,
     create_tenant,
+    bind_dataset_identity,
+    authenticate_service_principal,
     get_account_snapshot_as_of,
     get_events_as_of,
     get_integration_health,
+    get_dataset_identity,
+    get_observation_coverage_as_of,
     get_subscriptions_as_of,
+    ingest_events_batch,
     initialize_database,
     list_eligible_accounts_as_of,
     map_customer_identity,
+    record_observation_coverage,
+    record_observation_coverage_batch,
     store_churn_label,
     store_feature_snapshot,
     store_prediction,
@@ -104,6 +112,124 @@ class DataFoundationTests(unittest.TestCase):
 
     def tearDown(self):
         self.temp.cleanup()
+
+    def test_batch_ingestion_keeps_validation_idempotency_and_atomic_checkpoints(self):
+        database = str(Path(self.temp.name) / "batch.sqlite3")
+        initialize_database(database)
+        bind_dataset_identity(
+            database, dataset_id="synthetic-saas-v1-2-quick-s2026-batch",
+            dataset_version="1.2", dataset_type="synthetic_saas",
+            target_policy_version="effective-account-churn-v1.2",
+            generator_version="synthetic-saas-v1.2", manifest_sha256="b" * 64,
+        )
+        create_tenant(database, "tenant-a")
+        create_customer(database, "tenant-a", "customer-a")
+        token = create_integration(
+            database, "tenant-a", "product_app", authorized_categories=("usage",),
+        )
+        map_customer_identity(database, "tenant-a", "product_app", "acct-a", "customer-a")
+        principal = authenticate_integration(database, token)
+        records = [
+            {"principal": principal, "payload": usage_event("evt-usage-batch-1"), "trusted_source_available_at": T0},
+            {"principal": principal, "payload": usage_event("evt-usage-batch-2"), "trusted_source_available_at": T1},
+        ]
+        first = ingest_events_batch(
+            database, records, dataset_id="synthetic-saas-v1-2-quick-s2026-batch",
+            stream_name="canonical-events", first_row_number=1, last_row_number=2,
+        )
+        self.assertEqual((first["accepted"], first["duplicates"], first["last_row_number"]), (2, 0, 2))
+        replay = ingest_events_batch(
+            database, records, dataset_id="synthetic-saas-v1-2-quick-s2026-batch",
+            stream_name="canonical-events", first_row_number=1, last_row_number=2,
+        )
+        self.assertEqual((replay["accepted"], replay["duplicates"], replay["last_row_number"]), (0, 2, 2))
+        unauthorized = usage_event("evt-usage-batch-3", event_type="invoice_paid", attributes={
+            "subscription_id": "sub-a", "amount_minor": 100, "currency": "MYR",
+        })
+        with self.assertRaises(DataFoundationError) as raised:
+            ingest_events_batch(
+                database, [{"principal": principal, "payload": unauthorized}],
+                dataset_id="synthetic-saas-v1-2-quick-s2026-batch",
+                stream_name="canonical-events", first_row_number=3, last_row_number=3,
+            )
+        self.assertEqual(raised.exception.code, "event_category_not_authorized")
+        connection = sqlite3.connect(database)
+        event_count = connection.execute("SELECT COUNT(*) FROM canonical_events").fetchone()[0]
+        checkpoint = connection.execute(
+            "SELECT last_row_number FROM synthetic_import_checkpoints WHERE dataset_id=? AND stream_name=?",
+            ("synthetic-saas-v1-2-quick-s2026-batch", "canonical-events"),
+        ).fetchone()[0]
+        connection.close()
+        self.assertEqual((event_count, checkpoint), (2, 2))
+
+    def test_coverage_and_dataset_identity_are_available_only_to_authorized_as_of_readers(self):
+        database = str(Path(self.temp.name) / "isolated.sqlite3")
+        initialize_database(database)
+        bind_dataset_identity(
+            database, dataset_id="synthetic-saas-v1-2-quick-s2026-test",
+            dataset_version="1.2", dataset_type="synthetic_saas",
+            target_policy_version="effective-account-churn-v1.2",
+            generator_version="synthetic-saas-v1.2", manifest_sha256="a" * 64,
+        )
+        create_tenant(database, "tenant-a")
+        create_customer(database, "tenant-a", "customer-a")
+        token = create_integration(
+            database, "tenant-a", "source-usage",
+            authorized_purposes=("retention_inference", "identity_mapping"),
+            authorized_categories=("usage",),
+        )
+        map_customer_identity(database, "tenant-a", "source-usage", "external-a", "customer-a")
+        integration = authenticate_integration(database, token)
+        coverage = {
+            "coverage_id": "coverage-2025-w01",
+            "customer_id": "customer-a",
+            "source_category": "usage",
+            "covered_from": T0,
+            "covered_through": T1,
+            "coverage_status": "complete",
+            "coverage_completeness": 1.0,
+            "coverage_available_at": T2,
+            "observation_policy_version": "weekly-v1",
+        }
+        self.assertEqual(record_observation_coverage(database, integration, coverage)["status"], "accepted")
+        self.assertEqual(record_observation_coverage(database, integration, coverage)["status"], "duplicate")
+        service_token = create_service_principal(
+            database, "tenant-a", role="analyst", authorized_sources=("source-usage",),
+            authorized_purposes=("retention_inference",),
+        )
+        reader = authenticate_service_principal(database, service_token)
+        identity = get_dataset_identity(database, reader)
+        self.assertEqual(identity["dataset_id"], "synthetic-saas-v1-2-quick-s2026-test")
+        self.assertEqual(get_observation_coverage_as_of(database, reader, "customer-a", T1), [])
+        visible = get_observation_coverage_as_of(database, reader, "customer-a", T2)
+        self.assertEqual(len(visible), 1)
+        self.assertEqual(visible[0]["coverage_status"], "complete")
+        self.assertEqual(visible[0]["covered_through"], T1)
+        batch_records = []
+        for coverage_id, covered_from, covered_through in (
+            ("coverage-2025-w02", T1, T2), ("coverage-2025-w03", T2, T3),
+        ):
+            batch_records.append({
+                "principal": integration,
+                "record": {
+                    **coverage,
+                    "coverage_id": coverage_id,
+                    "covered_from": covered_from,
+                    "covered_through": covered_through,
+                    "coverage_available_at": covered_through,
+                },
+            })
+        accepted = record_observation_coverage_batch(
+            database, batch_records, dataset_id="synthetic-saas-v1-2-quick-s2026-test",
+            stream_name="observation-coverage", first_row_number=1, last_row_number=2,
+        )
+        replay = record_observation_coverage_batch(
+            database, batch_records, dataset_id="synthetic-saas-v1-2-quick-s2026-test",
+            stream_name="observation-coverage", first_row_number=1, last_row_number=2,
+        )
+        self.assertEqual((accepted["accepted"], accepted["duplicates"]), (2, 0))
+        self.assertEqual((replay["accepted"], replay["duplicates"]), (0, 2))
+        self.assertEqual(len(get_observation_coverage_as_of(database, reader, "customer-a", T3)), 3)
 
     def test_schema_001_upgrade_preserves_history_and_refuses_conflicting_owners(self):
         migration_001 = (Path(__file__).resolve().parents[1] / "migrations" / "001_data_foundation.sql").read_text(
@@ -1040,6 +1166,35 @@ class DataFoundationTests(unittest.TestCase):
         self.assertEqual(before_known[0]["status"], "active")
         self.assertEqual(at_request["status"], "known_cancellation")
         self.assertEqual(at_request["subscriptions"][0]["ended_at"], None)
+
+    def test_known_future_start_does_not_make_account_eligible_early(self):
+        self.add_subscription(
+            "evt-future-sub-create", "subscription_created", T0,
+            {"subscription_id": "sub-future", "status": "active", "started_at": T2,
+             "current_period_end": T3, "billing_interval": "month", "billing_interval_count": 1},
+        )
+        self.assertEqual(get_subscriptions_as_of(self.db, self.principal_a, "customer-a", T1), [])
+        self.assertEqual(list_eligible_accounts_as_of(self.db, self.principal_a, T1), [])
+        self.assertEqual(
+            get_account_snapshot_as_of(self.db, self.principal_a, "customer-a", T1)["status"],
+            "not_eligible",
+        )
+
+    def test_effective_subscription_event_ends_entitlement_in_as_of_projection(self):
+        self.add_subscription(
+            "evt-ending-sub-create", "subscription_created", T0,
+            {"subscription_id": "sub-ending", "status": "active", "started_at": T0,
+             "current_period_end": T3, "billing_interval": "month", "billing_interval_count": 1},
+        )
+        self.assertEqual(get_account_snapshot_as_of(self.db, self.principal_a, "customer-a", T1)["status"], "eligible")
+        self.add_subscription(
+            "evt-ending-sub-effective", "subscription_cancelled_effective", T2,
+            {"subscription_id": "sub-ending"},
+        )
+        after = get_account_snapshot_as_of(self.db, self.principal_a, "customer-a", T2)
+        self.assertEqual(after["status"], "not_eligible")
+        self.assertEqual(after["subscriptions"][0]["status"], "ended")
+        self.assertEqual(after["subscriptions"][0]["ended_at"], T2)
 
     def test_payment_failure_is_billing_risk_not_subscription_termination(self):
         self.add_subscription(

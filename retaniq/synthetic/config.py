@@ -22,14 +22,15 @@ class SyntheticConfig:
     account_count: int = 200
     tenant_count: int = 4
     start_date: str = "2024-10-01"
-    end_date: str = "2026-09-30"
+    end_date: str = "2026-10-01"
     event_density: float = 1.0
     usage_frequency: float = 1.0
     source_outage_frequency: float = 0.025
     billing_failure_frequency: float = 0.08
     churn_hazard_multiplier: float = 1.0
-    generator_version: str = "synthetic-saas-v1.1"
-    target_policy_version: str = "effective-account-churn-v1"
+    generator_version: str = "synthetic-saas-v1.2"
+    generator_build_revision: str = "r9"
+    target_policy_version: str = "effective-account-churn-v1.2"
 
     @classmethod
     def from_profile(cls, profile: str, **overrides: Any) -> "SyntheticConfig":
@@ -47,8 +48,8 @@ class SyntheticConfig:
             end = date.fromisoformat(self.end_date)
         except (TypeError, ValueError) as exc:
             raise ValueError("start_date and end_date must be ISO dates") from exc
-        if end < start:
-            raise ValueError("end_date must be on or after start_date")
+        if end <= start:
+            raise ValueError("end_date must be after start_date (exclusive)")
         if self.account_count < 1 or self.account_count > 250000:
             raise ValueError("account_count must be between 1 and 250000")
         if self.tenant_count < 1 or self.tenant_count > self.account_count:

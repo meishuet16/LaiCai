@@ -1,8 +1,12 @@
 # Member 1 → Member 2 data handoff
 
-**Status:** Canonical query/API contract is available; real historical dataset is **NOT_READY**.
+**Status:** Canonical query/API contract is available; real historical dataset is **NOT_READY**. Synthetic SaaS v1.2 has a separate verified handoff for synthetic development.
 **Purpose:** Retention inference.
-**Database in this checkout:** Local SQLite prototype, not the production PostgreSQL requirement. `python -m retaniq init-db --db ...` applies all recorded migrations through `003_integration_event_categories`.
+**Database in this checkout:** Local SQLite prototype, not the production PostgreSQL requirement. `python -m retaniq init-db --db ...` applies all recorded migrations through `004_dataset_identity_and_observation_coverage`.
+
+## Synthetic development handoff
+
+Synthetic SaaS v1.2 is a separate dataset and database family, isolated from the real-data gate described below. QUICK, STANDARD, and FULL are generated and validated; STANDARD and FULL canonical imports and Member 2 read-only smoke checks passed. For exact immutable dataset paths, database IDs, source grants, usage semantics, measured 7/14/30 label and split evidence, scenario limitations, and Member 2's remaining work, see [`MEMBER1_TO_MEMBER2_SYNTHETIC_HANDOFF.md`](MEMBER1_TO_MEMBER2_SYNTHETIC_HANDOFF.md). Synthetic readiness does not change KKBox's `NOT_VALIDATED` status or establish real-world performance.
 
 ## 1. Dataset, permission and limitations
 
@@ -160,11 +164,8 @@ When an integration has both `retention_inference` and `billing_valuation`, `get
 
 ## 8. Verification evidence and boundaries
 
-- `python -m examples.member2_as_of_history` — successful; output shows one synthetic eligible account, a prior usage event and no post-cutoff event.
-- `python -m unittest discover -s tests -p test_member2_handoff.py -v` — passed the synthetic example's eligibility and cutoff assertions.
-- `python -m unittest discover -s tests -p test_data_foundation.py -v` — PASS, 44 tests; covers the prior Prompt 03 source-scoped reads, service-principal grants, subscription ownership and migration upgrade, historical eligibility, operator health, and feature/label/prediction contracts, plus the new artifact-writer, event-category, and categorical-value regressions.
-- `python -m unittest discover -s tests -v` — PASS, 45 tests; all fixtures are synthetic. Includes cross-source/cross-tenant reads and writes, explicit multi-source inference and persistence, denied event categories through direct and HTTP ingestion, formatted sensitive values, subscription-owner rollback, status-history cutoff behavior, and migration backfill/conflict refusal.
-- `PRAGMA foreign_key_check` on a fresh database — PASS, 0 violations. The migration-upgrade test also checks foreign-key integrity after upgrading version-1 history through migration 003 and asserts migration records 001–003.
-- `python -m compileall -q retaniq tests examples` — PASS. `python -m retaniq --help` — PASS and lists category provisioning. `git diff --check` — PASS; no configured linter or type checker exists in this checkout.
-- `tests/test_data_foundation.py` also exercises synthetic API authentication/idempotency, tenant and purpose scope, late availability, subscription cutoff reconstruction, payment failure handling, MRR/currency, label/prediction storage, CSV normalization, availability trust gating, and replay ordering/visibility.
-- No real-source mapping, real-data import, actual candidate coverage report, label generation, temporal split, model fit, or predictive evaluation has been executed. These require a legitimately authorized source and reviewed adapter.
+- `python -m unittest discover -s tests -v` — PASS, 64 tests in 13.363 seconds; synthetic fixtures only.
+- `python -m py_compile` on all changed Python files, `python -m retaniq.synthetic --help`, and `provision-reader --help` — PASS.
+- Independent validation of QUICK, STANDARD, and FULL — PASS with no errors or warnings. STANDARD and FULL canonical import, duplicate replay, dataset identity, cross-tenant denial, and Member 2 read-only smoke — PASS. Full measurements and limitations are in the synthetic handoff.
+- Independent synthetic horizon/coverage audit and chronological split checks — positive, negative, and unknown outcomes measured for all three horizons in all four FULL stages. These are audit evidence only; no competing production label builder was added.
+- No real-source mapping or real-data import, real-data coverage report, model fitting, calibration, predictive evaluation, or ROI measurement has been executed. KKBox remains unacquired and unvalidated.
