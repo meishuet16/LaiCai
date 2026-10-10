@@ -72,6 +72,26 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T17:37:04Z — Codex — Remove ownership from Customer Insights
+
+- **Workstream:** Frontend / QA
+- **Branch:** `member4`
+- **Commit subject:** `fix: remove owner from customer insights`
+- **Issue / task:** Remove the demo staff-owner field shown on the Customer Insights page.
+- **Files changed:** `src/features/TimelinePage.tsx` and this log.
+- **What changed:** Removed Owner from the customer summary and removed the assignee name from the decision-context summary, retaining the case due date. Retention Actions still owns assignment controls.
+- **Why it changed:** Synthetic SaaS v1.2 customer source data has no staff-owner field; the displayed name was fixture-only and distracting in the customer profile.
+- **Contract / database / API impact:** None.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - Safari local Vite check (`/customers/c01/timeline` on port 5180) — PASS — no Owner in the customer summary or current decision context; Case due remains.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** Demo fixture only; no source or prediction values changed.
+- **Known issues / blockers:** Staff assignment remains browser-session-only in Retention Actions; connected decision APIs are unavailable.
+- **Next action / handoff:** Review on `member4`; do not push or merge without approval.
+- **Reviewer / pairing:** `N/A`
+
 ### 2026-10-10T17:28:52Z — Codex — Center and simplify Retention case details
 
 - **Workstream:** Frontend / QA
