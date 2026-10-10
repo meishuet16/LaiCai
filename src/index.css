@@ -538,3 +538,37 @@ th { font-size: var(--type-secondary) !important; font-weight: var(--weight-medi
 
 /* Keep the LaiCai wordmark legible when the sidebar is expanded. */
 .sidebar .logo b { color: var(--forest-deep); font-family: var(--font-ui); font-size: 22px !important; font-weight: var(--weight-semibold) !important; letter-spacing: 0 !important; }
+
+/* Reference-inspired navigation rail: warm neutral surface, soft pills, and one clear active item. */
+.app > .sidebar {
+  width: 260px;
+  flex-basis: 260px;
+  padding: 25px 18px 20px;
+  color: #4f4a47;
+  background: #ebe8e5;
+  border-color: #ddd8d3;
+  border-radius: 0 28px 28px 0;
+}
+.sidebar .logo { height: 72px; margin: 0 0 24px; padding: 0 16px; gap: 14px; }
+.sidebar .logo span { width: 42px; height: 42px; flex-basis: 42px; color: #fff; background: var(--forest); font-size: 24px; }
+.sidebar .logo b { color: #302e2b; font-size: 25px !important; }
+.sidebar nav { gap: 10px; }
+.sidebar nav a.nav-link,
+.sidebar nav a.nav-link.active { height: 58px; padding: 0 19px; gap: 15px; border-radius: 30px; color: #4e4946; background: #dcd9d7; box-shadow: none; }
+.sidebar nav a.nav-link svg { color: currentColor; width: 24px; height: 24px; }
+.sidebar nav a.nav-link span { font-size: 14px; font-weight: 500 !important; }
+.sidebar nav a.nav-link:hover { color: var(--forest-deep); background: var(--forest-soft); transform: none; }
+.sidebar nav a.nav-link.active { color: #fff; background: var(--forest); }
+.sidebar nav a.nav-link.active span { color: #fff; font-weight: 600 !important; }
+.sidebar .sidefoot { margin-top: 22px; width: 100%; padding: 17px 18px; gap: 5px; color: #5d5753; background: #dcd9d7; border-radius: 26px; text-align: left; }
+.sidebar .sidefoot small { color: #7a736e; font-size: 10px; letter-spacing: 0 !important; }
+.sidebar .sidefoot b { width: auto; height: auto; padding: 0; color: #36322f; background: transparent; font-size: 14px; }
+.sidebar .sidefoot span { color: #625c58; font-size: 12px; }
+.sidebar-collapsed > .sidebar { width: 78px; flex-basis: 78px; padding: 17px 10px 14px; }
+.sidebar-collapsed .sidebar .logo { width: 48px; height: 48px; padding: 0; margin-bottom: 31px; }
+.sidebar-collapsed .sidebar .logo span { width: 34px; height: 34px; flex-basis: 34px; font-size: 20px; }
+.sidebar-collapsed .sidebar nav a.nav-link,
+.sidebar-collapsed .sidebar nav a.nav-link.active { width: 54px; height: 54px; padding: 0; border-radius: 17px; }
+.sidebar-collapsed .sidebar nav a.nav-link { color: #69635f; background: #dcd9d7; }
+.sidebar-collapsed .sidebar nav a.nav-link:hover { color: var(--forest-deep); background: var(--forest-soft); }
+.sidebar-collapsed .sidebar nav a.nav-link.active { color: #fff; background: var(--forest); }

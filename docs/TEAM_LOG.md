@@ -65,6 +65,21 @@ Copy the block below **for each commit** and replace every bracketed placeholder
 
 ## 4. Commit history — newest first
 
+### 2026-10-10T19:30:00Z — Florence / Member 4 — redesign sidebar navigation rail
+- Workstream: Part 4 / Frontend
+- Branch: main
+- Commit subject: `feat: redesign sidebar navigation rail`
+- Issue/task: N/A
+- Files changed: `src/index.css`
+- What changed: Restyled the sidebar as a warm neutral rail with a stronger LaiCai wordmark, rounded navigation pills, a clear active state, a compact demo-status card, and a refined collapsed icon rail.
+- Why: Match the attached reference’s calmer hierarchy and reduce the heavy all-green treatment while keeping five destinations visible and accessible.
+- Contract/API: None.
+- Tests: `npm run build` — PASS.
+- Data/model: No changes.
+- Known issues: None introduced.
+- Next: Review the expanded sidebar against the reference at desktop width.
+- Reviewer: Pending.
+
 ### 2026-10-10T19:25:00Z — Florence / Member 4 — increase sidebar navigation icon contrast
 - Workstream: Part 4 / Frontend
 - Branch: main
