@@ -532,3 +532,6 @@ table, .metrics, .values, .case-facts, .budget-grid, .scenario-results, .overvie
 table { font-size: var(--type-body); font-weight: var(--weight-regular); }
 th { font-size: var(--type-secondary) !important; font-weight: var(--weight-medium) !important; }
 .values b, .case-facts b, .budget-grid b, .scenario-results b, .overview-risk-item strong, .overview-currency-value strong, .overview-mrr-context > strong { font-variant-numeric: tabular-nums; }
+
+/* Keep the LaiCai wordmark legible when the sidebar is expanded. */
+.sidebar .logo b { color: var(--forest-deep); font-family: var(--font-ui); font-size: 22px !important; font-weight: var(--weight-semibold) !important; letter-spacing: 0 !important; }

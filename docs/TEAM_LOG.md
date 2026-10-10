@@ -65,6 +65,24 @@ Copy the block below **for each commit** and replace every bracketed placeholder
 
 ## 4. Commit history — newest first
 
+### 2026-10-10T19:23:22Z — Florence / Member 4 — simplify data integration and strengthen LaiCai branding
+- Workstream: Part 4 / Frontend
+- Branch: main
+- Commit subject: `feat: simplify data integration and strengthen LaiCai branding`
+- Issue/task: N/A
+- Files changed: `src/features/IntegrationHealthPage.tsx`, `src/index.css`
+- What changed:
+  - Increased the LaiCai sidebar wordmark to a prominent semibold Inter treatment.
+  - Removed duplicate per-source summary cards from Data Integration because the source health table already provides the same inspectable status and freshness data.
+  - Removed unavailable historical import, sync, and report cards that added no actionable capability to the read-only demo.
+- Why: Reduce visual noise while keeping source health, coverage, quality alerts, rejected-event counts, and detail inspection available.
+- Contract/API: None.
+- Tests: `npm run build` — PASS.
+- Data/model: Synthetic fixture data unchanged.
+- Known issues: None introduced.
+- Next: Review the simplified Data Integration layout in the running app.
+- Reviewer: Pending.
+
 ### 2026-10-10T19:22:00Z — Florence / Member 4 — rename frontend product branding
 
 - **Workstream:** Part 4 / Frontend
