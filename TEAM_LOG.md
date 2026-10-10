@@ -72,6 +72,28 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T19:21:18Z — Member 2 AI coding assistant — Operational inference and requirements traceability
+
+- **Workstream:** Part 2 / Integration / Docs / QA
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `feat(member2): complete operational inference integration`
+- **Issue / task:** Member 2 Prompt 33; no ticket
+- **Files changed:** `src/retainiq_prediction/operational_inference.py`, `src/retainiq_prediction/__init__.py`, `tests/test_operational_inference.py`, `docs/MEMBER2_OPERATIONAL_INFERENCE.md`, `docs/MEMBER2_REQUIREMENTS_COMPLETION_REPORT.md`, and this log.
+- **What changed:**
+  - Added tenant-bound daily batch orchestration over all accounts returned by the existing eligible-account source (including silent accounts), with per-account evidence/pipeline/persistence states and an append-only adapter over Member 1's existing prediction writer.
+  - Added availability- and tenant-gated event triggers, immutable retry/conflict behavior, same-version historical risk changes, configurable reliability/freshness/trend/cooldown/period-budget alert decisions, and chronological replay over persisted outputs.
+  - Added 13 synthetic structural tests and documented requirement traceability, the operational integration seam, missing Member 1 read/history APIs, and the production readiness blockers.
+- **Why it changed:** Prompt 33 requested the remaining Part 2 operational inference/replay/risk-policy integration plus a complete implementation-vs-evidence matrix, while retaining the canonical output contract and keeping unsupported production states explicit.
+- **Contract / database / API impact:** No shared prediction fields, enums, database schema, migration, or API path changed. The adapter uses the existing `store_prediction` writer with tenant identity derived from the authenticated principal and requires an injected authenticated read callback for duplicate-safe writes. Member 1 owns the needed prediction lookup/history APIs; no direct SQL or Member 1 source changes were made. Alert decisions and event idempotency are in-process only and are not substitutes for durable Part 1/app-job storage.
+- **Tests / verification:**
+  - `& .\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p33 tests\test_operational_inference.py tests\test_prediction_pipeline.py tests\test_historical_evaluation.py tests\test_cross_member_integration.py tests\test_data_foundation.py` — **PASS** — 111 passed; 15 unsuppressed SHAP output-shape warnings.
+  - `& .\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p33-full` — **PASS** — 487 passed, 0 failures, 0 errors, 0 skipped; 24 existing unsuppressed SHAP output-shape warnings.
+  - Repository-local public package/module imports — **PASS**; AST syntax parse of all changed Python files — **PASS, 3 files**; `git diff --check` — **PASS**. Staged diff check is also required before commit.
+- **Data / model / ROI evidence:** New tests use explicitly synthetic in-memory records only. No data was regenerated/imported, no model was trained/calibrated/evaluated, and no TEST/CALIBRATION outcome files were opened. Existing evidence remains synthetic STANDARD v1.2 tenant-01 only; 7d and calibration gates fail, while 14d/30d validation is weak. No real-world predictive performance, intervention or ROI claim.
+- **Known issues / blockers:** No authorized real longitudinal dataset or deployable calibrated 7/14/30 model bundle. Member 1 needs to expose authenticated prediction read/history methods for actual duplicate-safe persistence and replay; deployment needs durable event idempotency, alert-decision persistence, and a scheduler/job retry policy. Full replay through Member 1's historical Push API and any real threshold selection remain undone. The local `MODEL_BUNDLE_NOT_READY` behavior must remain in force.
+- **Next action / handoff:** Member 1: expose tenant-scoped prediction lookup/history; data owner: authorize representative longitudinal source and resolve coverage/account-level churn policy; app/job owner: provide durable scheduling, event idempotency and alert audit storage. Member 2 can then pass data/model/calibration readiness gates before any held-out TEST evaluation.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T19:09:15Z — Member 2 AI coding assistant — Final prediction diagnostics and acceptance audit
 
 - **Workstream:** Part 2 / ML / Integration / Docs / QA
