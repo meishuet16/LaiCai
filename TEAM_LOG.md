@@ -72,6 +72,30 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T08:32:31Z — Member 2 AI coding assistant — Cross-member integration contracts and handoff
+
+- **Workstream:** Part 2 / Part 4 integration
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** `docs(member2): finalize cross-member integration handoff`
+- **Issue / task:** Member 2 Prompt 20; no ticket
+- **Files changed:** `docs/MEMBER2_CROSS_MEMBER_INTEGRATION.md`, `docs/MEMBER2_HANDOFF_BLOCKERS.md`, `docs/MEMBER2_INTEGRATION_DEPENDENCIES.md`, `tests/test_cross_member_integration.py`, `TEAM_LOG.md`
+- **What changed:**
+  - Documented the verified Member 1 input contract, current point-in-time adapter fields, Member 3 canonical prediction/feedback handoff, Member 4 dashboard/outcome semantics, ownership boundaries, security/provenance rules and concrete acceptance checklist.
+  - Added a P0/P1 blocker matrix without inventing backend/API/frontend completion. P0 blockers include the absent authorized longitudinal dataset, authenticated Member 1 adapter, unresolved multi-subscription policy, source availability/correction policy, and durable production model-governance storage.
+  - Added 18 deterministic synthetic cross-member contract tests covering prediction serialization, scored/non-scored states, pipeline blockers, feedback maturity/revisions, tenant isolation, source availability and `prediction_id` linkage. Reused existing contracts; no parallel serializer, API, database, decision engine or UI was added.
+- **Why it changed:** Make Member 2's actual interfaces and integration blockers actionable for Members 1, 3 and 4 while distinguishing local unit-test verification from real production readiness.
+- **Contract / database / API impact:** No public schema, database, endpoint or shared enum change. Existing `PredictionOutput.model_dump/model_validate`, `PipelineResult`, `PointInTimeDataAdapter` and `InMemoryOutcomeReconciliationStore` are the verified local handoff boundaries. External authentication, persistence and endpoint ownership remain with other workstreams.
+- **Tests / verification:**
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_cross_member_integration.py --basetemp .pytest-tmp-p20` — PASS — 18 tests passed.
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_cross_member_integration.py tests/test_prediction_contract.py tests/test_prediction_pipeline.py tests/test_outcome_reconciliation.py --basetemp .pytest-tmp-p20` — PASS — 75 tests passed, 15 known SHAP warnings.
+  - `.venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp-p20` — PASS — 335 tests passed, 24 known SHAP warnings.
+  - `.venv\Scripts\python.exe -c "import retainiq_prediction; ..."` — PASS — Python 3.14.4; canonical prediction, pipeline and reconciliation exports imported.
+  - `git diff --check` — PASS — no whitespace errors; normal LF/CRLF conversion warnings only.
+- **Data / model / ROI evidence:** Explicitly synthetic contract fixtures and existing local unit tests only; no authorized dataset, real score, model metric, intervention effect, saved revenue or ROI evidence.
+- **Known issues / blockers:** P0 handoff blockers remain open. `IMPROVEMENT-001` through `IMPROVEMENT-005` remain pending/unresolved. Prompt 18's original 28-scenario coverage review and Prompt 19's final governance scenario review remain deferred for final regression review.
+- **Next action / handoff:** Member 1 should supply the authenticated canonical adapter, DATASET_CARD, availability/correction policy and multi-subscription decision. Members 3 and 4 should confirm their prediction/feedback and dashboard query contracts against this handoff before integration.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T08:27:02Z — Member 2 AI coding assistant — Human approval, promotion and rollback governance
 
 - **Workstream:** Part 2 / Part 4 governance

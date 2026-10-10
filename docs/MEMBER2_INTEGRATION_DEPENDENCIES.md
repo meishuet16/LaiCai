@@ -1,6 +1,9 @@
 # Member 2 — Prediction Engine Integration Dependencies
 
-Status: repository setup only. No prediction implementation or model has been added.
+Status: Member 2 contracts and local implementations exist; real integration and
+production readiness remain blocked by Member 1/backend evidence and unresolved
+team policies. This document is a dependency summary, not a claim that external
+systems are implemented.
 
 The complete requirements are the preferred integrated specification. Items marked **proposed** still require team agreement before implementation.
 
@@ -93,7 +96,7 @@ A static final `Churn = Yes/No` table cannot support validated early-warning lea
 
 ## 6. Current implementation blockers
 
-- The repository contains no backend, database, dependency manifest, test suite, dataset, or model code.
+- The repository contains no Member 1 production backend/database or authorized dataset. Member 2's local typed contracts, tests and model components are present, but they are not a production serving system.
 - No authorized longitudinal dataset or `DATASET_CARD.md` exists.
 - Member 1’s canonical schema, authentication boundary, replay path, and label policy are not implemented.
 - No team-approved values exist for availability semantics, churn aggregation, split policy, reliability thresholds, or model-release gates.
