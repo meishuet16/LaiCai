@@ -151,6 +151,16 @@ from .explainability import (
     SHAP_AVAILABLE,
     SHAP_VERSION,
 )
+from .prediction_pipeline import (
+    HORIZONS,
+    PipelineExecutionMode,
+    PipelineReasonCode,
+    PipelineResult,
+    PipelineStatus,
+    PredictionPipeline,
+    PredictionPipelineConfig,
+    PredictionRequest,
+)
 
 __all__ = [
     "DataFreshness",
@@ -191,6 +201,14 @@ __all__ = [
     "LightGBMExplainer",
     "SHAP_AVAILABLE",
     "SHAP_VERSION",
+    "HORIZONS",
+    "PipelineExecutionMode",
+    "PipelineReasonCode",
+    "PipelineResult",
+    "PipelineStatus",
+    "PredictionPipeline",
+    "PredictionPipelineConfig",
+    "PredictionRequest",
     "EligibilityPolicy",
     "EligibilityReasonCode",
     "EligibilityResult",

@@ -381,6 +381,31 @@ Members may cover several workstreams. Update assignments through a logged commi
 - **Next action / handoff:** Review the proposed attribution mapping with Members 1, 3, and 4, then connect explanations only after real calibrated model artifacts and readiness evidence exist.
 - **Reviewer / pairing:** N/A
 
+### 2026-10-10T07:41:02Z — Member 2 AI coding assistant — End-to-end prediction pipeline
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; previous SHAP checkpoint is `e79f657`
+- **Issue / task:** Member 2 Prompt 14; no ticket
+- **Files changed:** `src/retainiq_prediction/prediction_pipeline.py`, `src/retainiq_prediction/__init__.py`, `tests/test_prediction_pipeline.py`, `docs/MEMBER2_PREDICTION_PIPELINE.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added typed `PredictionRequest`, `PipelineResult`, internal pipeline statuses/reason codes, injectable clock and prediction-ID factory, and orchestration over the existing point-in-time adapter, eligibility, features, freshness, reliability, LightGBM, calibration, coherence, SHAP, and canonical prediction contracts.
+  - Added strict three-horizon model/calibrator compatibility checks for readiness, versions, label policy, feature version/order/preprocessing, tenant scope, provenance, dataset status, and empirical calibration validation.
+  - Added explicit known-cancellation/not-eligible bypasses, data abstention with null probabilities, technical/model-bundle error states, limited-evidence warning preservation, and no raw-score fallback.
+  - Added synthetic-only end-to-end execution requiring synthetic artifact provenance and blocked dataset evidence; results are explicitly non-deployable. Production mode remains blocked by current repository evidence.
+- **Why it changed:** Connect the existing time-safe prediction components into one testable inference path without training, API/database work, fabricated scores, or a new canonical status/schema.
+- **Contract / database / API impact:** The existing `PredictionOutput` contract is unchanged. The pipeline proposes serializing one existing `ExplanationResult` under each `explanations_by_horizon` key while preserving raw-margin limitations; persistence/display shape remains a Member 3/4 team decision. No database, API, authentication, decision, dashboard, or retraining component changed.
+- **Tests / verification:**
+  - `& .venv\Scripts\python.exe -m pytest -q tests/test_prediction_pipeline.py --basetemp .pytest-tmp` — PASS — 16 tests passed; 15 known SHAP/LightGBM output-shape warnings.
+  - `& .venv\Scripts\python.exe -m pytest -q tests/test_prediction_pipeline.py tests/test_explainability.py tests/test_calibration.py tests/test_reliability.py --basetemp .pytest-tmp` — PASS — 60 tests passed; 24 known SHAP/LightGBM output-shape warnings.
+  - `& .venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp` — PASS — 215 tests passed; 24 known SHAP/LightGBM output-shape warnings.
+  - `& .venv\Scripts\python.exe -c "import sys, retainiq_prediction"` — PASS — Python 3.14.4, package import, canonical statuses, and non-quantified uncertainty verified.
+  - `git diff --check` — PASS — only normal LF/CRLF conversion warning for the modified package export.
+- **Data / model / ROI evidence:** Synthetic fitted LightGBM/calibrator fixtures and real SHAP execution only; no authorized longitudinal dataset, production prediction, predictive metric, retention result, causal effect, or ROI claim.
+- **Known issues / blockers:** Production readiness remains `BLOCKED` because no authorized real longitudinal dataset or PASS-provenance model/calibration bundle exists. Member 1 must supply canonical source/freshness/coverage evidence, artifact provenance and registry mapping, and the agreed multi-subscription policy. Members 3/4 must agree on the final `explanations_by_horizon` persistence/display contract and synthetic-result exclusion.
+- **Next action / handoff:** Review the orchestration and proposed explanation mapping with Members 1, 3, and 4; connect only authorized real artifacts and adapters before production exposure.
+- **Reviewer / pairing:** N/A
+
 ## 6. Shared integration agreements — verify before changing
 
 - **Prediction anchor:** `prediction_id` = unique account forecast snapshot; `prediction_run_id` = inference batch/job ID.
