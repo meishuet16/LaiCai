@@ -178,6 +178,19 @@ def _validate_supabase_dsn(value: str, project_ref: str, mode: str) -> tuple[str
     return host, sslmode
 
 
+def _supabase_migration_mode(value: str, project_ref: str) -> str:
+    """Accept only direct or session-pooler endpoints for migration sessions."""
+    for mode in ("DIRECT", "SESSION_POOLER"):
+        try:
+            _validate_supabase_dsn(value, project_ref, mode)
+        except DatabaseConfigurationError:
+            continue
+        return mode
+    raise _configuration_error(
+        "Supabase migration DSN must use this project's direct or session-pooler endpoint",
+    )
+
+
 def _redact_url(value: str) -> str:
     try:
         parsed = urlsplit(value)
@@ -239,7 +252,7 @@ class DatabaseConfig:
                 _validate_supabase_dsn(self.target, project_ref, mode)
                 object.__setattr__(self, "connection_mode", mode)
                 if self.migration_dsn is not None:
-                    _validate_supabase_dsn(self.migration_dsn, project_ref, "DIRECT")
+                    _supabase_migration_mode(self.migration_dsn, project_ref)
                     app_user = unquote(urlsplit(self.target).username or "")
                     migration_user = unquote(urlsplit(self.migration_dsn).username or "")
                     if self.migration_dsn == self.target or app_user == migration_user:
@@ -377,13 +390,41 @@ class DatabaseConfig:
     def for_migrations(self) -> "DatabaseConfig":
         if not self.is_supabase or not self.migration_dsn:
             raise _configuration_error("a separately configured Supabase migration DSN is required")
+        migration_mode = _supabase_migration_mode(
+            self.migration_dsn,
+            self.expected_project_ref or "",
+        )
         return DatabaseConfig(
             POSTGRESQL_BACKEND,
             self.migration_dsn,
             deployment_environment="supabase_demo",
-            connection_mode="DIRECT",
+            connection_mode=migration_mode,
             expected_project_ref=self.expected_project_ref,
             project_url=self.project_url,
+        )
+
+    @classmethod
+    def for_supabase_migration_target(
+        cls,
+        migration_dsn: str,
+        *,
+        project_ref: str,
+        project_url: str,
+    ) -> "DatabaseConfig":
+        """Build a project-validated migration-only target without an app DSN.
+
+        This is intended for the one-time bootstrap/migration phase, before a
+        restricted runtime login has been provisioned. Runtime configuration
+        continues to require distinct application and migration DSNs.
+        """
+        mode = _supabase_migration_mode(migration_dsn, project_ref)
+        return cls(
+            POSTGRESQL_BACKEND,
+            migration_dsn,
+            deployment_environment="supabase_demo",
+            connection_mode=mode,
+            expected_project_ref=project_ref,
+            project_url=project_url,
         )
 
     @property

@@ -15,7 +15,10 @@ from retaniq.postgresql_migrations import (
     MigrationChecksumError,
     MigrationDirectoryError,
     MigrationHistoryError,
+    PostgreSQLMigrationExecutionError,
     PostgreSQLMigrationError,
+    _safe_migration_diagnostic,
+    _sql_operation,
     discover_migrations,
     plan_migrations,
     run_postgresql_migrations,
@@ -32,6 +35,24 @@ class PostgreSQLMigrationUnitTests(unittest.TestCase):
         )
         self.assertTrue(all(len(migration.checksum) == 64 for migration in migrations))
         self.assertEqual(migrations, discover_migrations())
+
+    def test_authenticator_owner_transfer_privileges_are_temporary_and_ordered(self):
+        migration = next(item for item in discover_migrations() if item.version == "005")
+        sql = migration.sql
+        grant_membership = sql.index(
+            "GRANT retaniq_authenticator TO CURRENT_USER\n    WITH SET TRUE, INHERIT FALSE"
+        )
+        grant_schema_create = sql.index("GRANT CREATE ON SCHEMA %I TO retaniq_authenticator")
+        grant_function_access = sql.index("GRANT EXECUTE ON FUNCTION retaniq_authenticate_integration")
+        first_owner_transfer = sql.index("ALTER FUNCTION retaniq_authenticate_integration(TEXT) OWNER")
+        revoke_schema_create = sql.index("REVOKE CREATE ON SCHEMA %I FROM retaniq_authenticator")
+        revoke_membership = sql.index("REVOKE retaniq_authenticator FROM CURRENT_USER")
+        self.assertNotIn("WITH ADMIN TRUE", sql)
+        self.assertLess(grant_membership, first_owner_transfer)
+        self.assertLess(grant_schema_create, first_owner_transfer)
+        self.assertLess(grant_function_access, first_owner_transfer)
+        self.assertLess(first_owner_transfer, revoke_schema_create)
+        self.assertLess(revoke_schema_create, revoke_membership)
 
     def test_duplicate_migration_versions_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -87,6 +108,22 @@ class PostgreSQLMigrationUnitTests(unittest.TestCase):
         )
         with self.assertRaises(MigrationDirectoryError):
             split_sql_statements("SELECT 'unterminated")
+
+    def test_migration_failure_diagnostics_keep_sqlstate_and_redact_credentials(self):
+        class Diagnostic:
+            message_primary = "permission denied (password=never-print-this)"
+
+        class DriverError(Exception):
+            sqlstate = "42501"
+            diag = Diagnostic()
+
+        sqlstate, message = _safe_migration_diagnostic(DriverError())
+        self.assertEqual(sqlstate, "42501")
+        self.assertEqual(message, "permission denied (password=[REDACTED])")
+        self.assertEqual(_sql_operation("-- leading comment\nALTER FUNCTION f() OWNER TO r"), "ALTER FUNCTION")
+        error = PostgreSQLMigrationExecutionError("005", 4, "ALTER FUNCTION", sqlstate, message)
+        self.assertEqual((error.version, error.statement_index, error.operation), ("005", 4, "ALTER FUNCTION"))
+        self.assertNotIn("never-print-this", str(error))
 
     def test_postgresql_migrations_reject_sqlite_targets_before_connecting(self):
         with self.assertRaises(DatabaseConfigurationError):
@@ -629,8 +666,12 @@ class PostgreSQLMigrationIntegrationTests(unittest.TestCase):
                     "CREATE TABLE rolled_back_marker (id BIGINT); INSERT INTO no_such_table VALUES (1);",
                     encoding="utf-8",
                 )
-                with self.assertRaises(PostgreSQLMigrationError):
+                with self.assertRaises(PostgreSQLMigrationExecutionError) as raised:
                     run_postgresql_migrations(self.config, directory=root, schema=schema)
+                self.assertEqual(raised.exception.version, "002")
+                self.assertEqual(raised.exception.statement_index, 2)
+                self.assertEqual(raised.exception.operation, "INSERT")
+                self.assertEqual(raised.exception.sqlstate, "42P01")
             connection = self._connect()
             try:
                 connection.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema}"')

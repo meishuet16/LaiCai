@@ -1,10 +1,12 @@
 # Member 1 — PostgreSQL RLS and authorization (07B-1)
 
-**Status: PARTIALLY_VERIFIED — local PostgreSQL 16.15 only.** Migrations 005–007
-and their policies/grants were applied and tested against disposable local
-databases with actual restricted login roles. No Supabase migration was run.
-This is not a claim of production-grade isolation against compromise of the
-shared backend database credential.
+**Status: PARTIALLY_VERIFIED.** Migrations 005–007 were tested locally against
+disposable PostgreSQL with actual restricted login roles and are now
+catalog-verified on the dedicated Supabase demo. The remote restricted-login
+smoke passed its 13 reported scenarios. The shared tenant GUC remains
+spoofable by a holder of the trusted backend database credential with arbitrary
+SQL access; this is not independently authenticated database tenant identity
+or production-grade isolation against credential compromise.
 
 ## Scope and inventory
 
@@ -71,7 +73,7 @@ granted only the required capability role.
 | `retaniq_decision_service` | SELECT on prediction artifacts only | All writes and source data |
 | `retaniq_dashboard_reader` | SELECT on customers and predictions only | All writes and event/source tables |
 | `retaniq_maintenance` | SELECT/INSERT/UPDATE/DELETE on tenant tables and global dataset/checkpoint tables; sequence access; tenant policy for tenant tables and explicit maintenance-membership policy for global tables | Migration metadata, schema CREATE, BYPASSRLS |
-| `retaniq_authenticator` | NOLOGIN; SELECT only on integration/category/service-principal lookup data under its own restrictive role policy; owns only the two fixed authentication functions | No login, no membership granted, no writes, no bypass |
+| `retaniq_authenticator` | NOLOGIN; SELECT only on integration/category/service-principal lookup data under its own restrictive role policy; owns only the two fixed authentication functions | No login, no persistent membership for the migration login, no writes, no bypass |
 | Migration administrator | Runs schema migrations and owns migration objects in the configured schema | Must not be the application login; credentials are not represented in SQL |
 
 PUBLIC table privileges and CREATE on `public` are revoked. If Supabase roles
@@ -83,6 +85,17 @@ migration administrator role. `retaniq_artifact_writer` receives its authorized
 source list and service-principal ID only from trusted Python code as
 transaction-local GUCs; these are subject to the same spoofing limitation as
 tenant context.
+
+Supabase's `postgres` role can have `CREATEROLE` without `SUPERUSER`. PostgreSQL
+17 creates a non-superuser creator membership with ADMIN TRUE but SET FALSE.
+Migration 005 uses ADMIN to add a distinct temporary self-membership with
+`SET TRUE, INHERIT FALSE` (without ADMIN), grants the function owner CREATE on
+the function schema, transfers ownership, then revokes both temporary grants
+before commit. This avoids trying to grant ADMIN back to its grantor while
+providing the SET privilege required by `ALTER FUNCTION ... OWNER`. A failure
+rolls back the complete migration transaction. The ordering and exact
+membership options are asserted by the migration unit test; catalog state still
+requires live PostgreSQL verification.
 
 The decision-service capability currently has only a prediction SELECT
 contract because the repository has no decision/action tables. Maintenance
@@ -180,8 +193,10 @@ revoke managed-role grants, or alter all default ACLs. Validate those exact
 operations in the approved project and stop if the platform denies them.
 `service_role` bypasses RLS when it has table privileges, so it must not be a
 routine RetainIQ login. Data API exposed-schema grants must be explicitly
-checked. Use a direct migration DSN; transaction pooling does not preserve
-session state and is incompatible with the runner's session advisory lock.
+checked. Use a direct migration DSN when available; the runner also accepts a
+separately configured shared session-pooler migration DSN for IPv4-only
+environments. Transaction pooling does not preserve session state and is
+incompatible with the session advisory lock, so it is never used for migrations.
 The application transaction-local GUC is set and consumed within a single
 transaction, and psycopg automatic preparation is disabled for transaction
 pooling; verify this behavior with the actual pooler before use.
@@ -210,14 +225,41 @@ pooling; verify this behavior with the actual pooler before use.
 
 ## Remaining blockers
 
-The local capability design is live-tested, but the following remain gaps:
-actual Supabase role-bootstrap/ownership privileges; runtime selection of a
-distinct maintenance login for provisioning/global batch operations;
-multi-tenant batch repository context; successful write-shape coverage for
-every table; Supabase Data API/schema exposure; and the documented GUC
-spoofing risk if a DB credential is compromised. See
-`MEMBER1_RLS_TEST_MATRIX.md` for exact test links and gaps. Local tests and
-this document do not indicate any remote RLS deployment.
+The 13-scenario remote smoke covers selected operations, not every table or
+write shape. Remaining gaps are durable restricted runtime login provisioning
+and routing (including a separate maintenance login), tenant-01-only versus
+four-tenant import semantics, successful batch import under actual runtime
+roles, Supabase Data API/exposed-schema verification, independent confirmation
+that temporary smoke logins were removed, and the documented GUC spoofing
+risk if a database credential is compromised. See
+`MEMBER1_RLS_TEST_MATRIX.md` for per-table evidence and coverage gaps.
+
+## Current Supabase verification (2026-10-11)
+
+The operator-supplied final `retaniq.supabase_remote_preflight --deploy`
+result reported project `mhtzkzqjcsdyjacvcxty`, PostgreSQL 17.11 through the
+Session Pooler, migration history `CHECKSUMS_MATCH`, no pending migrations,
+and current version 007. No migration was newly applied by that final run
+(`applied_versions: []`); migrations 001–007 were already recorded. Catalog
+checks passed for 18/18 application data tables with both RLS enabled and
+forced, 42 policies, and the two fixed-search-path SECURITY DEFINER
+authentication functions owned by `retaniq_authenticator`. The separate
+migration metadata table is intentionally outside RLS.
+
+The restricted-login smoke reported PASS for 13 scenarios using temporary
+backend, artifact-writer, dashboard-reader, and maintenance logins. It
+verified selected default-deny, tenant filtering, denied cross-tenant writes,
+transaction-local context clearing, capability-specific artifact/dashboard
+permissions, and maintenance cross-tenant delete denial. It also explicitly
+confirmed that arbitrary SQL under the shared backend login can spoof the
+tenant GUC. The output says temporary-role cleanup was `ATTEMPTED`; absence was
+not independently verified. The catalog's `postgres` migration role has
+`BYPASSRLS`, `CREATEROLE`, and `CREATEDB`; the runtime capability roles remain
+NOLOGIN. No routine `service_role` test was used, and no dataset was imported.
+
+These results verify selected remote catalog and restricted-role behavior,
+not complete Data API exposure, durable application credential routing,
+complete table/write coverage, or database-enforced identity isolation.
 
 ## Supabase references reviewed (2026-10-11)
 

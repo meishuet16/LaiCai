@@ -34,6 +34,87 @@ class MigrationChecksumError(MigrationHistoryError):
     """Raised when a previously applied migration file has been changed."""
 
 
+class PostgreSQLMigrationExecutionError(PostgreSQLMigrationError):
+    """Safe structured details for one failed migration statement."""
+
+    def __init__(
+        self,
+        version: str | None,
+        statement_index: int | None,
+        operation: str,
+        sqlstate: str | None,
+        diagnostic_message: str | None,
+    ) -> None:
+        self.version = version
+        self.statement_index = statement_index
+        self.operation = operation
+        self.sqlstate = sqlstate
+        self.diagnostic_message = diagnostic_message
+        location = (
+            f"PostgreSQL migration {version} statement {statement_index}"
+            if version and statement_index is not None
+            else "PostgreSQL migration initialization"
+        )
+        suffix = f" (SQLSTATE {sqlstate})" if sqlstate else ""
+        super().__init__(f"{location} operation {operation} failed{suffix}")
+
+
+def _sql_operation(statement: str) -> str:
+    without_leading_comments = re.sub(
+        r"\A\s*(?:(?:--[^\r\n]*(?:\r?\n|\Z))|(?:/\*.*?\*/\s*))*",
+        "",
+        statement,
+        flags=re.DOTALL,
+    )
+    words = re.findall(r"[A-Za-z]+", without_leading_comments)
+    if not words:
+        return "UNKNOWN"
+    first = words[0].upper()
+    if first in {"CREATE", "ALTER", "DROP", "GRANT", "REVOKE"} and len(words) > 1:
+        second = words[1].upper()
+        if second in {"OR", "IF"} and len(words) > 2:
+            second = words[2].upper()
+        return f"{first} {second}"[:40]
+    return first[:40]
+
+
+def _safe_migration_diagnostic(error: BaseException) -> tuple[str | None, str | None]:
+    sqlstate = getattr(error, "sqlstate", None)
+    if not isinstance(sqlstate, str) or not re.fullmatch(r"[0-9A-Z]{5}", sqlstate):
+        sqlstate = None
+    diagnostic = getattr(error, "diag", None)
+    primary = getattr(diagnostic, "message_primary", None)
+    if not isinstance(primary, str):
+        return sqlstate, None
+    # Do not emit DSNs or credential-shaped values, even if a driver or
+    # PostgreSQL extension includes one in its primary diagnostic.
+    primary = re.sub(r"(?i)postgres(?:ql)?://\S+", "[REDACTED_DSN]", primary)
+    primary = re.sub(
+        r"(?i)\b(password|passwd|token|secret)\s*([=:])\s*[^,\s;)]+",
+        r"\1\2[REDACTED]",
+        primary,
+    )
+    primary = " ".join(primary.split())[:300]
+    return sqlstate, primary or None
+
+
+def _execute_migration_operation(
+    connection: DatabaseConnection,
+    operation: str,
+    statement: str,
+    parameters: tuple[object, ...] | None = None,
+) -> object:
+    try:
+        if parameters is None:
+            return connection.raw_connection.execute(statement)
+        return connection.raw_connection.execute(statement, parameters)
+    except Exception as error:
+        sqlstate, diagnostic_message = _safe_migration_diagnostic(error)
+        raise PostgreSQLMigrationExecutionError(
+            None, None, operation, sqlstate, diagnostic_message,
+        ) from None
+
+
 @dataclass(frozen=True, slots=True)
 class Migration:
     version: str
@@ -210,13 +291,13 @@ def run_postgresql_migrations(
     if config.is_supabase:
         if config.connection_mode == "TRANSACTION_POOLER":
             raise PostgreSQLMigrationError(
-                "Supabase transaction pooling is incompatible with the session-level migration advisory lock; use the DIRECT migration DSN",
+                "Supabase transaction pooling is incompatible with the session-level migration advisory lock; use the DIRECT or SESSION_POOLER migration DSN",
             )
         if config.migration_dsn is not None:
             config = config.for_migrations()
-        elif config.connection_mode != "DIRECT":
+        elif config.connection_mode not in {"DIRECT", "SESSION_POOLER"}:
             raise PostgreSQLMigrationError(
-                "Supabase schema migrations require the separately configured DIRECT migration connection",
+                "Supabase schema migrations require a DIRECT or SESSION_POOLER migration connection",
             )
     migrations = discover_migrations(directory)
     try:
@@ -236,36 +317,76 @@ def run_postgresql_migrations(
         # calls can race in PostgreSQL's catalogs.
         connection.raw_connection.autocommit = True
         quoted_schema = '"' + schema.replace('"', '""') + '"'
-        connection.execute(
+        _execute_migration_operation(
+            connection,
+            "ACQUIRE ADVISORY LOCK",
             "SELECT pg_advisory_lock(hashtext(%s), hashtext(%s))",
             ("retaniq_postgresql_migrations", schema),
         )
         locked = True
-        connection.execute(f"CREATE SCHEMA IF NOT EXISTS {quoted_schema}")
-        connection.execute(f"SET search_path TO {quoted_schema}")
-        connection.execute(
+        _execute_migration_operation(
+            connection, "CREATE MIGRATION SCHEMA", f"CREATE SCHEMA IF NOT EXISTS {quoted_schema}",
+        )
+        _execute_migration_operation(
+            connection, "SET MIGRATION SEARCH PATH", f"SET search_path TO {quoted_schema}",
+        )
+        _execute_migration_operation(
+            connection,
+            "CREATE MIGRATION HISTORY TABLE",
             f"CREATE TABLE IF NOT EXISTS {_MIGRATION_TABLE} ("
             "version TEXT PRIMARY KEY, checksum CHAR(64) NOT NULL, "
             "applied_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP)"
         )
-        rows = connection.execute(
+        rows = _execute_migration_operation(
+            connection, "READ MIGRATION HISTORY",
             f"SELECT version, checksum FROM {_MIGRATION_TABLE} ORDER BY version",
         ).fetchall()
         applied = {str(row["version"]): str(row["checksum"]).strip() for row in rows}
         pending = plan_migrations(migrations, applied)
 
         for migration in pending:
+            statements = split_sql_statements(migration.sql)
             try:
                 with connection.transaction():
-                    for statement in split_sql_statements(migration.sql):
-                        connection.execute(statement)
-                    connection.execute(
-                        f"INSERT INTO {_MIGRATION_TABLE}(version, checksum) VALUES (%s, %s)",
-                        (migration.version, migration.checksum),
-                    )
-            except Exception:
-                raise PostgreSQLMigrationError(
-                    f"PostgreSQL migration {migration.version} failed and was rolled back",
+                    for statement_index, statement in enumerate(statements, start=1):
+                        try:
+                            # Use psycopg directly here so PostgreSQL's SQLSTATE
+                            # and safe primary diagnostic survive the generic
+                            # application error boundary.
+                            connection.raw_connection.execute(statement)
+                        except Exception as error:
+                            sqlstate, diagnostic_message = _safe_migration_diagnostic(error)
+                            raise PostgreSQLMigrationExecutionError(
+                                migration.version,
+                                statement_index,
+                                _sql_operation(statement),
+                                sqlstate,
+                                diagnostic_message,
+                            ) from None
+                    try:
+                        connection.raw_connection.execute(
+                            f"INSERT INTO {_MIGRATION_TABLE}(version, checksum) VALUES (%s, %s)",
+                            (migration.version, migration.checksum),
+                        )
+                    except Exception as error:
+                        sqlstate, diagnostic_message = _safe_migration_diagnostic(error)
+                        raise PostgreSQLMigrationExecutionError(
+                            migration.version,
+                            len(statements) + 1,
+                            "RECORD MIGRATION HISTORY",
+                            sqlstate,
+                            diagnostic_message,
+                        ) from None
+            except PostgreSQLMigrationExecutionError:
+                raise
+            except Exception as error:
+                sqlstate, diagnostic_message = _safe_migration_diagnostic(error)
+                raise PostgreSQLMigrationExecutionError(
+                    migration.version,
+                    0,
+                    "TRANSACTION",
+                    sqlstate,
+                    diagnostic_message,
                 ) from None
             applied_now.append(migration.version)
 
@@ -278,7 +399,7 @@ def run_postgresql_migrations(
     finally:
         if locked:
             try:
-                connection.execute(
+                connection.raw_connection.execute(
                     "SELECT pg_advisory_unlock(hashtext(%s), hashtext(%s))",
                     ("retaniq_postgresql_migrations", schema),
                 )

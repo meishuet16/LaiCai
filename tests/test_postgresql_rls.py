@@ -45,6 +45,7 @@ class PostgreSQLRLSIntegrationTests(unittest.TestCase):
         cls.psycopg = psycopg
         cls.sql = sql
         cls.admin_config = _TEST_CONFIG
+        cls.schema = "public"
         cls.database = f"retaniq_test_rls_{uuid4().hex[:12]}"
         parsed = urlsplit(cls.admin_config.postgresql_dsn)
         cls.admin_dsn = cls.admin_config.postgresql_dsn
@@ -215,6 +216,17 @@ class PostgreSQLRLSIntegrationTests(unittest.TestCase):
                 "WHERE n.nspname='public' AND c.relkind='S'"
             ).fetchone()[0]
             policies = connection.execute("SELECT tablename,policyname FROM pg_policies WHERE schemaname='public'").fetchall()
+            authenticator_create = connection.execute(
+                "SELECT has_schema_privilege('retaniq_authenticator', %s, 'CREATE')",
+                (self.schema,),
+            ).fetchone()[0]
+            authenticator_set_membership = connection.execute(
+                "SELECT EXISTS (SELECT 1 FROM pg_auth_members membership "
+                "JOIN pg_roles granted_role ON granted_role.oid=membership.roleid "
+                "JOIN pg_roles member_role ON member_role.oid=membership.member "
+                "WHERE granted_role.rolname='retaniq_authenticator' "
+                "AND member_role.rolname=current_user AND membership.set_option)",
+            ).fetchone()[0]
         self.assertTrue(capabilities)
         self.assertTrue(all(not role[1] and not role[2] and not role[3] for role in capabilities))
         self.assertTrue(all(owner[1] not in {role[0] for role in capabilities} for owner in owners))
@@ -223,6 +235,8 @@ class PostgreSQLRLSIntegrationTests(unittest.TestCase):
         self.assertEqual(sequence_count, 1)
         self.assertEqual(len(definers), 2)
         self.assertTrue(all(row[2] and row[1] == "retaniq_authenticator" and "search_path=pg_catalog, public" in row[3][0] for row in definers))
+        self.assertFalse(authenticator_create)
+        self.assertFalse(authenticator_set_membership)
         policy_names = {(row[0], row[1]) for row in policies}
         for table in ("tenants", "integrations", "customers", "customer_identities", "canonical_events", "usage_events", "billing_events", "subscriptions", "subscription_events", "feature_snapshots", "churn_labels", "predictions", "service_principals", "subscription_owners", "integration_event_categories", "observation_coverage"):
             self.assertIn((table, "tenant_backend_scope"), policy_names)

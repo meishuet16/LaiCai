@@ -34,7 +34,7 @@ back to SQLite.
 | `RETAINIQ_SUPABASE_PROJECT_URL` | HTTPS project URL copied from the intended Dashboard project |
 | `RETAINIQ_SUPABASE_EXPECTED_PROJECT_REF` | Expected project reference, separately confirmed in the Dashboard |
 | `RETAINIQ_SUPABASE_DB_APP_DSN` | Application-role connection string copied from that project's Connect panel |
-| `RETAINIQ_SUPABASE_DB_MIGRATION_DSN` | Separate migration-role **direct** connection string from the same project |
+| `RETAINIQ_SUPABASE_DB_MIGRATION_DSN` | Separate migration-role **direct or session-pooler** connection string from the same project |
 | `RETAINIQ_SUPABASE_CONNECTION_MODE` | `DIRECT`, `SESSION_POOLER`, or `TRANSACTION_POOLER` for the application DSN |
 
 The code verifies the project URL/reference pair and checks that each DSN's
@@ -60,8 +60,9 @@ SQLite/PostgreSQL use. Supabase mode rejects mixing those generic targets or
 2. From the Dashboard, copy the project URL and independently confirm the
    project reference. Put these in the two non-secret settings above.
 3. In **Connect**, copy—not reconstruct—the connection string for the chosen
-   application connection mode. Copy a separate **direct** connection string
-   for the future migration role. Use Dashboard-issued host, port, username,
+   application connection mode. Copy a separate **direct** migration string
+   (preferred) or a **session-pooler** string when direct IPv6 is unavailable.
+   Never use transaction pooling for migrations. Use Dashboard-issued host, port, username,
    database name, and password. Percent-encode reserved password characters
    as directed by Supabase.
 4. Phase 07B must create and grant the dedicated least-privilege roles in the
@@ -83,15 +84,17 @@ database connections. Supabase's current guidance distinguishes these paths:
 
 | Mode | 07A handling | Intended use / constraint |
 |---|---|---|
-| `DIRECT` | Supported; preferred for migration and administration | Direct database endpoint; Supabase documents IPv6 unless an IPv4 add-on is enabled. The future migration DSN must be DIRECT. |
+| `DIRECT` | Supported; preferred for migration and administration | Direct database endpoint; Supabase documents IPv6 unless an IPv4 add-on is enabled. |
 | `SESSION_POOLER` | Supported for app connectivity | Candidate for a persistent Python process on IPv4-only networks. Session features and prepared statements are preserved. |
 | `TRANSACTION_POOLER` | Supported for app connection only, with psycopg `prepare_threshold=None` | Candidate for short-lived/serverless requests. Supabase documents that prepared statements and session state do not survive between transactions. RetainIQ's database layer does not invoke query-pipeline mode. |
-| `TRANSACTION_POOLER` for migrations | **Rejected before connection** | The migration runner takes a session-level PostgreSQL advisory lock across migration transactions; transaction pooling can move the session between transactions and invalidate that lock. Use the separately configured DIRECT migration DSN via `DatabaseConfig.for_migrations()`. |
+| `DIRECT` or `SESSION_POOLER` for migrations | Supported by the migration-only target and `DatabaseConfig.for_migrations()` | The runner holds a session-level advisory lock. Session Pooler preserves a connection for the client session and is the IPv4 fallback; direct remains preferred for native migration work. |
+| `TRANSACTION_POOLER` for migrations | **Rejected before connection** | Transaction pooling can move the session between transactions and invalidate the session-level advisory lock. |
 
-Supabase documents direct connections for persistent IPv6 backends and
-migrations; the shared session pooler for IPv4-only persistent backends; and
-the transaction pooler for short-lived/serverless workloads. The shared pooler
-is IPv4 reachable. Its host and username include Dashboard-specific values;
+Supabase recommends direct connections for migrations, and documents shared
+Session Pooler as a session-preserving IPv4 fallback; transaction pooling is
+not suitable for the migration lock. The shared session pooler is also used
+for IPv4-only persistent backends, while transaction pooling is intended for
+short-lived/serverless workloads. The shared pooler is IPv4 reachable. Its host and username include Dashboard-specific values;
 the application must copy them from **Connect**, not derive them from a
 region or project reference. See the official
 [connection guide](https://supabase.com/docs/guides/database/connecting-to-postgres).

@@ -113,10 +113,35 @@ $function$;
 
 REVOKE ALL ON FUNCTION retaniq_authenticate_integration(TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION retaniq_authenticate_service_principal(TEXT) FROM PUBLIC;
-ALTER FUNCTION retaniq_authenticate_integration(TEXT) OWNER TO retaniq_authenticator;
-ALTER FUNCTION retaniq_authenticate_service_principal(TEXT) OWNER TO retaniq_authenticator;
+-- Grant while the migration login still owns the functions. After the owner
+-- transfer below, this login no longer has the grant option.
 GRANT EXECUTE ON FUNCTION retaniq_authenticate_integration(TEXT),
     retaniq_authenticate_service_principal(TEXT) TO retaniq_backend;
+-- CREATEROLE grants its creator ADMIN with SET FALSE. Use that ADMIN option
+-- to add a separate temporary self-membership with SET TRUE, but do not
+-- request ADMIN TRUE (PostgreSQL rejects granting ADMIN back to its grantor).
+-- This temporary membership and schema CREATE are revoked before commit.
+GRANT retaniq_authenticator TO CURRENT_USER
+    WITH SET TRUE, INHERIT FALSE;
+DO $function_owner_schema$
+BEGIN
+    EXECUTE format(
+        'GRANT CREATE ON SCHEMA %I TO retaniq_authenticator',
+        current_schema()
+    );
+END
+$function_owner_schema$;
+ALTER FUNCTION retaniq_authenticate_integration(TEXT) OWNER TO retaniq_authenticator;
+ALTER FUNCTION retaniq_authenticate_service_principal(TEXT) OWNER TO retaniq_authenticator;
+DO $function_owner_schema$
+BEGIN
+    EXECUTE format(
+        'REVOKE CREATE ON SCHEMA %I FROM retaniq_authenticator',
+        current_schema()
+    );
+END
+$function_owner_schema$;
+REVOKE retaniq_authenticator FROM CURRENT_USER;
 
 -- The custom GUC is a trusted-backend assertion, not a credential. It is
 -- transaction-local and fails closed when missing/empty/invalid. A client

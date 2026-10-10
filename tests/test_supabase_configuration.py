@@ -28,6 +28,9 @@ DIRECT_MIGRATION_DSN = (
 SESSION_APP_DSN = (
     f"postgresql://retainiq_app.{PROJECT_REF}:app-secret@fixture.pooler.supabase.com:5432/postgres?sslmode=require"
 )
+SESSION_MIGRATION_DSN = (
+    f"postgresql://postgres.{PROJECT_REF}:migration-secret@fixture.pooler.supabase.com:5432/postgres?sslmode=require"
+)
 TRANSACTION_APP_DSN = (
     f"postgresql://retainiq_app.{PROJECT_REF}:app-secret@fixture.pooler.supabase.com:6543/postgres?sslmode=require"
 )
@@ -119,11 +122,35 @@ class SupabaseConfigurationTests(unittest.TestCase):
             self.assertNotIn(secret, rendered)
         self.assertIn("***", rendered)
 
-    def test_migration_configuration_is_separate_and_forces_direct_mode(self):
+    def test_migration_configuration_is_separate_and_preserves_direct_mode(self):
         migration = DatabaseConfig.from_environment(environment(mode="SESSION_POOLER", app_dsn=SESSION_APP_DSN)).for_migrations()
         self.assertEqual(migration.connection_mode, "DIRECT")
         self.assertEqual(migration.target, DIRECT_MIGRATION_DSN)
         self.assertTrue(migration.is_supabase)
+
+    def test_session_pooler_is_accepted_as_a_session_locked_migration_target(self):
+        config = DatabaseConfig.from_environment(
+            environment(mode="SESSION_POOLER", app_dsn=SESSION_APP_DSN, migration_dsn=SESSION_MIGRATION_DSN),
+        )
+        migration = config.for_migrations()
+        self.assertEqual(migration.connection_mode, "SESSION_POOLER")
+        self.assertEqual(migration.target, SESSION_MIGRATION_DSN)
+
+    def test_migration_only_target_is_project_validated_without_runtime_dsn(self):
+        config = DatabaseConfig.for_supabase_migration_target(
+            SESSION_MIGRATION_DSN,
+            project_ref=PROJECT_REF,
+            project_url=PROJECT_URL,
+        )
+        self.assertTrue(config.is_supabase)
+        self.assertEqual(config.connection_mode, "SESSION_POOLER")
+        self.assertEqual(config.target, SESSION_MIGRATION_DSN)
+        with self.assertRaises(DatabaseConfigurationError):
+            DatabaseConfig.for_supabase_migration_target(
+                TRANSACTION_APP_DSN,
+                project_ref=PROJECT_REF,
+                project_url=PROJECT_URL,
+            )
 
     def test_transaction_pooler_is_rejected_by_session_locked_migrations(self):
         config = DatabaseConfig.from_environment(environment(mode="TRANSACTION_POOLER", app_dsn=TRANSACTION_APP_DSN))
@@ -138,6 +165,17 @@ class SupabaseConfigurationTests(unittest.TestCase):
         selected = opened.call_args.args[0]
         self.assertEqual(selected.target, DIRECT_MIGRATION_DSN)
         self.assertEqual(selected.connection_mode, "DIRECT")
+
+    def test_migration_runner_selects_separate_session_pooler_credentials(self):
+        config = DatabaseConfig.from_environment(
+            environment(mode="SESSION_POOLER", app_dsn=SESSION_APP_DSN, migration_dsn=SESSION_MIGRATION_DSN),
+        )
+        with patch("retaniq.postgresql_migrations.DatabaseConnection.open", side_effect=DatabaseConnectionError("safe")) as opened:
+            with self.assertRaises(PostgreSQLMigrationError):
+                run_postgresql_migrations(config)
+        selected = opened.call_args.args[0]
+        self.assertEqual(selected.target, SESSION_MIGRATION_DSN)
+        self.assertEqual(selected.connection_mode, "SESSION_POOLER")
 
     def test_transaction_pooler_disables_psycopg_prepared_statements(self):
         fake_psycopg = types.ModuleType("psycopg")

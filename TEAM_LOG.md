@@ -72,6 +72,82 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T19:36:21Z — Member 1 / Data & Backend Engineer — Verify Supabase RLS deployment and restricted smoke
+
+- **Workstream:** Part 1 / Data Foundation, Supabase PostgreSQL deployment
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `fix(member1): verify Supabase RLS deployment and restricted smoke`
+- **Issue / task:** Continue the authorized dedicated-demo migration after correcting the migration-005 role-owner transfer and restricted-smoke transaction boundary.
+- **Files changed:** `migrations/postgresql/005_rls_and_least_privilege.sql`, `retaniq/database_config.py`, `retaniq/postgresql_migrations.py`, `retaniq/supabase_remote_preflight.py`, focused migration/RLS/Supabase tests, `docs/MEMBER1_POSTGRESQL_RLS_AND_AUTHORIZATION.md`, `docs/MEMBER1_SUPABASE_CONNECTION_AND_SECURITY_PREPARATION.md`, and this log.
+- **What changed:** Added safe migration failure diagnostics (migration version, statement, operation and SQLSTATE without DSN/password output); corrected migration 005's temporary SET membership and schema CREATE grant ordering; allowed the project's session-pooler migration connection while rejecting transaction pooling; corrected the restricted smoke harness to use real top-level transactions with autocommit.
+- **Why it changed:** Supabase rejected the initial ownership transfer because of role membership options; after deployment, the smoke exposed that preliminary identity queries kept the connection inside an outer transaction, invalidating transaction-local cleanup assertions.
+- **Contract / database / API impact:** Operator-supplied remote result for project `mhtzkzqjcsdyjacvcxty` / PostgreSQL 17.11 / Session Pooler reports migration history `CHECKSUMS_MATCH`, no pending versions, current version 007, and `applied_versions: []` on the final verification run. Catalog checks passed: all 18 application data tables (migration metadata excluded) have RLS enabled and forced, 42 policies are present, and both SECURITY DEFINER authentication functions are owned by `retaniq_authenticator`. The temporary restricted-login smoke passed all 13 scenarios for backend, artifact-writer, dashboard-reader and maintenance roles. It explicitly passed the shared-GUC spoofability characterization; it does not establish independently authenticated database tenant identity. Smoke cleanup was reported as `ATTEMPTED`, not independently verified. No STANDARD rows were imported, no durable runtime login credentials or Member 2 access were provisioned, and `service_role` was not used for smoke verification.
+- **Tests / verification:** Focused local live-PostgreSQL migration/configuration/RLS/preflight suite — **PASS**, 58 tests, 0 failures/errors/skips, on a disposable PostgreSQL 17.11 container; `py -3.14 -m compileall -q retaniq tests`, package imports, and `git diff --check` — **PASS**. The corrected remote restricted smoke — **PASS**, 13/13 reported scenarios. No full 191-test suite rerun.
+- **Data / model / ROI evidence:** None imported. STANDARD dataset remains local synthetic artifact `synthetic-saas-v1-2-standard-s2026-970a9d231e68`; no remote dataset or Member 2 read-access evidence.
+- **Known issues / blockers:** The backend's shared transaction-local GUC is spoofable by any holder of its database credential capable of arbitrary SQL. The catalog shows capability roles are NOLOGIN; the deployment credential is privileged `postgres` (`rolbypassrls=true`, `rolcreatedb=true`, `rolcreaterole=true`). Data API/exposed-schema behavior and cleanup of temporary smoke logins were not independently verified. The existing importer binds one global dataset identity, provisions all four dataset tenants, is not tenant-01-only, and uses the regular configured DSN for global provenance/checkpoint and batch operations; no separate maintenance-login routing exists. Therefore the import gate is not satisfied.
+- **Next action / handoff:** Before STANDARD import, owner must decide whether to accept the trusted-backend GUC boundary, securely provision distinct durable backend and maintenance login credentials (without `BYPASSRLS`), verify Supabase Data API exposure and role memberships, independently confirm temporary smoke-login cleanup, and approve the four-tenant import mapping or a tenant-01-only import contract. Then add/verify the minimum importer routing and actual remote restricted read path; do not bypass RLS or use `service_role`.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T19:31:28Z — Member 1 / Data & Backend Engineer — Fix remote smoke transaction boundary
+
+- **Workstream:** Part 1 / Data Foundation, Supabase PostgreSQL deployment
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** Pending remote restricted-smoke retry
+- **Issue / task:** Diagnose the first restricted-role smoke failure after migrations 005–007 were deployed.
+- **Remote state:** Operator-supplied catalog reports migration history `CHECKSUMS_MATCH`, current version 007, 18/18 application data tables RLS-enabled and forced (migration metadata table excluded), 42 policies, both SECURITY DEFINER authentication functions owned by `retaniq_authenticator`, and `catalog_checks_passed:true`. Four temporary restricted logins were attempted. The smoke returned FAIL after six backend scenarios; cleanup was attempted but not independently verified. No STANDARD import occurred.
+- **What changed:** The smoke login factory now uses psycopg `autocommit=True`, ensuring its `connection.transaction()` contexts are top-level transactions even after identity queries. Previously, the initial `SELECT current_user` opened an implicit transaction and caused later contexts to be savepoints, so transaction-local tenant context was not cleared at the supposed commit. Added a unit check for autocommit and updated the remote smoke implementation only; database schema/migrations are unchanged.
+- **Tests / verification:** `py -3.14 -B -m unittest tests.test_postgresql_migrations tests.test_supabase_remote_preflight tests.test_supabase_configuration tests.test_postgresql_rls` against a task-owned disposable PostgreSQL 17.11 container with the disposable-DSN guard enabled — **PASS**, 58 tests, 0 failures/errors/skips. `py -3.14 -m compileall -q retaniq tests`, package imports, and `git diff --check` — **PASS**. Task-owned PostgreSQL container stopped/removed. The updated smoke has not yet been rerun on Supabase.
+- **Known issues / blockers:** Remote RLS deployment is catalog-verified, but actual restricted-role acceptance remains incomplete until the corrected smoke passes. The smoke's previous cleanup status is only `ATTEMPTED`. Shared-GUC spoofability remains a known shared-credential limitation. No dataset import.
+- **Next action / handoff:** Run the secure `--deploy` command again after a fresh catalog preflight. It should find migration checksums already matching and rerun restricted-login smoke; require its final `MIGRATIONS_AND_RESTRICTED_SMOKE_PASS` result and inspect cleanup before import or commit.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T19:24:35Z — Member 1 / Data & Backend Engineer — Grant temporary SET membership for migration 005
+
+- **Workstream:** Part 1 / Data Foundation, Supabase PostgreSQL deployment
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** Pending fresh catalog verification and deployment retry
+- **Issue / task:** Fix the newly confirmed `42501` failure in migration 005 without granting extra ADMIN authority.
+- **Remote state:** Latest attempt failed at migration 005 statement 14 (`ALTER FUNCTION`) with SQLSTATE `42501` because `retaniq_authenticator` membership had `SET FALSE`. The migration runner reports `MAY_HAVE_OCCURRED`; no fresh post-failure catalog read had been performed at that time. Preflight immediately before that attempt showed 001–004 recorded and 005–007 pending.
+- **What changed:** Migration 005 now grants the migration login a distinct temporary membership `WITH SET TRUE, INHERIT FALSE`, omitting ADMIN, then revokes that membership after transferring the authentication-function ownership. Updated the PostgreSQL 17 ownership-transfer test assertion, security documentation, and RLS catalog test setup (`schema = public`) so the live catalog check runs.
+- **Tests / verification:** Focused suite against a task-owned disposable PostgreSQL **17.11** container: **PASS**, 57 tests, 0 failures, 0 errors, 0 skips. This includes live migration 001–007 application and restricted-role/RLS tests. Compileall, package imports, and `git diff --check` passed. The task-owned container was stopped and removed.
+- **Known issues / blockers:** Remote rollback/catalog state was not verified at this timestamp; the corrected SET-option migration later deployed successfully, but restricted-role smoke had not yet passed.
+- **Next action / handoff:** Superseded by the 19:31Z smoke-transaction fix above.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T19:18:02Z — Member 1 / Data & Backend Engineer — Remove failing migration 005 self-grant
+
+- **Workstream:** Part 1 / Data Foundation, Supabase PostgreSQL deployment
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** Pending fresh explicit remote retry
+- **Issue / task:** Correct the precisely diagnosed failure from the operator-confirmed deployment attempt.
+- **Remote state:** The first retry confirmed migration 005 statement 13 (`GRANT RETANIQ`) failed with SQLSTATE `0LP01`, `ADMIN option cannot be granted back to your own grantor`. The subsequent retry passed that statement and failed at statement 14 (`ALTER FUNCTION`) with SQLSTATE `42501`, `must be able to SET ROLE "retaniq_authenticator"`. Before that retry, fresh preflight showed 001–004 applied, 005–007 pending, and 19 total tables including metadata. Both attempts reported `mutations_performed:true`.
+- **What changed:** Removed `ADMIN TRUE` from the membership grant after the `0LP01` failure. The next live attempt established that PostgreSQL 17's creator membership has `SET FALSE`; the earlier assumption that it provided SET ROLE was incorrect. The additional SET-option correction is recorded in the 19:24Z entry above.
+- **Tests / verification:** After the first fix, focused tests passed (57 tests, 36 passed, 21 skipped without local PostgreSQL); compileall, imports and diff check passed. The later SET-option correction was separately tested live as recorded above.
+- **Known issues / blockers:** At the time of this entry migration 005–007 and RLS had not passed remote verification; those later changed states are captured in the newer log entries. No STANDARD data was imported.
+- **Next action / handoff:** Superseded by the 19:24Z and 19:31Z entries above.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T18:29:07Z — Member 1 / Data & Backend Engineer — Record emergency Supabase delivery blockers
+
+- **Workstream:** Part 1 / Data Foundation, Supabase deployment readiness
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `docs(member1): record emergency Supabase delivery blockers`
+- **Issue / task:** Emergency final delivery; attempt deployment/import only if the approved remote project and security gates are verifiable.
+- **Files changed:** `TEAM_LOG.md`
+- **What changed:** Recorded the current remote readiness checks and the safe stop conditions for this task. Confirmed the existing local synthetic STANDARD artifact identity from its manifest; no artifact rows or raw records were imported or changed.
+- **Why it changed:** No approved Supabase target or protected credentials are configured, and the current importer does not yet have safe maintenance-role routing and verified multi-tenant context handling required by the local role/RLS design.
+- **Contract / database / API impact:** None. No remote database was contacted; migrations 001–007 were not deployed, remote roles/RLS were not tested, no dataset was imported, and no Member 2 database access was granted or tested.
+- **Tests / verification:**
+  - Environment-presence check across process/user/machine scopes — **PASS** — all five RetainIQ Supabase settings plus `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD` absent; values were not printed.
+  - Supabase CLI and local config-file availability check — **PASS** — CLI and `.env`/`.env.local`/`.env.supabase` absent; example file only.
+  - `py -3.14 -B -m retaniq.supabase_preflight` — **BLOCKED** — reports `supabase_demo_configuration_missing_or_invalid`; this was the single local preflight, with no remote connection.
+  - Regression tests — **NOT RUN** — no code or database changes were made; prior checkpoint evidence remains 191 passed on the full live dual-backend run, and is not represented as rerun for this emergency task.
+  - `git diff --check` — to be run before commit.
+- **Data / model / ROI evidence:** Synthetic dataset only: `synthetic-saas-v1-2-standard-s2026-970a9d231e68`. The local artifact is not evidence of remote import; no real dataset, PII, or model-performance claim was used.
+- **Known issues / blockers:** No approved project/ref/region, owner authorization for remote mutation, or protected migration/runtime DSNs. Importer currently accepts a local `--db` path rather than environment-based Supabase configuration; global import identity/checkpoints require maintenance access, and multi-tenant provisioning/batching needs a safe, tested context boundary. Remote ownership, role grants, exposed schemas, RLS, and pooler mode remain unverified. Shared-GUC context remains spoofable to a caller with arbitrary SQL access under the shared backend credential.
+- **Next action / handoff:** Owner must designate and authorize a dedicated synthetic demo project (including ref/region and backup/rollback approval), securely provision migration and restricted runtime credentials outside chat, and approve the four synthetic tenant-partition mapping. Before import, locally implement and test the smallest secure maintenance/import role routing and tenant-context changes; then deploy migrations and run actual restricted-credential checks before importing. No push, deployment, or import performed.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T18:19:02Z — Member 1 / Data & Backend Engineer — Checkpoint local PostgreSQL RLS and prepare 07B-2 handoff
 
 - **Workstream:** Part 1 / Data Foundation, PostgreSQL RLS and authorization
