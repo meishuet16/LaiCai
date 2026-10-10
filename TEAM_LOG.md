@@ -72,6 +72,23 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T17:02:46Z — Member 1 / Data & Backend Engineer — 07A Supabase configuration and security preparation
+
+- **Workstream:** Part 1 / Supabase demo connectivity, secret handling, Phase 07B RLS preparation
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** N/A — 07A changes intentionally uncommitted for review
+- **Issue / task:** Prompt 07A only; stop before Phase 07B/07C/07D and Phase 08.
+- **06E checkpoint:** `89a0293e3b89789b7df43c5b44563459154f055f` — `test(member1): verify sqlite postgres contract conformance`, committed locally after staging/reviewing the exact five 06E paths. No push or merge.
+- **Files changed in 07A:** `.gitignore`, `.env.supabase.example`, `retaniq/database_config.py`, `retaniq/database.py`, `retaniq/postgresql_migrations.py`, new `retaniq/supabase_preflight.py`, new `tests/test_supabase_configuration.py`, new `tests/test_supabase_preflight.py`, new `docs/MEMBER1_SUPABASE_CONNECTION_AND_SECURITY_PREPARATION.md`, and this entry.
+- **What changed:** Added explicit Supabase demo selection to the existing database config/shared psycopg client; verified project-reference and mode-specific DSN identity; separated app/migration roles and required a direct migration DSN; added TLS policy/labels, secret-safe diagnostics, and a SELECT-only preflight; prepared the role/RLS table inventory and deployment safety procedure.
+- **Why it changed:** Establish secure, fail-closed configuration before a shared synthetic demo without applying schema changes or sending data remotely.
+- **Contract / database / API impact:** SQLite and local PostgreSQL behavior retained. Supabase remains opt-in. Transaction-pooler application connections disable psycopg prepared statements (`prepare_threshold=None`); migrations reject transaction mode because the runner holds a session-level advisory lock. Supabase migrations route through the separate direct migration DSN. No API endpoint or migration file changed; no RLS/grants deployed.
+- **Tests / verification:** Focused Supabase/config/preflight/migration suite — **PASS** — 59 tests, 0 failures/errors, 5 expected guarded PostgreSQL skips, 0.133s. Full discovery on isolated local PostgreSQL 16.15 / psycopg 3.3.6 — **PASS** — 175 passed, 0 failures/errors/skips, 66.250s, 41 unique live PostgreSQL tests. SQLite-only full discovery — **PASS** — 134 passed, 41 expected live-PG skips, 14.877s. `compileall`, package imports, and `git diff --check` — **PASS**. No Python warnings; only expected rejected-request logs.
+- **Data / model / ROI evidence:** No Supabase or customer data accessed. Test databases `retaniq_test_07a_20261011` and `retaniq_test_07a_final_20261011` were confined to a loopback-only temporary cluster, then dropped; the cluster was stopped. Its stopped directory remains in Temp because recursive removal was blocked by the shell safeguard. The unrelated Windows PostgreSQL service was untouched.
+- **Known issues / blockers:** No Supabase project reference/URL or app/migration DSN configured; remote connectivity was not attempted. Local preflight returned sanitized `BLOCKED` (exit 2). RLS, grants, identity mapping, schema exposure changes, remote migrations, and remote import remain unimplemented. `AGENT.md`, `AGENTS.md`, and the complete requirements document were absent and not inferred.
+- **Next action / handoff:** **CONFIGURATION_READY_REMOTE_BLOCKED.** User/project owner must designate a dedicated RetainIQ synthetic demo project, confirm identity/region, create reviewed distinct app/migration roles in 07B, obtain DSNs from Dashboard Connect, and place them in a protected secret store. Next coding scope is 07B: reviewed grants/RLS plus live positive/negative tests. Do not run 07C import until RLS/security acceptance.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T16:32:31Z — Member 1 / Data & Backend Engineer — 06E dual-database contract conformance
 
 - **Workstream:** Part 1 / Data Foundation, PostgreSQL parity, security regression

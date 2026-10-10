@@ -191,11 +191,16 @@ class DatabaseConnection:
                 "PostgreSQL driver is not installed; install requirements-postgresql.txt",
             ) from None
         try:
-            connection = psycopg.connect(
-                config.postgresql_dsn,
-                connect_timeout=max(1, int(timeout_seconds)),
-                row_factory=dict_row,
-            )
+            options = {
+                "connect_timeout": max(1, int(timeout_seconds)),
+                "row_factory": dict_row,
+            }
+            if config.is_supabase and config.connection_mode == "TRANSACTION_POOLER":
+                # Supabase transaction pooling does not preserve prepared
+                # statements between transactions. RetainIQ's application
+                # queries do not use session advisory locks or pipelines.
+                options["prepare_threshold"] = None
+            connection = psycopg.connect(config.postgresql_dsn, **options)
         except Exception:
             raise DatabaseConnectionError("PostgreSQL connection failed") from None
         return cls(config, connection)

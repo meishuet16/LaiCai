@@ -207,6 +207,17 @@ def run_postgresql_migrations(
     config = resolve_database_config(value)
     if not config.is_postgresql:
         raise DatabaseConfigurationError("PostgreSQL migrations require an explicit PostgreSQL target")
+    if config.is_supabase:
+        if config.connection_mode == "TRANSACTION_POOLER":
+            raise PostgreSQLMigrationError(
+                "Supabase transaction pooling is incompatible with the session-level migration advisory lock; use the DIRECT migration DSN",
+            )
+        if config.migration_dsn is not None:
+            config = config.for_migrations()
+        elif config.connection_mode != "DIRECT":
+            raise PostgreSQLMigrationError(
+                "Supabase schema migrations require the separately configured DIRECT migration connection",
+            )
     migrations = discover_migrations(directory)
     try:
         connection = DatabaseConnection.open(config)
@@ -299,14 +310,14 @@ def verify_postgresql_schema(
     try:
         connection.raw_connection.autocommit = True
         quoted_schema = '"' + schema.replace('"', '""') + '"'
-        connection.execute(f"SET search_path TO {quoted_schema}")
+        qualified_migration_table = f"{quoted_schema}.\"{_MIGRATION_TABLE}\""
         row = connection.execute(
-            "SELECT to_regclass(?) AS migration_table", (_MIGRATION_TABLE,),
+            "SELECT to_regclass(?) AS migration_table", (f"{schema}.{_MIGRATION_TABLE}",),
         ).fetchone()
         if row is None or row["migration_table"] is None:
             raise MigrationHistoryError("PostgreSQL schema has not been initialized")
         rows = connection.execute(
-            f"SELECT version, checksum FROM {_MIGRATION_TABLE} ORDER BY version",
+            f"SELECT version, checksum FROM {qualified_migration_table} ORDER BY version",
         ).fetchall()
         applied = {str(item["version"]): str(item["checksum"]).strip() for item in rows}
         if plan_migrations(migrations, applied):
