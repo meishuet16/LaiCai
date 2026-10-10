@@ -19,6 +19,9 @@ ml = [
     "lightgbm>=4.6,<5",
     "scikit-learn>=1.7,<2",
 ]
+explainability = [
+    "shap>=0.53,<0.54",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

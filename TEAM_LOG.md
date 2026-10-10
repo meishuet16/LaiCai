@@ -356,6 +356,31 @@ Members may cover several workstreams. Update assignments through a logged commi
 - **Next action / handoff:** Connect the canonical Member 1 source evidence adapter, validate policy thresholds and reliability cohorts on authorized chronological replay, then integrate the gate with future inference without changing abstention semantics.
 - **Reviewer / pairing:** N/A
 
+### 2026-10-10T07:33:34Z — Member 2 AI coding assistant — SHAP explainability foundation
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; Prompt 12 checkpoint is `f58ee52`
+- **Issue / task:** Member 2 Prompt 13; no ticket
+- **Files changed:** `src/retainiq_prediction/explainability.py`, `src/retainiq_prediction/__init__.py`, `tests/test_explainability.py`, `docs/MEMBER2_SHAP_EXPLAINABILITY.md`, `pyproject.toml`, `TEAM_LOG.md`
+- **What changed:**
+  - Added an optional SHAP 0.53.x dependency and a typed, versioned `LightGBMExplainer` using real `shap.TreeExplainer` for independent 7-, 14-, and 30-day LightGBM artifacts.
+  - Normalized binary SHAP output variants, retained full signed contributions, recorded base/raw margin/probability/additivity evidence, and selected deterministic top-K positive/negative associations from the locked approved feature allowlist.
+  - Added fail-closed handling for missing SHAP, incompatible artifacts or feature order, version/scope mismatches, missing feature inputs, non-scored prediction statuses, unready production assessments, unsupported output shapes, and failed additivity.
+  - Added neutral non-causal formatting and documented that explanations describe raw margin/log-odds, not calibrated or horizon-coherence-adjusted probabilities. The canonical `PredictionOutput` and backlog items 001–004 were not changed.
+- **Why it changed:** Provide auditable model associations for future prediction records without introducing identifiers, labels, cancellation fields, causal claims, fabricated metrics, or a new API contract.
+- **Contract / database / API impact:** No database, API, or canonical `PredictionOutput` schema changed. The proposed mapping into `explanations_by_horizon`, attribution retention policy, and production exposure remain team decisions. Member 1 must provide authorized point-in-time feature snapshots and source evidence references.
+- **Tests / verification:**
+  - `& .venv\Scripts\python.exe -m pip install 'shap>=0.53,<0.54'` — PASS — prebuilt wheel installed; SHAP 0.53.0.
+  - Real TreeExplainer smoke invocation on a synthetically trained LightGBM model — PASS — raw output and SHAP additivity returned successfully.
+  - `& .venv\Scripts\python.exe -m pytest -q tests/test_explainability.py --basetemp .pytest-tmp` — PASS — 13 tests passed; SHAP emitted its known LightGBM binary-output compatibility warning.
+  - `& .venv\Scripts\python.exe -m pytest -q tests/test_lightgbm_model.py tests/test_calibration.py tests/test_reliability.py --basetemp .pytest-tmp` — PASS — 52 tests passed.
+  - `& .venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp` — PASS — 199 tests passed; 9 known SHAP/LightGBM output-shape warnings.
+- **Data / model / ROI evidence:** Synthetic LightGBM training fixtures and real TreeExplainer execution only; no authorized longitudinal data, production explanation, predictive metric, retention result, causal effect, or ROI claim.
+- **Known issues / blockers:** Real readiness remains `BLOCKED`. Member 1 must finalize canonical feature-source availability/correction semantics and provide authorized snapshots. The team must agree on the persisted `explanations_by_horizon` shape, attribution privacy/retention, registry identity, and calibration/coherence handoff. SHAP explanations require the caller to pass the canonical readiness gate before production exposure.
+- **Next action / handoff:** Review the proposed attribution mapping with Members 1, 3, and 4, then connect explanations only after real calibrated model artifacts and readiness evidence exist.
+- **Reviewer / pairing:** N/A
+
 ## 6. Shared integration agreements — verify before changing
 
 - **Prediction anchor:** `prediction_id` = unique account forecast snapshot; `prediction_run_id` = inference batch/job ID.

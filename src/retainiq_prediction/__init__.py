@@ -138,6 +138,19 @@ from .point_in_time import (
     SubscriptionFact,
     UsageFact,
 )
+from .explainability import (
+    ContributionDirection,
+    ExplainabilityConfig,
+    ExplainedOutputSpace,
+    ExplanationFormatter,
+    ExplanationReasonCode,
+    ExplanationResult,
+    ExplanationStatus,
+    FeatureContribution,
+    LightGBMExplainer,
+    SHAP_AVAILABLE,
+    SHAP_VERSION,
+)
 
 __all__ = [
     "DataFreshness",
@@ -167,6 +180,17 @@ __all__ = [
     "PointInTimeSnapshot",
     "SubscriptionFact",
     "UsageFact",
+    "ContributionDirection",
+    "ExplainabilityConfig",
+    "ExplainedOutputSpace",
+    "ExplanationFormatter",
+    "ExplanationReasonCode",
+    "ExplanationResult",
+    "ExplanationStatus",
+    "FeatureContribution",
+    "LightGBMExplainer",
+    "SHAP_AVAILABLE",
+    "SHAP_VERSION",
     "EligibilityPolicy",
     "EligibilityReasonCode",
     "EligibilityResult",
