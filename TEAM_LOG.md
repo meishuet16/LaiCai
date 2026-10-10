@@ -124,6 +124,18 @@ itself also requires a filled-in commit entry.
 - **Data / model evidence:** No training, calibration, TEST-label reads or private-artifact changes were performed in this commit.
 - **Known issues / next action:** Verify finalized reduced prepared artifacts and fixed support counts before invoking the existing three-horizon training command.
 - **Reviewer / pairing:** Track B agent implementation; root verification.
+### 2026-10-10T20:59:22Z — Member 2 AI coding assistant — Prompt 34 calibration and replay integration fixture
+
+- **Workstream:** Prompt 34 / Track C / calibration, SHAP and replay integration
+- **Branch:** `codex/prompt34-track-c`
+- **Commit subject:** `test(member2): cover saved calibrated model replay integration`
+- **Issue / task:** Member 2 Prompt 34 delivery
+- **Files changed:** `tests/test_prompt34_model_calibration_replay_integration.py` and this log.
+- **What changed:** Added an isolated integration fixture that fits and persists three horizon-specific LightGBM models and sigmoid calibrators, reloads them, and exercises T1/T2 replay, calibrated monotonic probabilities, SHAP explanations and persisted risk changes. The test validates existing components without reading the private SQLite database or real TEST outcomes.
+- **Verification:** `tests/test_prompt34_model_calibration_replay_integration.py` passed (1 test; six known SHAP binary-output shape warnings).
+- **Data / model evidence:** Fixture models are synthetic test-only artifacts. This commit does not supply or claim a Prompt 34 trained bundle.
+- **Known issues / next action:** Run the same integration path against the verified prepared bundle after Track B passes support gates; confirm bundle ID and horizon contracts before end-to-end replay.
+- **Reviewer / pairing:** Track C agent implementation; root verification.
 
 ### 2026-10-10T19:21:18Z — Member 2 AI coding assistant — Operational inference and requirements traceability
 
