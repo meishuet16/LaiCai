@@ -220,16 +220,18 @@ def run_postgresql_migrations(
     locked = False
     try:
         # Ensure migration transactions are outermost and independent. The
-        # session advisory lock remains held between each transaction.
+        # session advisory lock remains held between each transaction. Acquire
+        # it before schema creation too: concurrent CREATE SCHEMA IF NOT EXISTS
+        # calls can race in PostgreSQL's catalogs.
         connection.raw_connection.autocommit = True
         quoted_schema = '"' + schema.replace('"', '""') + '"'
-        connection.execute(f"CREATE SCHEMA IF NOT EXISTS {quoted_schema}")
-        connection.execute(f"SET search_path TO {quoted_schema}")
         connection.execute(
             "SELECT pg_advisory_lock(hashtext(%s), hashtext(%s))",
             ("retaniq_postgresql_migrations", schema),
         )
         locked = True
+        connection.execute(f"CREATE SCHEMA IF NOT EXISTS {quoted_schema}")
+        connection.execute(f"SET search_path TO {quoted_schema}")
         connection.execute(
             f"CREATE TABLE IF NOT EXISTS {_MIGRATION_TABLE} ("
             "version TEXT PRIMARY KEY, checksum CHAR(64) NOT NULL, "
@@ -272,4 +274,44 @@ def run_postgresql_migrations(
             except Exception:
                 # Closing the connection releases any remaining session lock.
                 pass
+        connection.close()
+
+
+def verify_postgresql_schema(
+    value: str | DatabaseConfig,
+    *,
+    directory: str | Path | None = None,
+    schema: str = "public",
+) -> MigrationRunResult:
+    """Verify the PostgreSQL migration history without applying or changing schema."""
+    if not isinstance(schema, str) or not _SCHEMA_IDENTIFIER.fullmatch(schema):
+        raise DatabaseConfigurationError("PostgreSQL migration schema name is invalid")
+    config = resolve_database_config(value)
+    if not config.is_postgresql:
+        raise DatabaseConfigurationError("PostgreSQL schema verification requires an explicit PostgreSQL target")
+    migrations = discover_migrations(directory)
+    try:
+        connection = DatabaseConnection.open(config)
+    except DatabaseDriverUnavailable as error:
+        raise PostgreSQLMigrationError(str(error)) from None
+    except Exception:
+        raise PostgreSQLMigrationError("PostgreSQL schema verification connection failed") from None
+    try:
+        connection.raw_connection.autocommit = True
+        quoted_schema = '"' + schema.replace('"', '""') + '"'
+        connection.execute(f"SET search_path TO {quoted_schema}")
+        row = connection.execute(
+            "SELECT to_regclass(?) AS migration_table", (_MIGRATION_TABLE,),
+        ).fetchone()
+        if row is None or row["migration_table"] is None:
+            raise MigrationHistoryError("PostgreSQL schema has not been initialized")
+        rows = connection.execute(
+            f"SELECT version, checksum FROM {_MIGRATION_TABLE} ORDER BY version",
+        ).fetchall()
+        applied = {str(item["version"]): str(item["checksum"]).strip() for item in rows}
+        if plan_migrations(migrations, applied):
+            raise MigrationHistoryError("PostgreSQL schema migrations are incomplete")
+        latest = migrations[-1].version if migrations else None
+        return MigrationRunResult(schema, (), latest)
+    finally:
         connection.close()

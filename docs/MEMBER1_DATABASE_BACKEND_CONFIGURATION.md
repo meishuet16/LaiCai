@@ -82,18 +82,23 @@ an approved secret store or runtime environment, and avoid printing it.
 
 The explicit `init-db` command applies PostgreSQL schema migrations. In
 addition to 06D-1 setup, authentication, identity, ingestion, and integration
-health operations, 06D-2 supports historical event/subscription/account reads,
-observation-coverage reads, and single observation-coverage writes on both
-backends. Unsupported operations still reject PostgreSQL explicitly; they do
-not send unsupported SQLite queries or silently fall back.
+health operations and 06D-2 historical event/subscription/account reads and
+coverage access, 06D-3 supports feature snapshot, churn label, and prediction
+storage, dataset identity/provenance, synthetic batch import/checkpoints,
+historical replay, and the existing WSGI routes on both backends. API startup
+verifies the already-applied PostgreSQL migration history read-only; it does
+not silently migrate the database. Unsupported operations still reject
+PostgreSQL explicitly and do not fall back to SQLite.
 
 `POSTGRESQL_CONNECTION_READY`, `POSTGRESQL_SCHEMA_VERIFIED`, and the bounded
-06D-1 ingestion parity and the 06D-2 historical-query implementation (live
-verified against disposable PostgreSQL 16.15) do not mean
-`POSTGRESQL_FEATURE_PARITY`. Feature/label/prediction storage, coverage batch
-import/replay, dataset provisioning parity, and WSGI API startup remain
-unsupported. Application-level principal checks are not database RLS; RLS
-and production authentication remain deferred.
+06D-1 ingestion parity, 06D-2 historical-query parity, and 06D-3 persistence,
+import/replay, and WSGI verification (live-tested against disposable
+PostgreSQL 16.15) are scoped repository parity, not complete
+`POSTGRESQL_FEATURE_PARITY` or production readiness. Member 2's feature
+engineering and label construction, real-data import, dataset-scale validation,
+model training/evaluation, scheduled workers, RLS, production identity, and
+deployment remain outside this implementation. Application-level principal
+checks are not database RLS.
 
 ## Verification and limitations
 
@@ -112,5 +117,7 @@ missing-driver tests. 06C schema results are in
 [`MEMBER1_POSTGRESQL_INGESTION_PARITY.md`](MEMBER1_POSTGRESQL_INGESTION_PARITY.md).
 06D-2 behavior, scenario coverage, and live verification status are in
 [`MEMBER1_POSTGRESQL_HISTORICAL_QUERY_PARITY.md`](MEMBER1_POSTGRESQL_HISTORICAL_QUERY_PARITY.md).
+06D-3 artifact, bounded import/checkpoint, replay, and WSGI capability details
+are in [`MEMBER1_POSTGRESQL_PERSISTENCE_AND_REPLAY_PARITY.md`](MEMBER1_POSTGRESQL_PERSISTENCE_AND_REPLAY_PARITY.md).
 Supabase remains deferred to the later infrastructure phase and is not
 configured here.

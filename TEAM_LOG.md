@@ -72,6 +72,32 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T16:11:05Z — Member 1 / Data & Backend Engineer — 06D-3 PostgreSQL artifacts, import, replay, and WSGI parity
+
+- **Workstream:** Part 1 / Data Foundation & PostgreSQL parity
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** N/A — intentionally uncommitted per task instruction
+- **Issue / task:** Prompt 06D-3 — PostgreSQL artifact persistence, historical replay, import/checkpoint compatibility, and existing WSGI API parity; stop before 06E.
+- **Files changed:** `retaniq/api.py`, `retaniq/data_foundation.py`, `retaniq/importer.py`, `retaniq/postgresql_migrations.py`, `retaniq/synthetic/canonical_adapter.py`, `tests/test_data_foundation.py`, new `tests/test_postgresql_artifact_persistence.py`, new `tests/test_postgresql_import_replay.py`, new `tests/test_postgresql_wsgi_api.py`, `README.md`, `docs/MEMBER1_DATABASE_BACKEND_CONFIGURATION.md`, `docs/MEMBER1_DATA_CONTRACT_COMPLIANCE.md`, new `docs/MEMBER1_POSTGRESQL_PERSISTENCE_AND_REPLAY_PARITY.md`, and `TEAM_LOG.md`.
+- **What changed:**
+  - Ported existing feature snapshot, churn-label, and prediction writers to PostgreSQL with timezone-aware timestamp binding, duplicate/conflict normalization, unchanged payload validation and immutable keys, and least-privilege service-principal authorization.
+  - Enabled PostgreSQL dataset identity/provenance, synthetic identity provisioning, coverage batch checkpointing, bounded quick-profile import, and existing authorized historical replay without SQLite fallback.
+  - Enabled the existing WSGI routes on PostgreSQL. Startup verifies migration history/checksums read-only and refuses an uninitialized schema; it does not auto-migrate or add endpoints.
+  - Fixed a confirmed first-initialization concurrency race by acquiring the advisory lock before PostgreSQL schema creation.
+  - Added shared SQLite/live PostgreSQL artifact-contract tests, PostgreSQL WSGI tests, and bounded dual-backend import/checkpoint/replay tests; documented the capability matrix and contract limitations.
+- **Why it changed:** Complete the scoped 06D-3 repository parity requested for Member 1 without changing Member 2/3 worktrees, inventing new artifact shapes, or implying production readiness.
+- **Contract / database / API impact:** No new migration, endpoint, SQLite schema, or feature/label/prediction payload shape. Artifact service writers require role `analyst` and explicit `model_artifact_write`; source/customer scope is enforced. PostgreSQL startup performs read-only migration verification. Labels still lack a richer status/evidence-reference/evaluation-time schema; predictions retain `uncertainty_status=not_quantified` rather than a full uncertainty object. Application authorization is not RLS.
+- **Tests / verification:**
+  - Baseline before edits — **PASS** — 138 tests, 0 failures/errors/skips.
+  - Focused feature/label/prediction fixtures — **PASS** — shared SQLite and live PostgreSQL contract tests; focused import/replay (1), WSGI (3), and schema-initialization concurrency tests passed.
+  - Full suite with disposable loopback PostgreSQL 16.15 and psycopg 3.3.6 — **PASS** — 150 tests, 150 passed, 0 failures/errors/skips; 34 live PostgreSQL integration tests ran (64.205s). Initial run exposed the schema-creation race; the corrected rerun passed.
+  - Full suite without PostgreSQL test target — **PASS** — 150 total, 116 passed, 34 expected live-PostgreSQL tests skipped (17.112s), confirming SQLite/unit regressions.
+  - `compileall` — **PASS**; `git diff --check` — **PASS** (only expected Windows LF/CRLF notices).
+- **Data / model / ROI evidence:** Deterministic synthetic quick fixture only (12 accounts, 4 tenants, 2025-01-01 through 2025-05-31); no real customer rows, model training, model performance, or ROI evidence.
+- **Known issues / blockers:** Full `STANDARD` PostgreSQL import/load is intentionally untested. Member 2's zero mature 7/14/30-day labels, insufficient verified outcome coverage, 97.21% stale/insufficient snapshots, and missing independent lifecycle/billing heartbeat remain unresolved. RLS, production identity/deployment, encryption-at-rest, scheduled workers, and Supabase remain out of scope. Complete requirements and `AGENT.md`/`AGENTS.md` were unavailable in this checkout.
+- **Next action / handoff:** Stop at 06D-3; do not begin 06E. Keep all task changes uncommitted; no push, merge, or deployment. The exact task-created disposable database `retaniq_test_06d3_20261010` was dropped, and only the task-owned PostgreSQL cluster under the temporary runtime directory was stopped; the separate Windows PostgreSQL service was left untouched.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T15:44:36Z — Member 1 / Data & Backend Engineer — 06D-2 live historical query verification
 
 - **Workstream:** Part 1 / Data Foundation & PostgreSQL parity

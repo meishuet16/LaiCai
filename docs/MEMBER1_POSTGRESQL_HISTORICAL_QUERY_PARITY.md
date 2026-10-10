@@ -165,11 +165,12 @@ insufficient historical snapshots, and no independent lifecycle/billing
 freshness heartbeat. Keep these in the cross-member backlog; do not infer
 coverage or readiness from this verification.
 
-06D-3 still owns feature snapshot, churn label, and prediction persistence
-parity, plus any required import/checkpoint/replay or dataset provisioning
-parity not already included in 06D-1. Full synthetic STANDARD PostgreSQL
-import, end-to-end Member 2 connection, and WSGI API startup remain outside
-this scope. Supabase, RLS, Supabase Auth, production deployment, and
-cross-member integration are also unimplemented. PostgreSQL historical-query
-parity is verified for this scope; this does not make the PostgreSQL Data
-Foundation production-ready or clear the separate Member 2 blockers.
+The follow-on 06D-3 checkpoint now documents artifact persistence, bounded
+synthetic import/checkpoint/replay, and WSGI API verification in
+[`MEMBER1_POSTGRESQL_PERSISTENCE_AND_REPLAY_PARITY.md`](MEMBER1_POSTGRESQL_PERSISTENCE_AND_REPLAY_PARITY.md).
+Full synthetic STANDARD PostgreSQL import and end-to-end Member 2 connection
+remain outside that scope. Supabase, RLS, Supabase Auth, production deployment,
+and cross-member integration are also unimplemented. PostgreSQL
+historical-query parity is verified for this scope; it does not make the
+PostgreSQL Data Foundation production-ready or clear the separate Member 2
+blockers.

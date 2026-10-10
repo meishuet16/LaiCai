@@ -26,6 +26,15 @@ from retaniq.data_foundation import (
     record_observation_coverage_batch,
     get_observation_coverage_as_of,
 )
+from retaniq.database_config import DatabaseConfig, resolve_database_config
+
+
+def _database_target(value: DatabaseConfig | Path | str) -> DatabaseConfig | str:
+    if isinstance(value, DatabaseConfig):
+        return value
+    if isinstance(value, str) and "://" in value:
+        return resolve_database_config(value)
+    return str(Path(value).resolve())
 
 
 def _load_manifest(dataset_path: Path) -> dict[str, Any]:
@@ -40,7 +49,7 @@ def _load_manifest(dataset_path: Path) -> dict[str, Any]:
 
 def provision_member2_reader(
     dataset_path: Path | str,
-    database_path: Path | str,
+    database_path: DatabaseConfig | Path | str,
     tenant_id: str,
     *,
     include_billing_valuation: bool = False,
@@ -51,7 +60,7 @@ def provision_member2_reader(
     to the database in plaintext, dataset files, or logs.
     """
     dataset = Path(dataset_path).resolve()
-    database = Path(database_path).resolve()
+    database = _database_target(database_path)
     manifest = _load_manifest(dataset)
     dataset_id = manifest["dataset_id"]
     expected_events = int(manifest["actual_counts"]["canonical_events"])
@@ -109,7 +118,7 @@ def provision_member2_reader(
 
 def import_dataset(
     dataset_path: Path | str,
-    database_path: Path | str,
+    database_path: DatabaseConfig | Path | str,
     *,
     verify_idempotency: bool = False,
 ) -> dict[str, Any]:
@@ -119,9 +128,10 @@ def import_dataset(
     generated dataset or returned in the result.
     """
     dataset = Path(dataset_path).resolve()
-    database = Path(database_path).resolve()
+    database = _database_target(database_path)
     manifest = _load_manifest(dataset)
-    initialize_database(database)
+    database_config = resolve_database_config(database)
+    initialize_database(database_config, migrate_postgresql=database_config.is_postgresql)
     manifest_bytes = (dataset / "dataset_manifest.json").read_bytes()
     bind_dataset_identity(
         database,

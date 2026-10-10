@@ -18,6 +18,8 @@ from .data_foundation import (
     record_integration_failure,
     initialize_database,
 )
+from .database_config import DatabaseConfig, resolve_database_config
+from .postgresql_migrations import verify_postgresql_schema
 
 logger = logging.getLogger("retaniq.api")
 MAX_BODY_BYTES = 64 * 1024
@@ -57,8 +59,12 @@ def _status_for(error: DataFoundationError) -> HTTPStatus:
     }.get(error.code, HTTPStatus.BAD_REQUEST)
 
 
-def create_app(database_path: str):
-    initialize_database(database_path)
+def create_app(database_path: str | DatabaseConfig):
+    database = resolve_database_config(database_path)
+    if database.is_postgresql:
+        verify_postgresql_schema(database)
+    else:
+        initialize_database(database)
 
     def application(environ, start_response):
         method = environ.get("REQUEST_METHOD", "GET").upper()
@@ -71,29 +77,29 @@ def create_app(database_path: str):
         principal = None
         try:
             if (method, path) == ("GET", "/v1/admin/integrations"):
-                principal = authenticate_service_principal(database_path, _bearer(environ))
+                principal = authenticate_service_principal(database, _bearer(environ))
                 return _response(
                     start_response, HTTPStatus.OK,
-                    {"integrations": get_tenant_integration_health(database_path, principal)},
+                    {"integrations": get_tenant_integration_health(database, principal)},
                 )
-            principal = authenticate_integration(database_path, _bearer(environ))
+            principal = authenticate_integration(database, _bearer(environ))
             if method == "GET":
-                return _response(start_response, HTTPStatus.OK, {"integrations": get_integration_health(database_path, principal)})
+                return _response(start_response, HTTPStatus.OK, {"integrations": get_integration_health(database, principal)})
 
             content_length = environ.get("CONTENT_LENGTH", "")
             if not content_length.isdigit() or int(content_length) <= 0 or int(content_length) > MAX_BODY_BYTES:
-                record_integration_failure(database_path, principal, "invalid_event")
+                record_integration_failure(database, principal, "invalid_event")
                 raise DataFoundationError("invalid_event")
             if environ.get("CONTENT_TYPE", "").split(";", 1)[0].strip().lower() != "application/json":
-                record_integration_failure(database_path, principal, "invalid_event")
+                record_integration_failure(database, principal, "invalid_event")
                 raise DataFoundationError("invalid_event")
             try:
                 raw = environ["wsgi.input"].read(int(content_length))
                 payload = json.loads(raw.decode("utf-8"))
             except (KeyError, UnicodeDecodeError, json.JSONDecodeError):
-                record_integration_failure(database_path, principal, "invalid_event")
+                record_integration_failure(database, principal, "invalid_event")
                 raise DataFoundationError("invalid_event") from None
-            result = ingest_event(database_path, principal, payload)
+            result = ingest_event(database, principal, payload)
             status = HTTPStatus.OK if result["duplicate"] else HTTPStatus.CREATED
             return _response(start_response, status, result)
         except DataFoundationError as error:
@@ -104,7 +110,7 @@ def create_app(database_path: str):
             logger.error("request failed: internal_error")
             if principal is not None and method == "POST":
                 try:
-                    record_integration_failure(database_path, principal, "invalid_event")
+                    record_integration_failure(database, principal, "invalid_event")
                 except DataFoundationError:
                     pass
             return _response(start_response, HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "internal_error"})

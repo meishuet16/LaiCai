@@ -132,7 +132,7 @@ def iter_replay_events(
     end = normalize_timestamp(available_through)
     if end < start:
         raise DataFoundationError("invalid_contract")
-    with _db(database_path) as connection:
+    with _db(database_path, postgresql=True) as connection:
         authorized_sources = _assert_read_principal(connection, principal)
         _require_purposes(principal, "retention_inference")
         source_placeholders = ",".join("?" for _ in authorized_sources)
