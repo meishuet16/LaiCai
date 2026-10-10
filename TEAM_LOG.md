@@ -73,6 +73,26 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T22:05:56Z — Codex — Remove README implementation status section
+
+- **Workstream:** Docs
+- **Branch:** `main` (change prepared from a detached worktree at `origin/main`)
+- **Commit subject:** `docs: remove README implementation status section`
+- **Issue / task:** User-requested README content removal
+- **Files changed:** `README.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Removed the complete `Implementation and evidence status` section from `README.md`, including its status table and remaining integration gates paragraph.
+  - Kept the surrounding rubric and documentation sections unchanged.
+- **Why it changed:** The user requested that this section no longer appear in the README.
+- **Contract / database / API impact:** None; documentation-only change.
+- **Tests / verification:**
+  - `rg -n "Implementation and evidence status|Remaining integration gates" README.md` absence check — **PASS** — neither removed phrase remains.
+  - `git diff --check` and scoped diff inspection — **PASS** — only expected line-ending conversion warnings were reported.
+- **Data / model / ROI evidence:** N/A; no product evidence, model, data, or ROI claims were added or changed outside the removed section.
+- **Known issues / blockers:** None known.
+- **Next action / handoff:** Push the rebased documentation commit to `origin/main`; no downstream implementation action is required.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T21:59:31Z — Codex — Reconcile Member 4 frontend with current main
 
 - **Workstream:** Frontend / Integration / QA

@@ -563,23 +563,6 @@ A synthetic action in replay **cannot** show that the action saved the account. 
 
 The rubric rewards **proven decision usefulness**, not a polished dashboard alone. Any unavailable evidence should be labeled honestly rather than substituted with synthetic success metrics.
 
-## Implementation and evidence status
-
-This section distinguishes the **product defined above** from the **code currently verifiable in `main`** (reviewed 11 October 2026, Malaysia time).
-
-| Capability | Current `main` status |
-|---|---|
-| Python canonical usage/billing/subscription ingestion, auth, source mapping, CSV import, as-of reads, SQLite migrations | **Implemented locally** (see `retaniq/`, `migrations/`, `tests/`) |
-| Synthetic SaaS v1.2 generator and documented dataset handoff | **Implemented / synthetic-only**, generated dataset files outside Git |
-| Five-page React dashboard, prediction/case detail drawers, interactive scenario & demo case workflows | **Implemented synthetic frontend demo** |
-| Frontend connected to a production backend, authenticated tenant, persistent server-side human decisions | **Not connected / not verified on `main`** |
-| Trained real-world 7/14/30-day LightGBM serving, fitted SHAP explanations and legitimate held-out model metrics | **Not established on `main`** |
-| Independent real-data evidence of earlier/better alerts or more subsequently churned MRR captured | **Not validated** |
-| PostgreSQL/Supabase data foundation | **Schema/RLS deployed and first bind verified** on the dedicated demo project; tenant-01 STANDARD import and remote API smoke are still pending |
-| Full closed-loop retraining promotion and causal retention uplift | **Not established on `main`** |
-
-**Remaining integration gates:** (1) authorized historical-data acceptance, (2) trained time-safe model and frozen evaluation, (3) versioned prediction-to-case API integration, (4) authenticated transactional decision workflow, (5) mature feedback and approved model governance, and (6) verified deployed end-to-end demo. Features under development on other branches should be documented as implemented only when merged and tested.
-
 ## Documentation
 
 - [Dataset provenance and real-data gate](DATASET_CARD.md)
