@@ -72,6 +72,26 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T18:03:37Z — Codex / AI coding agent — Update latest LaiCai presentation
+
+- **Workstream:** Documentation / Pitch
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `docs(pitch): update latest LaiCai presentation`
+- **Issue / task:** User-authorized request to publish only the latest HTML pitch presentation.
+- **Files changed:** `pitch/retainiq-3min-pitch.html`, `TEAM_LOG.md`.
+- **What changed:**
+  - Added the current seven-slide LaiCai presentation, including the latest typography update.
+  - Recorded this presentation-only commit and its verification.
+- **Why it changed:** Publish the latest approved presentation on the existing feature branch without including screenshots, reports, or other generated files.
+- **Contract / database / API impact:** None; presentation artifact only.
+- **Tests / verification:**
+  - `py -3.14 -` with Python `html.parser` — **PASS** — parsed the HTML, confirmed seven slide sections, one title, navigation script, and current typography.
+  - Unit tests — **NOT RUN** — presentation-only documentation change.
+- **Data / model / ROI evidence:** No new claims or evidence; existing illustrative values and implementation caveats are retained.
+- **Known issues / blockers:** None for this presentation-only commit.
+- **Next action / handoff:** Push the commit to `origin/feature/decision-engine` and verify the remote branch.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T15:09:47Z — Codex — Add five-page RetainIQ frontend dashboard
 
 - **Workstream:** Frontend
