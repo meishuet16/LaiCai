@@ -163,3 +163,55 @@ def calculate_break_even_roi(
             base_card.scenario_roi_pct = None
 
     return base_card
+
+
+def break_even_card(
+    mrr_minor: int,
+    contribution_margin: float,
+    p30: float,
+    action_cost_minor: int,
+    assumed_abs_reduction: Optional[float] = None,
+) -> dict:
+    """
+    Adapter convenience function returning a break-even card dictionary.
+    Strictly follows §7.6 What-If sensitivity analysis rules and §10.3 guardrails.
+    """
+    contribution_value = round(mrr_minor * contribution_margin)
+
+    if contribution_value > 0:
+        be_abs = action_cost_minor / contribution_value
+    else:
+        be_abs = None
+
+    if be_abs is not None and p30 > 0.0:
+        be_share = be_abs / p30
+    else:
+        be_share = None
+
+    be_achievable = None
+    if be_abs is not None:
+        be_achievable = (be_abs <= p30)
+
+    scenario_gross = None
+    scenario_net = None
+    scenario_roi = None
+
+    if assumed_abs_reduction is not None:
+        eff_reduction = min(assumed_abs_reduction, p30)
+        scenario_gross = round(eff_reduction * contribution_value)
+        scenario_net = scenario_gross - action_cost_minor
+        if action_cost_minor > 0:
+            scenario_roi = scenario_net / action_cost_minor
+        else:
+            scenario_roi = None
+
+    return {
+        "contribution_value_minor": contribution_value,
+        "break_even_abs_reduction": be_abs,
+        "break_even_share": be_share,
+        "break_even_achievable": be_achievable,
+        "scenario_gross_minor": scenario_gross,
+        "scenario_net_minor": scenario_net,
+        "scenario_roi": scenario_roi,
+        "evidence_label": "SCENARIO_ONLY",
+    }

@@ -415,3 +415,68 @@ def generate_candidate_proposals(
         proposals=proposals,
         disabled_actions=get_disabled_actions_list(),
     )
+
+
+def propose_actions(facts: dict | CustomerFacts) -> list[dict]:
+    """
+    Convenience adapter for validation harnesses.
+    Generates action proposal dictionaries based on observed facts.
+    """
+    if isinstance(facts, dict):
+        proposals: list[dict] = []
+        has_facts = False
+
+        if facts.get("has_failed_payment") or facts.get("has_failed_billing"):
+            has_facts = True
+            proposals.append({
+                "action_code": "PAYMENT_RECOVERY",
+                "mode": "operational",
+                "estimated_cost_minor": 0,
+                "estimated_staff_minutes": 15,
+            })
+
+        if facts.get("has_usage_deviation") or facts.get("usage_change"):
+            has_facts = True
+            proposals.append({
+                "action_code": "ACCOUNT_CHECK_IN",
+                "mode": "operational",
+                "estimated_cost_minor": 0,
+                "estimated_staff_minutes": 20,
+            })
+
+        if facts.get("has_feature_gap"):
+            has_facts = True
+            proposals.append({
+                "action_code": "PRODUCT_WALKTHROUGH",
+                "mode": "conditional",
+                "estimated_cost_minor": 0,
+                "estimated_staff_minutes": 30,
+            })
+
+        if facts.get("has_support_ticket"):
+            proposals.append({
+                "action_code": "TECH_SUPPORT_ESCALATION",
+                "mode": "disabled",
+                "estimated_cost_minor": 0,
+                "estimated_staff_minutes": 25,
+            })
+
+        if not has_facts:
+            proposals.append({
+                "action_code": "DATA_INVESTIGATION",
+                "mode": "operational",
+                "estimated_cost_minor": 0,
+                "estimated_staff_minutes": 15,
+            })
+
+        proposals.append({
+            "action_code": "NO_INTERVENTION",
+            "mode": "operational",
+            "estimated_cost_minor": 0,
+            "estimated_staff_minutes": 5,
+        })
+        return proposals
+
+    resp = generate_candidate_proposals(case_id="case_calc", facts=facts)
+    return [p.model_dump() for p in resp.proposals]
+

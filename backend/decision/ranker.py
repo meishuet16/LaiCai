@@ -120,3 +120,21 @@ def compute_budget_slots_remaining(
     """
     remaining = k_configured - open_cases_in_period
     return max(remaining, 0)
+
+
+def rank_top_k(accounts: list[dict], k: int = 10) -> list[dict]:
+    """
+    Convenience adapter for validation harnesses.
+    Ranks account dictionaries by exposure (p30 * MRR) DESC, p7 DESC, customer_id ASC.
+    """
+    def key_fn(a: dict):
+        p30 = a.get("p_churn_30d") or 0.0
+        mrr = a.get("mrr_minor") or 0
+        exposure = round(p30 * mrr)
+        p7 = a.get("p_churn_7d") or 0.0
+        cid = str(a.get("customer_id", ""))
+        return (-exposure, -p7, cid)
+
+    sorted_accs = sorted(accounts, key=key_fn)
+    return sorted_accs[:k]
+

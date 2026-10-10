@@ -80,3 +80,28 @@ def record_outcome_observation(
     )
 
     return response, history_event
+
+
+def record_outcome(
+    case_id: str,
+    horizon_days: int,
+    observed_state: str,
+    source: str,
+) -> dict:
+    """
+    Adapter convenience function for recording an outcome observation.
+    Strictly enforces §7.7 non-causal guardrails and 7, 14, 30-day horizons.
+    """
+    if horizon_days not in (7, 14, 30):
+        raise OutcomeError(f"horizon_days must be 7, 14, or 30; received {horizon_days}")
+
+    note = "active_is_not_proof_of_retention_effectiveness"
+
+    return {
+        "case_id": case_id,
+        "horizon_days": horizon_days,
+        "observed_state": observed_state,
+        "source": source,
+        "retained": False,
+        "note": note,
+    }

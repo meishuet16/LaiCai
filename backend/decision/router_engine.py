@@ -171,3 +171,49 @@ def build_route_result(
         data_freshness_status=prediction.data_freshness.status.value,
         cooldown_active=cooldown_active,
     )
+
+
+def route_account(case: dict | PredictionPayload) -> RouteEnum:
+    """
+    Convenience adapter for validation harnesses.
+    Accepts either a dict or PredictionPayload and returns the canonical RouteEnum.
+    """
+    if isinstance(case, dict):
+        status = case.get("status", "scored")
+        if status == "not_eligible":
+            return RouteEnum.NOT_ELIGIBLE
+        if status == "known_cancellation":
+            return RouteEnum.KNOWN_CANCELLATION
+        if status == "abstained":
+            return RouteEnum.HUMAN_REVIEW
+
+        rel = case.get("reliability")
+        rel_status = rel.get("status") if isinstance(rel, dict) else rel
+        if rel_status in ("limited_evidence", "insufficient_evidence"):
+            return RouteEnum.HUMAN_REVIEW
+
+        if case.get("mrr_minor") is None:
+            return RouteEnum.HUMAN_REVIEW
+
+        freshness = case.get("data_freshness")
+        freshness_status = freshness.get("status") if isinstance(freshness, dict) else freshness
+        if freshness_status in ("stale", "unknown"):
+            return RouteEnum.HUMAN_REVIEW
+
+        if case.get("in_cooldown", False) or case.get("cooldown_active", False):
+            return RouteEnum.OBSERVE
+
+        p30 = case.get("p_churn_30d", 0.0) or 0.0
+        if p30 < 0.40:
+            return RouteEnum.OBSERVE
+
+        return RouteEnum.PRIORITY_REVIEW
+
+    route, _ = determine_route(
+        prediction=case,
+        mrr=None,
+        cooldown_active=False,
+        policy=RoutingPolicy(),
+    )
+    return route
+

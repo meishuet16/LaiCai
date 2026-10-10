@@ -234,3 +234,64 @@ def process_human_approval(
     )
 
     return response, events
+
+
+def approve_case(
+    case: dict,
+    decision: HumanDecisionType,
+    actor: str,
+    budget_remaining_minor: int,
+    staff_remaining_minutes: int,
+    override: bool = False,
+    override_reason: Optional[str] = None,
+) -> dict:
+    """
+    Adapter convenience function for case decision processing.
+    """
+    action_mode = case.get("action_mode", "operational")
+    if action_mode in ("simulation_only", "disabled"):
+        raise WorkflowError(f"Action mode '{action_mode}' cannot enter live execution.")
+
+    cost = case.get("estimated_cost_minor", 0)
+    staff = case.get("estimated_staff_minutes", 0)
+
+    dec_val = decision.value if hasattr(decision, "value") else str(decision)
+
+    if dec_val == HumanDecisionType.APPROVE.value:
+        if (cost > budget_remaining_minor or staff > staff_remaining_minutes) and not override:
+            raise BudgetCapExceededError(
+                f"Budget or staff cap exceeded: cost={cost} vs {budget_remaining_minor}, "
+                f"staff={staff} vs {staff_remaining_minutes}"
+            )
+        new_status = "ASSIGNED"
+        remaining_budget = budget_remaining_minor - cost
+        remaining_staff = staff_remaining_minutes - staff
+
+    elif dec_val == HumanDecisionType.NO_INTERVENTION.value:
+        new_status = "CLOSED_NO_ACTION"
+        remaining_budget = budget_remaining_minor
+        remaining_staff = staff_remaining_minutes
+
+    elif dec_val == HumanDecisionType.REJECT.value:
+        new_status = "REJECTED"
+        remaining_budget = budget_remaining_minor
+        remaining_staff = staff_remaining_minutes
+
+    elif dec_val == HumanDecisionType.DEFER.value:
+        new_status = "HUMAN_REVIEWED"
+        remaining_budget = budget_remaining_minor
+        remaining_staff = staff_remaining_minutes
+
+    else:
+        new_status = "HUMAN_REVIEWED"
+        remaining_budget = budget_remaining_minor
+        remaining_staff = staff_remaining_minutes
+
+    return {
+        "case_id": case.get("case_id"),
+        "status": new_status,
+        "decision": dec_val,
+        "actor": actor,
+        "budget_remaining_minor": remaining_budget,
+        "staff_remaining_minutes": remaining_staff,
+    }

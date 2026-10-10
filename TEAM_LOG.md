@@ -72,6 +72,45 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T07:18:00Z — Member 3 — Decision engine top-level adapter APIs and validation harness
+
+- **Workstream:** Part 3 — Decision Engine
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `feat: add top-level decision engine adapter APIs and pass validation test suite`
+- **Issue / task:** Part 3 validation — `deepseek_python_20261010_dc4479.py`, `deepseek_python_20261010_54466f.py`, `deepseek_python_20261010_7837fa.py`
+- **Files changed:**
+  - `backend/decision/enums.py` *(modified)* — exported `Route` and `HumanDecision` aliases
+  - `backend/decision/router_engine.py` *(modified)* — added `route_account` top-level adapter
+  - `backend/decision/ranker.py` *(modified)* — added `rank_top_k` top-level adapter
+  - `backend/decision/action_catalog.py` *(modified)* — added `propose_actions` top-level adapter
+  - `backend/decision/roi_calculator.py` *(modified)* — added `break_even_card` sensitivity analysis adapter
+  - `backend/decision/workflow.py` *(modified)* — added `approve_case` human decision workflow adapter
+  - `backend/decision/outcomes.py` *(modified)* — added `record_outcome` outcome observation adapter
+  - `backend/decision/evaluator.py` *(modified)* — added `evaluate_strategies` multi-strategy evaluation adapter
+  - `deepseek_python_20261010_54466f.py` *(modified)* — project ROOT path resolution supporting repo root or scripts dir
+  - `TEAM_LOG.md` *(this entry)*
+- **What changed:**
+  - Implemented top-level convenience adapter functions across the Decision Engine module:
+    - `route_account(case: dict | PredictionPayload) -> Route`
+    - `rank_top_k(accounts: list[dict], k: int = 10) -> list[dict]`
+    - `propose_actions(facts: dict | CustomerFacts) -> list[dict]`
+    - `break_even_card(...) -> dict` returning sensitivity metrics with strict guardrails
+    - `approve_case(...) -> dict` checking operational modes and enforcing budget/staff caps
+    - `record_outcome(...) -> dict` recording 7, 14, 30d outcomes with non-causal guardrail notes
+    - `evaluate_strategies(cohort: list, k: int = 10) -> dict` evaluating A, B, C strategies
+  - Fixed ROOT path resolution in `deepseek_python_20261010_54466f.py`.
+- **Why it changed:** Enables clean top-level integration testing and automated validation against Part 3 specifications.
+- **Contract / database / API impact:** None on existing FastAPI routes or PostgreSQL tables. Adapters provide clean programmatic access for third-party scripts and team members.
+- **Tests / verification:**
+  - `pytest deepseek_python_20261010_dc4479.py -v` — PASS (1 passed in 0.14s)
+  - `python deepseek_python_20261010_54466f.py --verbose` — PASS (Total: 39, PASS: 39, FAIL: 0)
+  - `pytest deepseek_python_20261010_7837fa.py -v` — PASS (13 passed in 0.16s)
+  - `pytest tests/decision/ -v` — PASS (88 passed in 0.55s)
+- **Data / model / ROI evidence:** All guardrails verified: SCENARIO_ONLY labels enforced, zero cost ROI is None, non-causal outcome notes preserved, no forbidden ROI claims.
+- **Known issues / blockers:** None. All 3 validation scripts pass 100%.
+- **Next action / handoff:** Part 3 is fully validated and ready for end-to-end integration with Members 1, 2, and 4.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T07:05:00Z — Member 3 — Phase 3: Human approval state machine, budget enforcement, outcomes, evaluation
 
 - **Workstream:** Part 3 — Decision Engine

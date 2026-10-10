@@ -138,3 +138,9 @@ class ScenarioLabel(str, Enum):
     SCENARIO_ONLY            = "SCENARIO_ONLY"
     OBSERVED_OUTCOME         = "OBSERVED_OUTCOME"
     VALIDATED_INCREMENTAL_ROI = "VALIDATED_INCREMENTAL_ROI"  # unavailable MVP
+
+
+# Aliases for harness compatibility
+Route = RouteEnum
+HumanDecision = HumanDecisionType
+

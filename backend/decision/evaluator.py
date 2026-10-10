@@ -140,3 +140,48 @@ def evaluate_decision_strategy(
         note=note_text,
         notes=notes,
     )
+
+
+def evaluate_strategies(cohort: list, k: int = 10) -> dict[str, dict]:
+    """
+    Adapter convenience function to evaluate strategies A, B, and C against a cohort.
+    Strictly follows §7.8 evaluation rules.
+    """
+    typed_cohort: list[EvaluationCohortAccount] = []
+    for item in cohort:
+        if isinstance(item, EvaluationCohortAccount):
+            typed_cohort.append(item)
+        elif isinstance(item, dict):
+            typed_cohort.append(
+                EvaluationCohortAccount(
+                    customer_id=item.get("customer_id", ""),
+                    as_of_mrr_minor=item.get("as_of_mrr_minor") or item.get("mrr_minor", 0),
+                    p_churn_30d=item.get("p_churn_30d", 0.0),
+                    p_churn_7d=item.get("p_churn_7d", 0.0),
+                    reliability_status=item.get("reliability_status", "sufficient_evidence"),
+                    cooldown_active=item.get("cooldown_active", False),
+                    actually_churned_30d=item.get("actually_churned_30d", False),
+                )
+            )
+
+    results = {}
+    for strat in ("A", "B", "C"):
+        if not typed_cohort:
+            results[strat] = {
+                "strategy": strat,
+                "revenue_captured_at_k": None,
+                "recall_at_k": None,
+                "k_slots": k,
+            }
+        else:
+            resp = evaluate_decision_strategy(typed_cohort, strategy=strat, k=k)
+            results[strat] = {
+                "strategy": strat,
+                "revenue_captured_at_k": resp.revenue_captured_at_k,
+                "recall_at_k": resp.recall_at_k,
+                "subsequently_churned_mrr_identified_minor": resp.subsequently_churned_mrr_identified_minor,
+                "total_churned_mrr_cohort_minor": resp.total_churned_mrr_cohort_minor,
+                "k_slots": k,
+            }
+
+    return results
