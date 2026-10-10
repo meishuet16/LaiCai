@@ -337,9 +337,6 @@ class BudgetConfigRecord(BaseModel):
     monetary_budget_minor: int = 100000
 
 
-# ---------------------------------------------------------------------------
-# Human approval request / response (Phase 3 — stub types here)
-# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # Human approval request / response (Phase 3 — §7.5, §7.7)
@@ -370,6 +367,54 @@ class ApprovalResponse(BaseModel):
     staff_minutes_remaining: Optional[int] = None
     follow_up_anchor: Optional[datetime] = None
     follow_up_due_at: Optional[dict[str, str]] = None
+
+
+# ---------------------------------------------------------------------------
+# Action execution — tracks ACTUAL costs vs predicted (§7.7)
+# "Record predicted action cost and actual monetary/staff effort separately."
+# ---------------------------------------------------------------------------
+
+class ExecutionStatus(str):
+    """Execution outcome states."""
+    EXECUTED  = "EXECUTED"
+    FAILED    = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class ExecutionRequest(BaseModel):
+    """
+    Records the actual outcome of executing an approved action.
+    Actual costs are separate from predicted costs on the proposal.
+    Ref: §7.7 — 'Record predicted action cost and actual monetary/staff effort separately'
+    """
+    proposal_id: str
+    human_decision_id: str
+    execution_status: str = Field(..., pattern="^(EXECUTED|FAILED|CANCELLED)$")
+    execution_note: Optional[str] = None
+    actual_monetary_cost_minor: int = Field(0, ge=0, description="Actual cost in minor currency; may differ from estimate")
+    actual_staff_minutes: int = Field(0, ge=0, description="Actual staff time used")
+    executed_by: str
+    first_response_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    follow_up_anchor: Optional[datetime] = None  # anchor for 7/14/30d follow-ups
+
+
+class ExecutionResponse(BaseModel):
+    execution_id: str
+    case_id: str
+    proposal_id: str
+    execution_status: str
+    execution_note: Optional[str] = None
+    # Predicted vs actual cost difference — important audit trail
+    actual_monetary_cost_minor: int
+    actual_staff_minutes: int
+    currency: str
+    executed_by: str
+    first_response_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    follow_up_anchor: Optional[datetime] = None
+    follow_up_due_at: Optional[dict[str, str]] = None  # 7d, 14d, 30d
+    case_status: CaseStatus
 
 
 # ---------------------------------------------------------------------------
@@ -440,6 +485,7 @@ class EvaluationResponse(BaseModel):
     revenue_captured_label: str = "Subsequently Churned MRR Identified@K"
     evaluation_label: str = "historical_identification_coverage — NOT saved revenue"
     note: Optional[str] = None
+    notes: list[str] = Field(default_factory=list)
     strategies_available: list[str] = Field(default_factory=lambda: ["A", "B", "C"])
     strategy_a_description: str = "Descending calibrated p30 only"
     strategy_b_description: str = "Descending p30 * MRR"

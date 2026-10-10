@@ -88,3 +88,67 @@ def test_get_evaluation_live_endpoint():
     assert data["revenue_captured_label"] == "Subsequently Churned MRR Identified@K"
     assert data["revenue_captured_at_k"] is not None
     assert "historical_identification_coverage" in data["evaluation_label"]
+
+
+def test_record_execution_live_endpoint():
+    resp = client.post(
+        "/v1/decisions/cases/case_002/execution",
+        json={
+            "proposal_id": "prop_002_a",
+            "human_decision_id": "hd_002_123",
+            "execution_status": "EXECUTED",
+            "execution_note": "Called customer; offered 15% annual billing discount.",
+            "actual_monetary_cost_minor": 4500,
+            "actual_staff_minutes": 20,
+            "executed_by": "agent_sarah",
+            "follow_up_anchor": "2026-10-10T12:00:00Z",
+        },
+        headers=AUTH_HEADERS,
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["case_id"] == "case_002"
+    assert data["execution_status"] == "EXECUTED"
+    assert data["actual_monetary_cost_minor"] == 4500
+    assert data["actual_staff_minutes"] == 20
+    assert data["currency"] == "MYR"
+    assert data["executed_by"] == "agent_sarah"
+    assert data["case_status"] == "FOLLOW_UP_DUE"
+    assert "7d" in data["follow_up_due_at"]
+    assert "14d" in data["follow_up_due_at"]
+    assert "30d" in data["follow_up_due_at"]
+
+
+def test_record_execution_failed_closes_case():
+    resp = client.post(
+        "/v1/decisions/cases/case_002/execution",
+        json={
+            "proposal_id": "prop_002_a",
+            "human_decision_id": "hd_002_123",
+            "execution_status": "FAILED",
+            "execution_note": "Customer contact details invalid / unreachable.",
+            "actual_monetary_cost_minor": 0,
+            "actual_staff_minutes": 5,
+            "executed_by": "agent_sarah",
+        },
+        headers=AUTH_HEADERS,
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["execution_status"] == "FAILED"
+    assert data["case_status"] == "CLOSED"
+
+
+def test_missing_tenant_header_rejected():
+    resp = client.post(
+        "/v1/decisions/cases/case_002/approve",
+        json={
+            "proposal_id": "prop_002_a",
+            "decision_type": "APPROVE",
+            "reason": "Test without header",
+            "actor": "agent_sarah",
+        },
+    )
+    # FastAPI returns 422 (missing required header) or 401
+    assert resp.status_code in (401, 422)
+

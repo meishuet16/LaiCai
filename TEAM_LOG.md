@@ -72,6 +72,34 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T07:42:00Z — Member 3 — Action execution tracking endpoint and actual cost audit trail
+
+- **Workstream:** Part 3 — Decision Engine
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `feat: add action execution endpoint, actual vs predicted cost tracking, and migration 004`
+- **Issue / task:** Spec §7.7 Action Execution & Cost Audit Trail (RetainIQ_v2_Complete_Requirements.md §7.7)
+- **Files changed:**
+  - `backend/decision/migrations/004_action_executions.sql` *(new)* — table `action_executions` with RLS, audit indexes, and separation of actual monetary/staff costs
+  - `backend/decision/models.py` *(modified)* — added `ExecutionStatus`, `ExecutionRequest`, `ExecutionResponse`, and `notes: list[str]` on `EvaluationResponse`
+  - `backend/decision/api.py` *(modified)* — implemented live `POST /v1/decisions/cases/{case_id}/execution` endpoint transitioning case status to EXECUTED / FOLLOW_UP_DUE / CLOSED
+  - `tests/decision/test_api_phase3.py` *(modified)* — added tests for live execution endpoint, failed execution status transition, and tenant header authorization
+  - `TEAM_LOG.md` *(this entry)*
+- **What changed:**
+  - `004_action_executions.sql`: Created schema for `action_executions` table separating actual monetary costs (`actual_monetary_cost_minor`) and staff effort (`actual_staff_minutes`) from initial predictions on `action_proposals`. Added tenant isolation with PostgreSQL RLS.
+  - `models.py`: Added Pydantic schemas `ExecutionRequest` and `ExecutionResponse` validating `execution_status` in `('EXECUTED', 'FAILED', 'CANCELLED')` and non-negative actual cost/time numbers.
+  - `api.py`: Implemented `POST /v1/decisions/cases/{case_id}/execution` endpoint that validates case status (must be `ASSIGNED` or `HUMAN_REVIEWED`), inserts the execution record, updates the case status to `EXECUTED` or `FOLLOW_UP_DUE` (when `follow_up_anchor` is provided), computes the 7/14/30d follow-up schedule, and logs an append-only `ACTION_EXECUTED` event to `case_history`.
+  - `test_api_phase3.py`: Added 3 tests validating successful execution recording, transition to `CLOSED` upon execution failure, and rejection of requests missing tenant identification.
+- **Why it changed:** Completes spec §7.7 requirement: "Record predicted action cost and actual monetary/staff effort separately" and provides execution lifecycle transitions.
+- **Contract / database / API impact:** Added `POST /v1/decisions/cases/{case_id}/execution`. Added `action_executions` table in migration 004.
+- **Tests / verification:**
+  - `pytest tests/decision/ -v` — PASS (91 passed, 0 failed in 0.60s).
+  - `pytest deepseek_python_20261010_dc4479.py deepseek_python_20261010_7837fa.py -v` — PASS (14 passed in 0.21s).
+  - `python deepseek_python_20261010_54466f.py` — PASS (39 passed, 0 failed).
+- **Data / model / ROI evidence:** Fully conforms to non-causal guardrails (§10.3) and separate actual vs predicted expense accounting (§7.7).
+- **Known issues / blockers:** None.
+- **Next action / handoff:** Provide status update to team and user, commit and push changes.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T07:18:00Z — Member 3 — Decision engine top-level adapter APIs and validation harness
 
 - **Workstream:** Part 3 — Decision Engine

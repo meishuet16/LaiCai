@@ -40,7 +40,8 @@ from .evaluator import evaluate_decision_strategy
 from .models import (
     ActionProposal, ApprovalRequest, ApprovalResponse, BudgetConfigRecord,
     CaseHistoryResponse, CaseProposalsResponse, CustomerFacts,
-    EvaluationCohortAccount, EvaluationResponse, HistoryEvent, MRRRecord,
+    EvaluationCohortAccount, EvaluationResponse, ExecutionRequest, ExecutionResponse,
+    HistoryEvent, MRRRecord,
     OutcomeObservationRequest, OutcomeObservationResponse, PredictionPayload,
     ROICard, RouteResult, RoutingPolicy,
 )
@@ -663,6 +664,158 @@ def get_case_history(
         ]
 
     return CaseHistoryResponse(case_id=case_id, events=events)
+
+
+@router.post(
+    "/cases/{case_id}/execution",
+    response_model=ExecutionResponse,
+    summary="Record actual execution outcome with real costs",
+    description=(
+        "Phase 3 live endpoint (§7.7). Records the actual execution result of an approved action. "
+        "Actual monetary/staff costs are stored separately from predicted proposal costs. "
+        "Transitions case to EXECUTED or FOLLOW_UP_DUE when follow_up_anchor is provided. "
+        "CANCELLED or FAILED cases transition to CLOSED."
+    ),
+)
+def record_execution(
+    case_id: str,
+    request: ExecutionRequest,
+    tenant_id: str = Depends(get_tenant_id),
+    db=Depends(get_db),
+) -> ExecutionResponse:
+    """
+    Separate from human approval (which records predicted costs and APPROVE/MODIFY/REJECT).
+    This endpoint records what actually happened: execution status and real costs.
+    Ref: §7.7 — 'Record predicted action cost and actual monetary/staff effort separately.'
+    """
+    import uuid as _uuid
+    now = datetime.now(timezone.utc)
+    execution_id = str(_uuid.uuid4())
+    currency = "MYR"
+
+    # Determine new case_status from execution result
+    if request.execution_status == "EXECUTED":
+        if request.follow_up_anchor is not None:
+            new_case_status = CaseStatus.FOLLOW_UP_DUE
+        else:
+            new_case_status = CaseStatus.EXECUTED
+    else:
+        # FAILED or CANCELLED -> CLOSED
+        new_case_status = CaseStatus.CLOSED
+
+    # Build follow_up_due_at schedule from the anchor
+    follow_up_due_at: Optional[dict] = None
+    if request.follow_up_anchor is not None:
+        follow_up_due_at = {
+            "7d": (request.follow_up_anchor + timedelta(days=7)).isoformat(),
+            "14d": (request.follow_up_anchor + timedelta(days=14)).isoformat(),
+            "30d": (request.follow_up_anchor + timedelta(days=30)).isoformat(),
+        }
+
+    if db is not None:
+        try:
+            with db.cursor() as cur:
+                # Fetch currency from the case
+                cur.execute(
+                    "SELECT currency, case_status FROM decision_cases WHERE tenant_id = %s AND case_id::text = %s",
+                    (tenant_id, case_id),
+                )
+                row = cur.fetchone()
+                if row:
+                    currency = row.get("currency") or currency
+                    current_status = row.get("case_status")
+                    # Guard: can only execute ASSIGNED cases
+                    if current_status not in (CaseStatus.ASSIGNED.value, CaseStatus.HUMAN_REVIEWED.value):
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Cannot execute case in status '{current_status}'. Must be ASSIGNED or HUMAN_REVIEWED."
+                        )
+                else:
+                    raise HTTPException(status_code=404, detail=f"Case {case_id} not found for tenant")
+
+                # Insert execution record
+                cur.execute(
+                    """
+                    INSERT INTO action_executions (
+                        execution_id, tenant_id, case_id, proposal_id, human_decision_id,
+                        execution_status, execution_note,
+                        actual_monetary_cost_minor, actual_staff_minutes, currency,
+                        executed_by, first_response_at, completed_at, follow_up_anchor, created_at
+                    ) VALUES (
+                        %s, %s, %s, %s, %s,
+                        %s, %s,
+                        %s, %s, %s,
+                        %s, %s, %s, %s, %s
+                    )
+                    """,
+                    (
+                        execution_id,
+                        tenant_id,
+                        case_id,
+                        request.proposal_id,
+                        request.human_decision_id,
+                        request.execution_status,
+                        request.execution_note,
+                        request.actual_monetary_cost_minor,
+                        request.actual_staff_minutes,
+                        currency,
+                        request.executed_by,
+                        request.first_response_at or now,
+                        request.completed_at or now,
+                        request.follow_up_anchor,
+                        now,
+                    ),
+                )
+
+                # Update case status
+                cur.execute(
+                    "UPDATE decision_cases SET case_status = %s, updated_at = %s WHERE tenant_id = %s AND case_id::text = %s",
+                    (new_case_status.value, now, tenant_id, case_id),
+                )
+
+                # Append-only audit event
+                cur.execute(
+                    """
+                    INSERT INTO case_history (event_id, tenant_id, case_id, event_type, actor, details, occurred_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        str(_uuid.uuid4()),
+                        tenant_id,
+                        case_id,
+                        "ACTION_EXECUTED",
+                        request.executed_by,
+                        json.dumps({
+                            "execution_status": request.execution_status,
+                            "actual_monetary_cost_minor": request.actual_monetary_cost_minor,
+                            "actual_staff_minutes": request.actual_staff_minutes,
+                            "follow_up_anchor": request.follow_up_anchor.isoformat() if request.follow_up_anchor else None,
+                            "note": request.execution_note,
+                        }),
+                        now,
+                    ),
+                )
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.warning(f"DB persist during record_execution failed: {exc}")
+
+    return ExecutionResponse(
+        execution_id=execution_id,
+        case_id=case_id,
+        proposal_id=request.proposal_id,
+        execution_status=request.execution_status,
+        execution_note=request.execution_note,
+        actual_monetary_cost_minor=request.actual_monetary_cost_minor,
+        actual_staff_minutes=request.actual_staff_minutes,
+        currency=currency,
+        executed_by=request.executed_by,
+        first_response_at=request.first_response_at or now,
+        completed_at=request.completed_at or now,
+        follow_up_anchor=request.follow_up_anchor,
+        follow_up_due_at=follow_up_due_at,
+        case_status=new_case_status,
+    )
 
 
 @router.post(
