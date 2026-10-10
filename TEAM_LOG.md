@@ -482,6 +482,32 @@ Members may cover several workstreams. Update assignments through a logged commi
 - **Next action / handoff:** Have Members 1, 3, and 4 review the readiness reason codes, registry metadata, selection-coverage limitations, and approval/rollback ownership before any authorized candidate run. Keep Prompt 17 changes uncommitted until review.
 - **Reviewer / pairing:** N/A
 
+### 2026-10-10T08:19:22Z — Member 2 AI coding assistant — Controlled candidate training and evaluation gates
+
+- **Workstream:** Part 2 candidate learning / Part 4 release governance
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; Prompt 17 checkpoint is `3666b17`
+- **Issue / task:** Member 2 Prompt 18; no ticket
+- **Files changed:** `src/retainiq_prediction/candidate_training.py`, `src/retainiq_prediction/candidate_evaluation.py`, `src/retainiq_prediction/__init__.py`, `tests/test_candidate_training.py`, `tests/test_candidate_evaluation.py`, `docs/MEMBER2_CANDIDATE_TRAINING_AND_EVALUATION.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added typed candidate-training orchestration over the existing chronological splitter, LightGBM implementation and sigmoid calibrator. Each 7/14/30-day model and calibrator is fit independently with TRAIN/VALIDATION/CALIBRATION separation; TEST is not accessed.
+  - Added real-candidate readiness/provenance/freeze/version gates and an explicit synthetic-only execution mode that runs actual fitting/calibration but remains non-production and non-approvable.
+  - Added immutable TEST evaluation manifests and a one-access final evaluation gate over the existing historical evaluator, including candidate/champion same-cohort checks, horizon-specific evidence, coverage/abstention reporting, review-capacity consistency and explicit insufficient-evidence states.
+  - Integrated evaluation recording with the metadata-only registry up to `EVALUATED_PENDING_APPROVAL`; no approval, promotion, active-bundle mutation, rollback, scheduling, persistence, API, or dashboard behavior was added.
+  - Added the candidate training/evaluation documentation, including current blockers and the Windows pytest temporary-directory workaround. Existing improvement backlog items were preserved.
+- **Why it changed:** Provide a reproducible and auditable candidate workflow without allowing synthetic data, immature labels, test reuse, or slight metric changes to create a production release claim.
+- **Contract / database / API impact:** Canonical `PredictionOutput`, churn labels, temporal split contracts, feature allowlist, model/calibration implementations and active pipeline remain unchanged. New structures are internal governance boundaries; no database schema or API was created.
+- **Tests / verification:**
+  - `& .venv\Scripts\python.exe -m pytest tests/test_candidate_training.py tests/test_candidate_evaluation.py -q --basetemp .pytest-tmp-p18` — PASS — 17 tests passed; synthetic LightGBM and calibration fitting executed.
+  - `& .venv\Scripts\python.exe -m pytest tests/test_candidate_training.py tests/test_candidate_evaluation.py tests/test_model_registry.py tests/test_retraining_readiness.py tests/test_lightgbm_model.py tests/test_calibration.py tests/test_historical_evaluation.py -q --basetemp .pytest-tmp-p18` — PASS — 86 tests passed.
+  - `& .venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp-p18` — PASS — 287 tests passed; 24 known SHAP/LightGBM binary-output compatibility warnings.
+  - `& .venv\Scripts\python.exe -m pytest -q` — 282 passed, 5 setup errors; the same Windows `WinError 5` occurred while pytest scanned `C:\Users\User\AppData\Local\Temp\pytest-of-User` for `tmp_path` fixtures. The default invocation is not fixed.
+  - No tests were skipped or suppressed. `.pytest-tmp/` remains Git-ignored; the repository-local basetemp was used for the passing full run and removed after verification.
+- **Data / model / ROI evidence:** Synthetic fixtures only; real LightGBM and sigmoid calibration code executed in isolated tests. No authorized longitudinal dataset, real candidate, real TEST metric, improvement claim, retention uplift, causal effect, saved revenue or ROI claim exists.
+- **Known issues / blockers:** Real candidate training and final TEST evaluation remain blocked by missing authorized longitudinal data and PASS provenance. Member 1 must provide canonical availability/correction evidence, mature outcomes, tenant/account identity, resolved multi-subscription semantics and readiness evidence. Members 3/4 must align on prediction/evaluation persistence, feedback coverage, human approval, artifact storage, rollback and dashboard integration. TEST authorization and a genuine champion are required for any comparative human-review gate.
+- **Next action / handoff:** Review the freeze manifest, candidate/champion cohort policy, synthetic non-approvability and registry transition evidence with Members 1, 3 and 4. Keep Prompt 18 changes uncommitted.
+- **Reviewer / pairing:** N/A
+
 ## 6. Shared integration agreements — verify before changing
 
 - **Prediction anchor:** `prediction_id` = unique account forecast snapshot; `prediction_run_id` = inference batch/job ID.

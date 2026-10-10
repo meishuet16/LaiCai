@@ -222,6 +222,25 @@ from .model_registry import (
     RegistryProvenanceStatus,
     RegistryReasonCode,
 )
+from .candidate_training import (
+    CandidateHorizonTraining,
+    CandidateTrainingConfig,
+    CandidateTrainingMode,
+    CandidateTrainingReasonCode,
+    CandidateTrainingResult,
+    CandidateTrainingStatus,
+    train_candidate,
+)
+from .candidate_evaluation import (
+    CandidateEvaluationConfig,
+    CandidateEvaluationGate,
+    CandidateEvaluationGateStatus,
+    CandidateEvaluationReasonCode,
+    CandidateEvaluationReport,
+    CandidateHorizonEvaluationStatus,
+    FrozenTestEvaluationManifest,
+    record_candidate_evaluation,
+)
 
 __all__ = [
     "DataFreshness",
@@ -323,6 +342,21 @@ __all__ = [
     "ModelRegistry",
     "RegistryProvenanceStatus",
     "RegistryReasonCode",
+    "CandidateHorizonTraining",
+    "CandidateTrainingConfig",
+    "CandidateTrainingMode",
+    "CandidateTrainingReasonCode",
+    "CandidateTrainingResult",
+    "CandidateTrainingStatus",
+    "train_candidate",
+    "CandidateEvaluationConfig",
+    "CandidateEvaluationGate",
+    "CandidateEvaluationGateStatus",
+    "CandidateEvaluationReasonCode",
+    "CandidateEvaluationReport",
+    "CandidateHorizonEvaluationStatus",
+    "FrozenTestEvaluationManifest",
+    "record_candidate_evaluation",
     "EligibilityPolicy",
     "EligibilityReasonCode",
     "EligibilityResult",
