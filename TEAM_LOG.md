@@ -73,6 +73,22 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T22:20:51Z — Codex — Add Data Foundation health check
+
+- **Workstream:** Part 1 / Data Foundation
+- **Branch:** `codex/render-data-foundation-deploy`
+- **Commit subject:** `feat: add Data Foundation health check`
+- **Issue / task:** Render Data Foundation deployment plan, Task 1
+- **Files changed:** `retaniq/api.py`, `tests/test_render_deployment.py`, `docs/superpowers/plans/2026-10-11-render-data-foundation-deployment.md`, and `TEAM_LOG.md`.
+- **What changed:** Added unauthenticated `GET /healthz` returning HTTP 200 and `{"status":"ok"}`, with a WSGI-level test; marked Task 1 steps complete in the supplied implementation plan.
+- **Why it changed:** Provide Render's Data Foundation health probe without requiring a bearer token.
+- **Contract / database / API impact:** Additive health endpoint only. Existing protected routes, database schema, and auth behavior are unchanged; no downstream contract change required.
+- **Tests / verification:** `python -m pytest tests/test_render_deployment.py -q` — **NOT RUN successfully** — pytest fixture setup could not scan the default Windows temp directory (`WinError 5`). `python -m pytest tests/test_render_deployment.py -q --basetemp .pytest-tmp-task1` before implementation — **FAIL as expected** — observed `404 Not Found` where `200 OK` was asserted. Same command after implementation — **PASS** — 1 test passed.
+- **Data / model / ROI evidence:** N/A. No production data or model evidence used.
+- **Known issues / blockers:** The default pytest temp root is inaccessible in this environment; repository-local `--basetemp` works. No other Task 1 blockers known.
+- **Next action / handoff:** Continue with Task 2 environment-based WSGI startup coverage. No deployment action was taken.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T22:09:39Z — Codex — Render Data Foundation deployment design
 
 - **Workstream:** Part 1 / Integration / Docs

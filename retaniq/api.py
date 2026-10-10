@@ -76,6 +76,8 @@ def create_app(database_path: str | DatabaseConfig):
     def application(environ, start_response):
         method = environ.get("REQUEST_METHOD", "GET").upper()
         path = environ.get("PATH_INFO", "")
+        if method == "GET" and path == "/healthz":
+            return _response(start_response, HTTPStatus.OK, {"status": "ok"})
         query_string = environ.get("QUERY_STRING", "")
         prediction_id = None
         history_account_id = None
