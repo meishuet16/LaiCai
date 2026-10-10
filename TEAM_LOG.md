@@ -431,6 +431,31 @@ Members may cover several workstreams. Update assignments through a logged commi
 - **Next action / handoff:** Have Members 1, 3, and 4 review the typed evaluation report, coverage/abstention denominators, revenue exposure limitation, and synthetic-result exclusion before any authorized replay or dashboard integration.
 - **Reviewer / pairing:** N/A
 
+### 2026-10-10T07:58:50Z — Member 2 AI coding assistant — Prediction feedback and outcome reconciliation
+
+- **Workstream:** Part 4 feedback foundation / Part 2 ML handoff
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; previous Prompt 15 checkpoint is `20cf1c8`
+- **Issue / task:** Member 2 Prompt 16; no ticket
+- **Files changed:** `src/retainiq_prediction/outcome_reconciliation.py`, `src/retainiq_prediction/__init__.py`, `tests/test_outcome_reconciliation.py`, `docs/MEMBER2_OUTCOME_RECONCILIATION.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added a typed append-only reconciliation boundary that links tenant-scoped immutable `PredictionOutput` snapshots by `prediction_id` to the existing `ChurnLabel` semantics; `prediction_run_id` is retained as batch metadata and is never used as the identity.
+  - Added `PENDING`, `MATURE_POSITIVE`, `MATURE_NEGATIVE`, `INCOMPLETE`, and `INELIGIBLE` outcome states with explicit source availability, provenance, coverage, conflict and unresolved multi-subscription reason codes.
+  - Added idempotent repeated reconciliation, conflicting duplicate rejection, append-only source-correction revisions, historical as-of revision views, and a mature-label adapter for the existing historical evaluator.
+  - Added conservative future-learning admissibility checks requiring authorized real provenance, mature verified horizon-specific outcomes, compatible policy versions, sufficient coverage and evidence before the training cutoff. No training or model promotion is triggered.
+  - Added a read-only Part 3 action-feedback compatibility record that explicitly cannot claim intervention causality, plus a Member 4 serialization/documentation handoff.
+- **Why it changed:** Establish the Member 2 prediction-feedback foundation required by Part 4 without mutating predictions, creating a competing churn definition, adding production persistence/API infrastructure, or making retention/causal claims.
+- **Contract / database / API impact:** Existing `PredictionOutput`, `ChurnLabel`, historical-evaluation metrics, label policy and temporal semantics remain unchanged. The new in-memory store is a replaceable synthetic/test boundary; no database, queue, dashboard, Decision Engine, recommendation or approval implementation was added.
+- **Tests / verification:**
+  - `& .venv\Scripts\python.exe -m pytest -q tests/test_outcome_reconciliation.py --basetemp .pytest-tmp` — PASS — 20 tests passed.
+  - `& .venv\Scripts\python.exe -m pytest -q tests/test_outcome_reconciliation.py tests/test_label_builder.py tests/test_historical_evaluation.py --basetemp .pytest-tmp` — PASS — 55 tests passed.
+  - `& .venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp` — PASS — 250 tests passed; 24 known SHAP/LightGBM binary-output compatibility warnings.
+  - Package import and `git diff --check` — run after the final log update below.
+- **Data / model / ROI evidence:** Explicitly synthetic fixtures only; no authorized real feedback, supervised training set, model release, performance result, intervention effectiveness, saved revenue or ROI claim. Synthetic feedback is rejected by learning admissibility.
+- **Known issues / blockers:** Member 1 must provide authorized lifecycle/source availability and correction evidence, mature observation coverage, stable tenant/account identity, and the unresolved account-level multi-subscription churn policy. Production persistence/API and authoritative action records remain other-member responsibilities.
+- **Next action / handoff:** Review the feedback field names and revision semantics with Members 1, 3 and 4, then connect only authorized adapter records; keep candidate retraining behind the existing temporal/evaluation/release gates.
+- **Reviewer / pairing:** N/A
+
 ## 6. Shared integration agreements — verify before changing
 
 - **Prediction anchor:** `prediction_id` = unique account forecast snapshot; `prediction_run_id` = inference batch/job ID.
