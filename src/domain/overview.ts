@@ -1,6 +1,6 @@
-import type { AccountRecord, Currency, Freshness, Horizon, Money } from './customer';
-import type { DecisionCase } from './decision';
-import type { IntegrationOverview } from './integration';
+import type { AccountRecord, Currency, Freshness, Horizon, Money } from './customer.ts';
+import type { DecisionCase } from './decision.ts';
+import type { IntegrationOverview } from './integration.ts';
 
 export type OverviewActivityTarget =
   | { type: 'prediction' }
@@ -20,17 +20,16 @@ export type OverviewSummary = {
   validPredictions: number;
   openCases: number;
   pendingCases: number;
-  overdueCases: number;
+  overdueCases: number | null;
   knownCancellations: number;
   abstained: number;
   insufficientEvidence: number;
-  riskCounts: Record<'low' | 'medium' | 'high', number>;
+  predictionStatuses: Record<'scored' | 'abstained' | 'known_cancellation' | 'not_eligible', number>;
   notForecasted: number;
   exposureByCurrency: Partial<Record<Currency, Money>>;
   exposureAccountCount: number;
-  myrReportedMrr: Money | null;
-  myrAccountCount: number;
-  sgdAccountCount: number;
+  mrrByCurrency: Partial<Record<Currency, Money>>;
+  mrrAccountCounts: Partial<Record<Currency, number>>;
   missingMrr: number;
   sourceFreshness: Record<'fresh' | 'stale' | 'unknown', number>;
   inputFreshness: Record<Freshness, number>;
@@ -65,16 +64,15 @@ function auditTitle(type: string): string {
   return titles[type] ?? `Case activity · ${type.toLowerCase().replaceAll('_', ' ')}`;
 }
 
-export function summarizeOverview(accounts: AccountRecord[], cases: DecisionCase[], integration: IntegrationOverview, asOf: string, horizon: Horizon): OverviewSummary {
-  const riskCounts = { low: 0, medium: 0, high: 0 };
+export function summarizeOverview(accounts: AccountRecord[], cases: DecisionCase[], integration: IntegrationOverview, asOf: string | null, horizon: Horizon): OverviewSummary {
+  const predictionStatuses = { scored: 0, abstained: 0, known_cancellation: 0, not_eligible: 0 };
   let validPredictions = 0;
   for (const account of accounts) {
+    const status = account.prediction?.status;
+    if (status && status in predictionStatuses) predictionStatuses[status as keyof typeof predictionStatuses] += 1;
     const probability = probabilityFor(account, horizon);
     if (probability == null) continue;
     validPredictions += 1;
-    if (probability < .3) riskCounts.low += 1;
-    else if (probability < .6) riskCounts.medium += 1;
-    else riskCounts.high += 1;
   }
 
   const exposureByCurrency: Partial<Record<Currency, Money>> = {};
@@ -85,10 +83,15 @@ export function summarizeOverview(accounts: AccountRecord[], cases: DecisionCase
     exposureByCurrency[exposure.currency] = { currency: exposure.currency, amount_minor: (current?.amount_minor ?? 0) + exposure.amount_minor };
   }
 
-  const myrAccounts = accounts.filter(account => account.mrr?.currency === 'MYR');
-  const myrReportedMrr = myrAccounts.length
-    ? { currency: 'MYR' as const, amount_minor: myrAccounts.reduce((total, account) => total + (account.mrr?.amount_minor ?? 0), 0) }
-    : null;
+  const mrrByCurrency: Partial<Record<Currency, Money>> = {};
+  const mrrAccountCounts: Partial<Record<Currency, number>> = {};
+  for (const account of accounts) {
+    if (!account.mrr || !Number.isSafeInteger(account.mrr.amount_minor) || account.mrr.amount_minor < 0) continue;
+    const currency = account.mrr.currency;
+    const current = mrrByCurrency[currency];
+    mrrByCurrency[currency] = { currency, amount_minor: (current?.amount_minor ?? 0) + account.mrr.amount_minor };
+    mrrAccountCounts[currency] = (mrrAccountCounts[currency] ?? 0) + 1;
+  }
   const inputFreshness = Object.fromEntries((['fresh', 'partially_stale', 'stale', 'unknown'] as Freshness[]).map(status => [status, 0])) as Record<Freshness, number>;
   for (const account of accounts) inputFreshness[account.prediction?.data_freshness.status ?? 'unknown'] += 1;
   const sourceFreshness = Object.fromEntries((['fresh', 'stale', 'unknown'] as const).map(status => [status, 0])) as Record<'fresh' | 'stale' | 'unknown', number>;
@@ -96,12 +99,12 @@ export function summarizeOverview(accounts: AccountRecord[], cases: DecisionCase
 
   const accountById = new Map(accounts.map(account => [account.customer_id, account]));
   const activities: OverviewActivity[] = [];
-  const runs = new Map<string, { at: string; modelVersion: string; scored: number; abstained: number }>();
+  const runs = new Map<string, { at: string; modelVersion: string | null; scored: number; abstained: number }>();
   for (const account of accounts) {
     const prediction = account.prediction;
-    if (!prediction?.prediction_run_id) continue;
+    if (!prediction?.prediction_run_id || !prediction.generated_at) continue;
     const run = runs.get(prediction.prediction_run_id) ?? { at: prediction.generated_at, modelVersion: prediction.model_version, scored: 0, abstained: 0 };
-    if (prediction.generated_at > run.at) run.at = prediction.generated_at;
+    if (run.at && prediction.generated_at > run.at) run.at = prediction.generated_at;
     if (prediction.status === 'scored') run.scored += 1;
     if (prediction.status === 'abstained') run.abstained += 1;
     runs.set(prediction.prediction_run_id, run);
@@ -111,7 +114,7 @@ export function summarizeOverview(accounts: AccountRecord[], cases: DecisionCase
       id: `prediction:${runId}`,
       at: run.at,
       title: 'Prediction outputs available',
-      detail: `${run.scored} scored · ${run.abstained} abstained · ${run.modelVersion}`,
+      detail: `${run.scored} scored · ${run.abstained} abstained · ${run.modelVersion ?? 'model version unavailable'}`,
       target: { type: 'prediction' },
     });
   }
@@ -121,7 +124,7 @@ export function summarizeOverview(accounts: AccountRecord[], cases: DecisionCase
       id: `case:${item.id}:${entry.id}`,
       at: entry.at,
       title: auditTitle(entry.type),
-      detail: `${customer?.name ?? item.customer_id} · ${entry.actor}`,
+      detail: `${customer?.customer_id ?? item.customer_id} · ${entry.actor}`,
       target: { type: 'case', caseId: item.id, customerId: item.customer_id },
     });
   }
@@ -139,21 +142,20 @@ export function summarizeOverview(accounts: AccountRecord[], cases: DecisionCase
     validPredictions,
     openCases: cases.filter(item => !terminalStatuses.includes(item.status) && !excludedRoutes.includes(item.route)).length,
     pendingCases: cases.filter(item => pendingStatuses.includes(item.status)).length,
-    overdueCases: cases.filter(item => item.due_at != null && item.due_at < asOf && !terminalStatuses.includes(item.status)).length,
+    overdueCases: asOf ? cases.filter(item => item.due_at != null && item.due_at < asOf && !terminalStatuses.includes(item.status)).length : null,
     knownCancellations: accounts.filter(account => account.route === 'KNOWN_CANCELLATION' || account.prediction?.status === 'known_cancellation').length,
     abstained: accounts.filter(account => account.prediction?.status === 'abstained').length,
     insufficientEvidence: accounts.filter(account => account.prediction?.reliability.status === 'insufficient_evidence').length,
-    riskCounts,
+    predictionStatuses,
     notForecasted: Math.max(0, accounts.length - validPredictions),
     exposureByCurrency,
     exposureAccountCount: accounts.filter(account => account.exposure_proxy != null).length,
-    myrReportedMrr,
-    myrAccountCount: myrAccounts.length,
-    sgdAccountCount: accounts.filter(account => account.mrr?.currency === 'SGD').length,
+    mrrByCurrency,
+    mrrAccountCounts,
     missingMrr: accounts.filter(account => account.mrr == null).length,
     sourceFreshness,
     inputFreshness,
-    modelVersions: [...new Set(accounts.flatMap(account => account.prediction?.status === 'scored' ? [account.prediction.model_version] : []))].sort(),
+    modelVersions: [...new Set(accounts.flatMap(account => account.prediction?.status === 'scored' && account.prediction.model_version ? [account.prediction.model_version] : []))].sort(),
     // The service's existing order is retained; this view does not calculate or imply a client-side rank.
     priorityCases: cases.filter(item => item.route === 'PRIORITY_REVIEW').slice(0, 5),
     recentActivity: activities.slice(0, 8),

@@ -9,7 +9,7 @@ const filters = { horizon: 30 as const, route: 'all' as const, actionStatus: 'al
 test('dashboard aggregates the linked demo cohort, not source-health population totals', async () => {
   decisionService.resetDemo();
   const [accounts, cases] = await Promise.all([retainIQService.listAccounts(), decisionService.listCases()]);
-  const summary = summarizeDashboard(selectDashboardRows(accounts, cases, filters), 30);
+  const summary = summarizeDashboard(selectDashboardRows(accounts, cases, filters), 30, '2026-10-10T00:00:00Z');
   assert.equal(summary.rows.length, 9);
   assert.equal(summary.eligible, 7);
   assert.equal(summary.scored, 6);
@@ -25,10 +25,10 @@ test('dashboard aggregates the linked demo cohort, not source-health population 
 test('exposure, cost and actuals remain currency-separated with missing actuals flagged', async () => {
   decisionService.resetDemo();
   const [accounts, cases] = await Promise.all([retainIQService.listAccounts(), decisionService.listCases()]);
-  const summary = summarizeDashboard(selectDashboardRows(accounts, cases, filters), 30);
+  const summary = summarizeDashboard(selectDashboardRows(accounts, cases, filters), 30, '2026-10-10T00:00:00Z');
   assert.deepEqual(summary.exposureByCurrency, [{ currency: 'MYR', amount_minor: 105400 }, { currency: 'SGD', amount_minor: 120000 }]);
-  assert.deepEqual(summary.estimatedCostByCurrency, [{ currency: 'MYR', amount_minor: 19000 }, { currency: 'SGD', amount_minor: 0 }]);
-  assert.deepEqual(summary.actualCostByCurrency, [{ currency: 'MYR', amount_minor: 3500 }, { currency: 'SGD', amount_minor: 0 }]);
+  assert.deepEqual(summary.estimatedCostByCurrency, [{ currency: 'MYR', amount_minor: 19000 }]);
+  assert.deepEqual(summary.actualCostByCurrency, [{ currency: 'MYR', amount_minor: 3500 }]);
   assert.equal(summary.missingActualCost, 1);
   assert.equal(summary.missingActualMinutes, 1);
 });
@@ -38,7 +38,7 @@ test('filters and 7-day bands recompute from the selected cohort', async () => {
   const [accounts, cases] = await Promise.all([retainIQService.listAccounts(), decisionService.listCases()]);
   const rows = selectDashboardRows(accounts, cases, { ...filters, route: 'PRIORITY_REVIEW', currency: 'SGD' });
   assert.deepEqual(rows.map(row => row.account.customer_id), ['c08']);
-  const summary = summarizeDashboard(rows, 7);
-  assert.equal(summary.riskBands.find(item => item.band === 'low')?.count, 1);
-  assert.equal(summary.exposureByCurrency.find(item => item.currency === 'MYR')?.amount_minor, 0);
+  const summary = summarizeDashboard(rows, 7, null);
+  assert.equal(summary.policyBands.find(item => item.band === 'unavailable')?.count, 1);
+  assert.equal(summary.exposureByCurrency.find(item => item.currency === 'MYR'), undefined);
 });

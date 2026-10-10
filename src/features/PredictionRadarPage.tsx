@@ -1,19 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../app/AppContext';
 import { casePath, predictionPath, timelinePath } from '../app/routes';
-import type { AccountRecord, Freshness, Reliability, Route } from '../domain/customer';
+import { customerLabel, type AccountRecord, type Freshness, type Reliability, type Route } from '../domain/customer';
 import { formatDateTime, formatMoney } from '../domain/format';
-import { isNonForecastAccount, predictionWarnings, probabilityAt, riskBandAt, type PredictionRiskBand } from '../domain/predictionPresentation';
+import { isNonForecastAccount, predictionWarnings, probabilityAt } from '../domain/predictionPresentation';
 import { useCustomers } from '../hooks/useCustomers';
 import { RiskPill } from '../components/StatusPills';
 
-type RiskBandFilter = 'all' | PredictionRiskBand;
+type RiskBandFilter = 'all' | 'low' | 'medium' | 'high' | 'no_score';
 type SortBy = 'risk' | 'exposure' | 'account';
 const forecastRouteOptions: Route[] = ['PRIORITY_REVIEW', 'HUMAN_REVIEW', 'OBSERVE'];
 const reliabilityOptions: Reliability[] = ['sufficient_evidence', 'limited_evidence', 'insufficient_evidence'];
 const freshnessOptions: Freshness[] = ['fresh', 'partially_stale', 'stale', 'unknown'];
 const label = (value: string) => value.replaceAll('_', ' ').toLowerCase();
 const percent = (value: number | null) => value == null ? 'N/A' : `${Math.round(value * 100)}%`;
+const bandAt = (account: AccountRecord, days: 7 | 14 | 30) => account.prediction?.risk_bands_by_horizon?.[days] ?? null;
 
 function ReliabilityMark({ value }: { value: Reliability | null | undefined }) {
   const content = value === 'sufficient_evidence'
@@ -28,10 +29,10 @@ function ReliabilityMark({ value }: { value: Reliability | null | undefined }) {
 
 function ForecastRow({ account, navigate }: { account: AccountRecord; navigate: (path: string) => void }) {
   const prediction = account.prediction;
-  const p30Band = riskBandAt(probabilityAt(prediction, 30));
+  const p30Band = prediction?.risk_bands_by_horizon?.[30] ?? null;
   const warnings = predictionWarnings(prediction);
   return <tr>
-    <td><button type="button" className="prediction-customer-link" disabled={!prediction} aria-label={`Open prediction details for ${account.name}`} onClick={() => prediction && navigate(predictionPath(prediction.prediction_id))}>{account.name}</button><small>{account.customer_id} · {account.segment}</small><button type="button" className="tablelink prediction-customer-insight" onClick={() => navigate(timelinePath(account.customer_id))}>Customer Insights →</button></td>
+    <td><button type="button" className="prediction-customer-link" disabled={!prediction} aria-label={`Open prediction details for ${customerLabel(account)}`} onClick={() => prediction && navigate(predictionPath(prediction.prediction_id))}>{customerLabel(account)}</button><small>{account.customer_id} · {account.segment ?? 'Segment unavailable'}</small><button type="button" className="tablelink prediction-customer-insight" onClick={() => navigate(timelinePath(account.customer_id))}>Customer Insights →</button></td>
     <td>{percent(probabilityAt(prediction, 7))}</td>
     <td>{percent(probabilityAt(prediction, 14))}</td>
     <td><b>{percent(probabilityAt(prediction, 30))}</b><RiskPill band={p30Band} />{warnings.length ? <span className="pill amber prediction-warning" title="Supplied horizon probabilities need review">Check horizons</span> : null}</td>
@@ -45,7 +46,7 @@ function NonForecastTable({ title, note, accounts, navigate }: { title: string; 
   return <section className="card stage-section">
     <div className="section-head"><div><h2>{title}</h2><p className="muted">{note}</p></div><span className="pill neutral">{accounts.length} accounts</span></div>
     {accounts.length ? <div className="tablewrap"><table className="prediction-nonforecast-table"><thead><tr><th>Customer / account ID</th><th>Forecast status</th><th>Reason</th><th>MRR</th><th>Customer Insights</th></tr></thead><tbody>{accounts.map(account => <tr key={account.customer_id}>
-      <td><b>{account.name}</b><small>{account.customer_id} · {account.segment}</small></td>
+      <td><b>{customerLabel(account)}</b><small>{account.customer_id} · {account.segment ?? 'Segment unavailable'}</small></td>
       <td><span className={`pill ${account.route === 'KNOWN_CANCELLATION' ? 'amber' : 'neutral'}`}>{account.route === 'KNOWN_CANCELLATION' ? 'Known Cancellation — Not a Forecast' : 'Not eligible — Not a Forecast'}</span></td>
       <td>{account.route_reason || 'No reason supplied'}</td>
       <td>{formatMoney(account.mrr)}</td>
@@ -67,6 +68,7 @@ export function PredictionRadarPage() {
 
   useEffect(() => { setPage(0); }, [band, route, reliability, freshness, segment, query, horizon]);
   if (status === 'loading') return <p role="status">Loading prediction records…</p>;
+  if (status === 'unavailable') return <section className="card unavailable-state"><h2>Churn Prediction is not connected</h2><p>{error}</p><p>The active backend has no browser-safe prediction read, evaluation, or historical prediction API. Connected mode does not substitute local demo scores.</p></section>;
   if (status === 'error') return <div role="alert" className="notice ambernote">{error}</div>;
 
   const nonForecast = rows.filter(isNonForecastAccount);
@@ -76,13 +78,13 @@ export function PredictionRadarPage() {
   const eligible = forecastRows;
   const scored = eligible.filter(account => account.prediction?.status === 'scored');
   const abstainedOrInsufficient = eligible.filter(account => account.prediction?.status === 'abstained' || account.prediction?.reliability.status === 'insufficient_evidence');
-  const bands = (['low', 'medium', 'high'] as const).map(key => ({ key, count: scored.filter(account => riskBandAt(probabilityAt(account.prediction, horizon)) === key).length }));
+  const bands = (['low', 'medium', 'high'] as const).map(key => ({ key, count: scored.filter(account => bandAt(account, horizon) === key).length }));
   const maxBand = Math.max(1, ...bands.map(item => item.count));
   const coveragePercent = eligible.length ? Math.round(scored.length / eligible.length * 100) : null;
   const predictions = rows.flatMap(account => account.prediction ? [account.prediction] : []);
-  const latestAsOf = predictions.map(prediction => prediction.as_of).sort().at(-1) ?? null;
-  const cutoffCount = new Set(predictions.map(prediction => prediction.as_of)).size;
-  const versions = [...new Set(predictions.map(prediction => prediction.model_version).filter(Boolean))];
+  const latestAsOf = predictions.map(prediction => prediction.as_of).filter((value): value is string => value !== null).sort().at(-1) ?? null;
+  const cutoffCount = new Set(predictions.map(prediction => prediction.as_of).filter((value): value is string => value !== null)).size;
+  const versions = [...new Set(predictions.map(prediction => prediction.model_version).filter((value): value is string => Boolean(value)))];
   const modelLabel = versions.length === 1 ? versions[0] : versions.length > 1 ? 'Multiple versions' : 'N/A';
   const exposureCurrencies = [...new Set(scored.flatMap(account => account.mrr ? [account.mrr.currency] : account.exposure_proxy ? [account.exposure_proxy.currency] : []))].sort();
   const exposureByCurrency = exposureCurrencies.map(currency => {
@@ -92,21 +94,22 @@ export function PredictionRadarPage() {
     return { money: available.length ? { amount_minor: amount, currency } : null, available: available.length, currency, eligible: scoredWithCurrencyMrr.length };
   });
   const warningCount = scored.filter(account => predictionWarnings(account.prediction).length > 0).length;
-  const segments = [...new Set(forecastRows.map(account => account.segment).filter(Boolean))].sort();
+  const segments = [...new Set(forecastRows.map(account => account.segment).filter((value): value is string => Boolean(value)))].sort();
 
   const filtered = forecastRows.filter(account =>
-    (band === 'all' || riskBandAt(probabilityAt(account.prediction, horizon)) === band) &&
+    account.customer_id.toLowerCase().includes(query.toLowerCase()) &&
+    (band === 'all' || (band === 'no_score' ? probabilityAt(account.prediction, horizon) == null : bandAt(account, horizon) === band)) &&
     (route === 'all' || account.route === route) &&
     (reliability === 'all' || account.prediction?.reliability.status === reliability) &&
     (freshness === 'all' || account.prediction?.data_freshness.status === freshness) &&
     (segment === 'all' || account.segment === segment)
   );
   const sorted = [...filtered].sort((left, right) => {
-    if (sortBy === 'account') return left.name.localeCompare(right.name);
+    if (sortBy === 'account') return left.customer_id.localeCompare(right.customer_id);
     if (sortBy === 'exposure') {
       const leftMoney = left.exposure_proxy;
       const rightMoney = right.exposure_proxy;
-      if (!leftMoney && !rightMoney) return left.name.localeCompare(right.name);
+      if (!leftMoney && !rightMoney) return left.customer_id.localeCompare(right.customer_id);
       if (!leftMoney) return 1;
       if (!rightMoney) return -1;
       if (leftMoney.currency !== rightMoney.currency) return leftMoney.currency.localeCompare(rightMoney.currency);
@@ -114,7 +117,7 @@ export function PredictionRadarPage() {
     }
     const leftRisk = probabilityAt(left.prediction, horizon);
     const rightRisk = probabilityAt(right.prediction, horizon);
-    if (leftRisk == null && rightRisk == null) return left.name.localeCompare(right.name);
+    if (leftRisk == null && rightRisk == null) return left.customer_id.localeCompare(right.customer_id);
     if (leftRisk == null) return 1;
     if (rightRisk == null) return -1;
     return rightRisk - leftRisk;
@@ -126,8 +129,8 @@ export function PredictionRadarPage() {
   const clearFilters = () => { setQuery(''); setBand('all'); setRoute('all'); setReliability('all'); setFreshness('all'); setSegment('all'); setSortBy('risk'); setPage(0); };
 
   return <>
-    <p className="muted page-intro">Synthetic prediction records only. Reliability describes evidence sufficiency, not a probability that the score is correct.</p>
-    <div className="radar-meta"><span>Selected horizon: <b>{horizon} days</b></span><span>As of <b>{formatDateTime(latestAsOf)}</b></span><span>Model: <b>{modelLabel}</b></span><span className="pill neutral">Synthetic demo data</span></div>
+    <p className="muted page-intro">Reliability describes evidence sufficiency, not a probability that a score is correct. In Demo Fixture mode, probability values are illustrative and are not trained-model outputs.</p>
+    <div className="radar-meta"><span>Selected horizon: <b>{horizon} days</b></span><span>As of <b>{formatDateTime(latestAsOf)}</b></span><span>Model: <b>{modelLabel}</b></span></div>
 
     <section className="metrics prediction-metrics" aria-label="Prediction coverage">
       <article className="quick"><small>Eligible accounts</small><strong>{eligible.length}</strong><span>Excludes known cancellations and ineligible accounts</span></article>
@@ -137,13 +140,13 @@ export function PredictionRadarPage() {
     </section>
 
     <div className="split prediction-summary-grid">
-      <section className="card"><div className="section-head"><div><h2>{horizon}-day churn risk distribution</h2><p className="muted">Scored accounts only. Select a band to filter the table.</p></div>{warningCount ? <span className="pill amber">{warningCount} score-output warning{warningCount === 1 ? '' : 's'}</span> : null}</div>
+      <section className="card"><div className="section-head"><div><h2>{horizon}-day model-policy risk bands</h2><p className="muted">Only backend-supplied policy bands are counted. Select a band to filter the table.</p></div>{warningCount ? <span className="pill amber">{warningCount} score-output warning{warningCount === 1 ? '' : 's'}</span> : null}</div>
         <div className="distribution" role="group" aria-label={`${horizon}-day risk bands`}>
-          {bands.map(item => <button type="button" aria-pressed={band === item.key} className={`risk-band risk-${item.key}${band === item.key ? ' selected' : ''}`} key={item.key} onClick={() => setBand(band === item.key ? 'all' : item.key)}>
+          {bands.every(item => item.count === 0) ? <p className="empty-trend">Policy risk bands are unavailable for this prediction set. Numeric probabilities are not assigned client-side categories.</p> : bands.map(item => <button type="button" aria-pressed={band === item.key} className={`risk-band risk-${item.key}${band === item.key ? ' selected' : ''}`} key={item.key} onClick={() => setBand(band === item.key ? 'all' : item.key)}>
             <span>{item.key}</span><i aria-hidden="true"><em style={{ width: `${(item.count / maxBand) * 100}%` }} /></i><b>{item.count}</b><small>{scored.length ? `${Math.round(item.count / scored.length * 100)}%` : 'N/A'}</small>
           </button>)}
         </div>
-        <p className="caption">Low &lt;30% · Medium 30–59% · High ≥60%. Display bands only; not decision-engine thresholds. Cumulative outputs should satisfy p7 ≤ p14 ≤ p30.</p>
+        <p className="caption">No frontend risk thresholds are applied. If the selected model supplies no bands, the distribution is unavailable. Cumulative outputs should satisfy p7 ≤ p14 ≤ p30.</p>
       </section>
       <section className="card"><h2>MRR-weighted exposure proxy</h2><p className="muted">Available p30 × as-of MRR estimates only—not confirmed lost revenue. Currency totals remain separate.</p>
         {exposureByCurrency.length ? <div className="values">{exposureByCurrency.map(item => <p key={item.currency}><span>{item.currency} · {item.available}/{item.eligible} scored accounts with MRR</span><b>{formatMoney(item.money)}</b></p>)}</div> : <p className="empty-trend">N/A — no MRR-weighted exposure proxy is supplied for these accounts.</p>}
@@ -162,13 +165,13 @@ export function PredictionRadarPage() {
 
     <section className="card stage-section"><div className="section-head"><div><h2>Account predictions</h2><p className="muted">All stored 7-, 14- and 30-day outputs are shown; selecting a row opens its forecast details.</p></div><span className="pill neutral">{filtered.length} matching · {sorted.length} sorted</span></div>
       <div className="filters radar-filters">
-        <input aria-label="Search account name or ID" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search account name or ID" />
-        <select aria-label="Selected-horizon risk band" value={band} onChange={event => setBand(event.target.value as RiskBandFilter)}><option value="all">All selected-horizon bands</option><option value="low">Low (&lt;30%)</option><option value="medium">Medium (30–59%)</option><option value="high">High (≥60%)</option><option value="no_score">No score / abstained</option></select>
+        <input aria-label="Search account ID" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search account ID" />
+        <select aria-label="Selected-horizon model risk band" value={band} onChange={event => setBand(event.target.value as RiskBandFilter)}><option value="all">All policy bands</option><option value="low">Low (model policy)</option><option value="medium">Medium (model policy)</option><option value="high">High (model policy)</option><option value="no_score">No score / abstained</option></select>
         <select aria-label="Decision route" value={route} onChange={event => setRoute(event.target.value as Route | 'all')}><option value="all">All forecast routes</option>{forecastRouteOptions.map(value => <option key={value} value={value}>{label(value)}</option>)}</select>
         <select aria-label="Reliability status" value={reliability} onChange={event => setReliability(event.target.value as Reliability | 'all')}><option value="all">All reliability</option>{reliabilityOptions.map(value => <option key={value} value={value}>{label(value)}</option>)}</select>
         <select aria-label="Data freshness" value={freshness} onChange={event => setFreshness(event.target.value as Freshness | 'all')}><option value="all">All freshness</option>{freshnessOptions.map(value => <option key={value} value={value}>{label(value)}</option>)}</select>
         <select aria-label="Segment" value={segment} onChange={event => setSegment(event.target.value)}><option value="all">All segments</option>{segments.map(value => <option key={value} value={value}>{value}</option>)}</select>
-        <label className="sort-control">Sort by<select aria-label="Sort accounts" value={sortBy} onChange={event => { setSortBy(event.target.value as SortBy); setPage(0); }}><option value="risk">Highest selected-horizon risk</option><option value="exposure">Highest exposure proxy</option><option value="account">Account ID / name</option></select></label>
+        <label className="sort-control">Sort by<select aria-label="Sort accounts" value={sortBy} onChange={event => { setSortBy(event.target.value as SortBy); setPage(0); }}><option value="risk">Highest selected-horizon risk</option><option value="exposure">Highest exposure proxy</option><option value="account">Account ID</option></select></label>
         <button type="button" className="btn outline" onClick={clearFilters}>Clear filters</button>
       </div>
       {visible.length ? <div className="tablewrap"><table className="prediction-account-table"><thead><tr><th>Customer</th><th>p7</th><th>p14</th><th>p30 + 30-day band</th><th>Reliability</th><th>Exposure / MRR</th><th>Case / route</th></tr></thead><tbody>{visible.map(account => <ForecastRow key={account.customer_id} account={account} navigate={navigate} />)}</tbody></table></div> : <p className="empty-trend">No forecast accounts match these filters. Try clearing one or more filters. Missing probabilities remain N/A.</p>}

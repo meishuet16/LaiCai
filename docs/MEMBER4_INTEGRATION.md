@@ -1,79 +1,46 @@
-# Member 4 integration plan
+# Member 4 frontend integration boundary
 
-## Scope
+## Confirmed implementation state
 
-This repository is being used as the dashboard and integration shell for RetainIQ. The frontend is intentionally honest about the current status: it demonstrates the risk-review workflow and dashboard layout using clearly labeled mock data while the prediction and decision modules are treated as integration boundaries rather than fabricated results.
+The five-page React frontend has two explicit modes:
 
-## Current architecture
+- `connected` is the default and fails visibly to `Not connected` / `Unavailable`; it never falls back to fixture records.
+- `demo_fixture` is selected explicitly and globally labeled `DEMO FIXTURE — SAMPLE DATA`. It contains isolated illustrative accounts, predictions, cases, and timeline events. Those records are not Synthetic SaaS v1.2 source rows, trained predictions, durable decisions, or observed retention outcomes.
 
-1. Dataset ingestion layer
-   - Handles CSV validation, schema checks, and normalized customer records.
-   - Produces consistent error responses for missing columns and malformed values.
+The domain uses backend-supported currency codes, stores money in integer minor units, formats according to the code's minor-unit exponent, and groups amounts by currency. It does not convert or add MYR, USD, SGD, or other currencies together. Canonical event types are defined in `src/domain/integration.ts`; `subscription_started` is not used as a canonical event.
 
-2. Feature-builder boundary
-   - Accepts normalized customer data and emits point-in-time features.
-   - This boundary should reject late-arriving data after `as_of` and preserve `tenant_id`/customer identity.
+The frontend does not select a tenant or historical cutoff by default. It cannot authorize a tenant based on URL or browser state. Fixture account and prediction tenant/cutoff metadata remain absent when not supplied.
 
-3. Prediction boundary
-   - Receives feature snapshots and emits `prediction_id`, `status`, `p_churn_7d`, `p_churn_14d`, and `p_churn_30d` with reliability and freshness metadata.
-   - The frontend must not imply certainty unless the model actually provides scored values.
+## Backend routes confirmed in this checkout
 
-4. Decision boundary
-   - Consumes predictions and produces route decisions such as `PRIORITY_REVIEW`, `HUMAN_REVIEW`, or `OBSERVE`.
-   - ROI values stay scenario-based and must be labeled as assumption-only.
+The active Python API currently provides:
 
-5. Dashboard boundary
-   - Presents summary metrics, high-risk customer counts, risk distribution, and customer-level detail cards.
-   - Surfaces blocked or unavailable states instead of inventing metrics.
+| Route | Current purpose | Frontend status |
+|---|---|---|
+| `POST /v1/ingest/events` | Authorized event ingestion | Not called by this read-oriented UI |
+| `GET /v1/integrations` | Integration health for an authorized integration principal | Not connected; no browser-safe auth adapter |
+| `GET /v1/admin/integrations` | Admin/operator integration health | Not connected; requires privileged service authorization |
 
-## Run locally
+These health responses do not supply the customer/business read models required by the five pages. No active HTTP routes were found for customer/subscription/MRR queries, prediction records/evaluation, decision cases/capacity/approval, customer timelines, or mature feedback/model governance. The frontend does not infer endpoints from Python service helpers or from unmerged branches.
+
+## Minimum backend work needed for full integration
+
+All future reads and writes need an authenticated browser-safe boundary (for example, an approved same-origin BFF), with the server deriving and enforcing tenant access. Required contracts include:
+
+1. **Business/data:** tenant-scoped customer, subscription state, dated MRR and currency, source health, event counts, coverage, quality alerts, and authorized as-of context. Pagination and server-side aggregation are needed for the FULL dataset.
+2. **Prediction:** persisted prediction IDs and run IDs, p7/p14/p30/status, reliability/freshness, policy risk bands if defined, feature evidence/explanations when available, model version, historical issued scores, and measured evaluation artifacts with provenance/sample sizes.
+3. **Decisions:** cases/routes/proposals, backend rank, capacity/budget/staff limits, and transactional approve/modify/reject/no-intervention, assignment, execution, and audit APIs. Writes must return confirmed authoritative records; frontend state cannot enforce concurrency or budget limits.
+4. **Customer learning:** tenant-scoped chronological source events with occurred and available/ingested times, immutable provenance, point-in-time features, linked prediction and case IDs, action follow-up, mature feedback states, and model-governance/evaluation records where implemented.
+
+Every response should expose the tenant and dataset identity/provenance, selected historical cutoff, relevant generation/import/availability timestamps as separate fields, and pagination metadata. Historical queries must exclude records not available by the requested cutoff. Missing coverage must not be interpreted as zero activity.
+
+## Local run and verification
 
 ```bash
 npm install
-npm run dev -- --host 0.0.0.0
+npm run dev
 ```
 
-Then open the local Vite URL shown in the terminal.
+`package.json` currently provides `dev`, `build`, and `preview`; there are no configured npm lint, typecheck, or test scripts. Node's built-in test runner can execute the TypeScript tests with `node --experimental-strip-types --test ...`.
 
-## Mock mode behavior
-
-The current frontend uses fixture data instead of a live backend. That is intentional and clearly labeled as:
-
-- `synthetic` for demo-friendly generated records
-- `assumption` where business ROI or inactive states are not backed by source data
-
-The frontend must never present mock outputs as real model results.
-
-## Example data contract
-
-```json
-{
-  "customerId": "CUST-2041",
-  "company": "Northwind Labs",
-  "segment": "Mid-market SaaS",
-  "risk": 0.81,
-  "score": 81,
-  "route": "PRIORITY_REVIEW",
-  "status": "scored",
-  "mrr": 18200,
-  "reliability": "sufficient_evidence",
-  "freshness": "fresh",
-  "action": "ACCOUNT_CHECK_IN",
-  "evidence": "synthetic"
-}
-```
-
-## Known limitations
-
-- No backend API is registered yet.
-- No production model or decision engine is connected.
-- Data is fixture-level only for UI validation and demo flow.
-- The dashboard is intentionally a thin integration front-end and will need actual module contracts before production use.
-
-## Next implementation steps
-
-1. Add a CSV upload form and validation logic.
-2. Add a lightweight API layer with mocked module adapters.
-3. Wire summary cards to actual normalized data.
-4. Add customer filters and detail panels.
-5. Replace mock data with the real integration contract once the prediction/decision modules are connected.
+Do not claim live integration, predictive performance, saved revenue, causal action effect, or measured ROI until the corresponding authenticated backend contracts and evidence are implemented and verified.

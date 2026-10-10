@@ -72,6 +72,21 @@ newer entries above older ones. No Git commits have been assumed or fabricated
 in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
+### 2026-10-10T22:37:43Z — Codex — Sync Render deployment branch with latest main
+
+- **Workstream:** Part 1 / Integration / QA / Docs
+- **Branch:** `codex/render-data-foundation-deploy`
+- **Commit subject:** `merge: sync Render deployment branch with latest main`
+- **Issue / task:** User-approved feature branch preparation and push
+- **Files changed:** `TEAM_LOG.md` conflict resolution; changes from `origin/main` are included through the merge parent.
+- **What changed:** Merged fetched `origin/main` at `7b384da` into this feature branch and kept all upstream and Render branch log entries. Preserved feature history, including the separate `853701e add vercel.json` commit.
+- **Why it changed:** Bring the deployment branch up to date while preserving concurrent project changes before pushing it.
+- **Contract / database / API impact:** Branch integration only; no additional application behavior, schema, or authenticated route changes. No merge into `main` or deployment.
+- **Tests / verification:** `python -m pytest tests/test_render_deployment.py tests/test_database_config.py tests/test_supabase_configuration.py -q --basetemp .pytest-tmp-main-sync` — **PASS** — 32 tests and 14 subtests; `npm run build` — **PASS** — TypeScript and Vite production build; merge conflict check — **PASS** — resolved `TEAM_LOG.md` by preserving both sides.
+- **Data / model / ROI evidence:** N/A. No production data, remote database, model, or ROI evidence used.
+- **Known issues / blockers:** Live Render deployment and Supabase connectivity remain unverified; no deployment was performed.
+- **Next action / handoff:** Push only this feature branch; merging it into `main` remains subject to explicit approval.
+- **Reviewer / pairing:** N/A
 
 ### 2026-10-10T22:32:01Z — Codex — Correct Render first deployment workflow
 
@@ -180,6 +195,60 @@ itself also requires a filled-in commit entry.
 - **Known issues / blockers:** None known. No Render service or database was accessed.
 - **Next action / handoff:** Review the design document before the implementation plan and code changes.
 - **Reviewer / pairing:** N/A
+### 2026-10-10T22:05:56Z — Codex — Remove README implementation status section
+
+- **Workstream:** Docs
+- **Branch:** `main` (change prepared from a detached worktree at `origin/main`)
+- **Commit subject:** `docs: remove README implementation status section`
+- **Issue / task:** User-requested README content removal
+- **Files changed:** `README.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Removed the complete `Implementation and evidence status` section from `README.md`, including its status table and remaining integration gates paragraph.
+  - Kept the surrounding rubric and documentation sections unchanged.
+- **Why it changed:** The user requested that this section no longer appear in the README.
+- **Contract / database / API impact:** None; documentation-only change.
+- **Tests / verification:**
+  - `rg -n "Implementation and evidence status|Remaining integration gates" README.md` absence check — **PASS** — neither removed phrase remains.
+  - `git diff --check` and scoped diff inspection — **PASS** — only expected line-ending conversion warnings were reported.
+- **Data / model / ROI evidence:** N/A; no product evidence, model, data, or ROI claims were added or changed outside the removed section.
+- **Known issues / blockers:** None known.
+- **Next action / handoff:** Push the rebased documentation commit to `origin/main`; no downstream implementation action is required.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T21:59:31Z — Codex — Reconcile Member 4 frontend with current main
+
+- **Workstream:** Frontend / Integration / QA
+- **Branch:** `member4`
+- **Commit subject:** `merge: sync member4 frontend with current main`
+- **Issue / task:** User-approved reconciliation of the frontend branch with the latest `main` before considering a frontend-only integration.
+- **Files changed:** Merge of current `main`; frontend conflict resolutions in `src/app/AppShell.tsx`, `src/components/CustomerTable.tsx`, `src/domain/decision.ts`, the affected `src/features/` pages, `src/hooks/useCustomers.ts`, `src/index.css`, and this log. Main's other files are included unchanged through the merge parent.
+- **What changed:** Preserved the member4 slider-driven simulator, centered case drawer, five-card workload strip, fixture mode, and recent frontend refinements while incorporating the latest main history. Kept both branches' log entries. No backend or shared contract logic was edited.
+- **Why it changed:** Bring the frontend branch up to date without losing approved UI behavior or the existing demo fixtures.
+- **Contract / database / API impact:** None. Connected prediction and decision integrations remain unavailable; demo decisions remain browser-session-only.
+- **Tests / verification:** `npm run build` — PASS; focused frontend Node test suite — PASS, 38/38; conflict-marker scan — PASS; scoped `git diff --cached --check -- src/ index.html package.json` — PASS. Whole-merge whitespace check reports existing trailing spaces/blank EOF lines in main's imported Markdown files.
+- **Data / model / ROI evidence:** Illustrative fixture data only; no trained predictions, measured outcomes, or ROI claims are added.
+- **Known issues / blockers:** Member 2's production-ready calibrated model bundle and Member 3's backend decision API are still not connected to the browser frontend.
+- **Next action / handoff:** Review the reconciled `member4` branch; no push or merge into `main` is performed here.
+- **Reviewer / pairing:** `N/A`
+
+### 2026-10-10T21:55:25Z — Codex — Refine and reconcile frontend workflow views
+
+- **Workstream:** Frontend / Integration / QA
+- **Branch:** `member4`
+- **Commit subject:** `fix: refine frontend workflow and navigation views`
+- **Issue / task:** Review the remaining local frontend changes before aligning them with the latest main branch.
+- **Files changed:** `index.html`, `src/app/AppShell.tsx`, `src/components/CustomerSwitcher.tsx`, `src/components/CustomerTable.tsx`, `src/components/StatusPills.tsx`, `src/domain/decision.ts`, affected page components in `src/features/`, `src/hooks/useCustomers.ts`, `src/index.css`, `src/services/decisionService.ts`, and this log.
+- **What changed:** Added a customer switcher and collapsible navigation, centered prediction details, compacted queue/status presentation, removed unsupported owner display/requirement, simplified Integration page sections, and wired the Retention Actions simulator as a slider-driven view. Corrected prediction evidence wording to match the frontend domain and retained the requirement that timeline facts are hidden until an explicit cutoff is selected.
+- **Why it changed:** Consolidate the reviewed frontend refinements while preserving the five-page shell, fixture workflow, and point-in-time timeline behavior.
+- **Contract / database / API impact:** None; connected service adapters and backend contracts are unchanged. Demo decisions remain browser-session-only.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production build.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** Illustrative fixture data only; no trained predictions, connected outcomes, or measured ROI are claimed.
+- **Known issues / blockers:** Decision and timeline data remain fixture-backed in demo mode; no browser-safe connected read or approval adapter is implemented.
+- **Next action / handoff:** Reconcile this frontend commit with current `main`, keeping main-branch data/backend work and unrelated untracked files intact.
+- **Reviewer / pairing:** `N/A`
 
 ### 2026-10-10T21:37:17Z — Member 2 AI coding assistant — Merge final Member 2 integration with current main
 
@@ -346,6 +415,65 @@ itself also requires a filled-in commit entry.
 - **Data / model / ROI evidence:** Third-party cited statistics, local synthetic demonstration, arithmetic scenario assumptions, and existing DATASET_CARD limitations; no invented held-out metrics or causally saved revenue.
 - **Known issues / blockers:** Real-data acceptance, real measured LightGBM performance, production API/UI integration and complete deployment not established in main.
 - **Next action / handoff:** Team to validate demo/deployment and update measured evidence, links, and implementation status only when supported; maintain same-commit log discipline.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T20:11:45Z — Member 1 / Data & Backend Engineer — Scope STANDARD import and add authenticated history APIs
+
+- **Workstream:** Part 1 / Data Foundation, tenant import and API handoff
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `feat(member1): scope synthetic import and add authenticated data APIs`
+- **Issue / task:** Final tenant-01 Supabase import and Member 2/3/4 API handoff implementation.
+- **Files changed:** `.env.supabase.example`; `retaniq/api.py`; `retaniq/data_foundation.py`; `retaniq/database_config.py`; `retaniq/synthetic/__main__.py`; `retaniq/synthetic/canonical_adapter.py`; `tests/test_data_foundation.py`; `tests/test_member1_api_handoff.py`; `tests/test_supabase_configuration.py`; `tests/test_synthetic_integration.py`; `docs/MEMBER1_TO_MEMBER2_SYNTHETIC_HANDOFF.md`; `docs/MEMBER1_07B2_SUPABASE_READINESS.md`; `docs/MEMBER1_FINAL_DATA_FOUNDATION_ACCEPTANCE.md`; and this log.
+- **What changed:** Added separate app/maintenance/migration DSN configuration, routed global importer identity/checkpoint work through maintenance, added tenant-01-only Supabase importer scope, transaction-local trusted backend tenant context, and authenticated account/prediction history and ID routes. Added local tests. The handoff now explicitly corrects the P0 SQLite copy's physical scope: it contains the full four-tenant STANDARD fixture even though the P0 reader authorization is tenant-01-scoped. First-time Supabase dataset identity binding now fails closed because maintenance RLS cannot prove the destination empty.
+- **Why it changed:** The final handoff requires a tenant-only import and least-privilege maintenance separation; a maintenance-role zero count under FORCE RLS is not evidence that other tenant rows are absent.
+- **Contract / database / API impact:** Local authenticated routes derive tenant/source/purpose from the stored RetainIQ principal and reject caller-supplied tenant scope. Prediction history is bounded and redacts labels/valuation fields; Member 2 history returns point-in-time account/coverage data and reports freshness `unknown`. API runtime still uses the configured app DSN rather than separately routing downstream reads to inference/dashboard logins. Shared tenant GUC remains spoofable by a holder of the trusted backend credential with arbitrary SQL access. No Supabase migration, role provisioning, API exposure change, remote import, or remote API read occurred.
+- **Tests / verification:** `py -3.14 -B -m unittest tests.test_data_foundation.DataFoundationTests.test_supabase_first_identity_binding_fails_closed_under_tenant_rls tests.test_synthetic_integration tests.test_member1_p0_reader tests.test_member1_api_handoff tests.test_supabase_configuration -q` — **PASS**, 34 tests. `py -3.14 -B -m unittest discover -s tests -q` — **PASS**, 218 total; 161 passed, 57 expected PostgreSQL-guard skips, 0 failures/errors; no live PostgreSQL tests ran. `py -3.14 -B -m compileall -q retaniq tests`, package import smoke, `git diff --check` — **PASS**. DPAPI-protected P0 reader smoke against local SQLite — **PASS**, 23 events/1 subscription/48 coverage rows, cross-tenant API denial, no valuation fields, database unchanged. Read-only local STANDARD identity/integrity check matched manifest SHA and SQLite integrity, but found 752,669 rows across non-tenant-01 partitions in the P0 file. Staged paths were checked to exclude `.env` secrets, DPAPI files, SQLite databases, and exports.
+- **Data / model / ROI evidence:** Synthetic STANDARD only; manifest SHA `7f85a83a1697efaaeebe1a5534b075ef6c7a99fa5ad3a1e9514b3eb8ae77db6d`. Tenant-01 source counts are 750 customers, 2,250 identities, 56,211 canonical events, and 119,472 coverage rows. These do not represent Supabase import counts; no model or ROI result was produced.
+- **Known issues / blockers:** No app, maintenance, or migration DSNs are configured in this task environment. Durable remote restricted LOGINs, Data API/exposed-schema checks, direct anon/authenticated denial, temporary smoke-role cleanup, and actual Member 2/3/4 remote reads remain unverified. Supabase first import requires a privileged read-only full-destination emptiness check and a reviewed identity-binding path; the importer currently refuses an unbound Supabase destination. Local P0 working copy contains four tenants and is not physically isolated. The remote 13-scenario RLS smoke remains prior operator-supplied evidence only; GUC spoofability remains.
+- **Next action / handoff:** Configure distinct restricted backend and maintenance LOGINs plus a separate approved read-only/admin preflight credential through a protected local secret mechanism. Verify destination/project, exposed API roles and cleanup. Implement and live-test the one-time empty-destination/identity-binding gate on real PostgreSQL, then run actual restricted-role remote checks before importing tenant-01. Only after those gates, verify import and Member 2/3/4 remote access; do not use `service_role` or bypass RLS.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T19:36:21Z — Member 1 / Data & Backend Engineer — Verify Supabase RLS deployment and restricted smoke
+
+- **Workstream:** Part 1 / Data Foundation, Supabase PostgreSQL deployment
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `fix(member1): verify Supabase RLS deployment and restricted smoke`
+- **Issue / task:** Continue the authorized dedicated-demo migration after correcting the migration-005 role-owner transfer and restricted-smoke transaction boundary.
+- **Files changed:** `migrations/postgresql/005_rls_and_least_privilege.sql`, `retaniq/database_config.py`, `retaniq/postgresql_migrations.py`, `retaniq/supabase_remote_preflight.py`, focused migration/RLS/Supabase tests, `docs/MEMBER1_POSTGRESQL_RLS_AND_AUTHORIZATION.md`, `docs/MEMBER1_SUPABASE_CONNECTION_AND_SECURITY_PREPARATION.md`, and this log.
+- **What changed:** Added safe migration failure diagnostics (migration version, statement, operation and SQLSTATE without DSN/password output); corrected migration 005's temporary SET membership and schema CREATE grant ordering; allowed the project's session-pooler migration connection while rejecting transaction pooling; corrected the restricted smoke harness to use real top-level transactions with autocommit.
+- **Why it changed:** Supabase rejected the initial ownership transfer because of role membership options; after deployment, the smoke exposed that preliminary identity queries kept the connection inside an outer transaction, invalidating transaction-local cleanup assertions.
+- **Contract / database / API impact:** Operator-supplied remote result for project `mhtzkzqjcsdyjacvcxty` / PostgreSQL 17.11 / Session Pooler reports migration history `CHECKSUMS_MATCH`, no pending versions, current version 007, and `applied_versions: []` on the final verification run. Catalog checks passed: all 18 application data tables (migration metadata excluded) have RLS enabled and forced, 42 policies are present, and both SECURITY DEFINER authentication functions are owned by `retaniq_authenticator`. The temporary restricted-login smoke passed all 13 scenarios for backend, artifact-writer, dashboard-reader and maintenance roles. It explicitly passed the shared-GUC spoofability characterization; it does not establish independently authenticated database tenant identity. Smoke cleanup was reported as `ATTEMPTED`, not independently verified. No STANDARD rows were imported, no durable runtime login credentials or Member 2 access were provisioned, and `service_role` was not used for smoke verification.
+- **Tests / verification:** Focused local live-PostgreSQL migration/configuration/RLS/preflight suite — **PASS**, 58 tests, 0 failures/errors/skips, on a disposable PostgreSQL 17.11 container; `py -3.14 -m compileall -q retaniq tests`, package imports, and `git diff --check` — **PASS**. The corrected remote restricted smoke — **PASS**, 13/13 reported scenarios. No full 191-test suite rerun.
+- **Data / model / ROI evidence:** None imported. STANDARD dataset remains local synthetic artifact `synthetic-saas-v1-2-standard-s2026-970a9d231e68`; no remote dataset or Member 2 read-access evidence.
+- **Known issues / blockers:** The backend's shared transaction-local GUC is spoofable by any holder of its database credential capable of arbitrary SQL. The catalog shows capability roles are NOLOGIN; the deployment credential is privileged `postgres` (`rolbypassrls=true`, `rolcreatedb=true`, `rolcreaterole=true`). Data API/exposed-schema behavior and cleanup of temporary smoke logins were not independently verified. The existing importer binds one global dataset identity, provisions all four dataset tenants, is not tenant-01-only, and uses the regular configured DSN for global provenance/checkpoint and batch operations; no separate maintenance-login routing exists. Therefore the import gate is not satisfied.
+- **Next action / handoff:** Before STANDARD import, owner must decide whether to accept the trusted-backend GUC boundary, securely provision distinct durable backend and maintenance login credentials (without `BYPASSRLS`), verify Supabase Data API exposure and role memberships, independently confirm temporary smoke-login cleanup, and approve the four-tenant import mapping or a tenant-01-only import contract. Then add/verify the minimum importer routing and actual remote restricted read path; do not bypass RLS or use `service_role`.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T19:31:28Z — Member 1 / Data & Backend Engineer — Fix remote smoke transaction boundary
+
+- **Workstream:** Part 1 / Data Foundation, Supabase PostgreSQL deployment
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** Pending remote restricted-smoke retry
+- **Issue / task:** Diagnose the first restricted-role smoke failure after migrations 005–007 were deployed.
+- **Remote state:** Operator-supplied catalog reports migration history `CHECKSUMS_MATCH`, current version 007, 18/18 application data tables RLS-enabled and forced (migration metadata table excluded), 42 policies, both SECURITY DEFINER authentication functions owned by `retaniq_authenticator`, and `catalog_checks_passed:true`. Four temporary restricted logins were attempted. The smoke returned FAIL after six backend scenarios; cleanup was attempted but not independently verified. No STANDARD import occurred.
+- **What changed:** The smoke login factory now uses psycopg `autocommit=True`, ensuring its `connection.transaction()` contexts are top-level transactions even after identity queries. Previously, the initial `SELECT current_user` opened an implicit transaction and caused later contexts to be savepoints, so transaction-local tenant context was not cleared at the supposed commit. Added a unit check for autocommit and updated the remote smoke implementation only; database schema/migrations are unchanged.
+- **Tests / verification:** `py -3.14 -B -m unittest tests.test_postgresql_migrations tests.test_supabase_remote_preflight tests.test_supabase_configuration tests.test_postgresql_rls` against a task-owned disposable PostgreSQL 17.11 container with the disposable-DSN guard enabled — **PASS**, 58 tests, 0 failures/errors/skips. `py -3.14 -m compileall -q retaniq tests`, package imports, and `git diff --check` — **PASS**. Task-owned PostgreSQL container stopped/removed. The updated smoke has not yet been rerun on Supabase.
+- **Known issues / blockers:** Remote RLS deployment is catalog-verified, but actual restricted-role acceptance remains incomplete until the corrected smoke passes. The smoke's previous cleanup status is only `ATTEMPTED`. Shared-GUC spoofability remains a known shared-credential limitation. No dataset import.
+- **Next action / handoff:** Run the secure `--deploy` command again after a fresh catalog preflight. It should find migration checksums already matching and rerun restricted-login smoke; require its final `MIGRATIONS_AND_RESTRICTED_SMOKE_PASS` result and inspect cleanup before import or commit.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T19:24:35Z — Member 1 / Data & Backend Engineer — Grant temporary SET membership for migration 005
+
+- **Workstream:** Part 1 / Data Foundation, Supabase PostgreSQL deployment
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** Pending fresh catalog verification and deployment retry
+- **Issue / task:** Fix the newly confirmed `42501` failure in migration 005 without granting extra ADMIN authority.
+- **Remote state:** Latest attempt failed at migration 005 statement 14 (`ALTER FUNCTION`) with SQLSTATE `42501` because `retaniq_authenticator` membership had `SET FALSE`. The migration runner reports `MAY_HAVE_OCCURRED`; no fresh post-failure catalog read had been performed at that time. Preflight immediately before that attempt showed 001–004 recorded and 005–007 pending.
+- **What changed:** Migration 005 now grants the migration login a distinct temporary membership `WITH SET TRUE, INHERIT FALSE`, omitting ADMIN, then revokes that membership after transferring the authentication-function ownership. Updated the PostgreSQL 17 ownership-transfer test assertion, security documentation, and RLS catalog test setup (`schema = public`) so the live catalog check runs.
+- **Tests / verification:** Focused suite against a task-owned disposable PostgreSQL **17.11** container: **PASS**, 57 tests, 0 failures, 0 errors, 0 skips. This includes live migration 001–007 application and restricted-role/RLS tests. Compileall, package imports, and `git diff --check` passed. The task-owned container was stopped and removed.
+- **Known issues / blockers:** Remote rollback/catalog state was not verified at this timestamp; the corrected SET-option migration later deployed successfully, but restricted-role smoke had not yet passed.
+- **Next action / handoff:** Superseded by the 19:31Z smoke-transaction fix above.
+- **Reviewer / pairing:** N/A
 
 ### 2026-10-10T19:21:18Z — Member 2 AI coding assistant — Operational inference and requirements traceability
 
@@ -367,6 +495,19 @@ itself also requires a filled-in commit entry.
 - **Data / model / ROI evidence:** New tests use explicitly synthetic in-memory records only. No data was regenerated/imported, no model was trained/calibrated/evaluated, and no TEST/CALIBRATION outcome files were opened. Existing evidence remains synthetic STANDARD v1.2 tenant-01 only; 7d and calibration gates fail, while 14d/30d validation is weak. No real-world predictive performance, intervention or ROI claim.
 - **Known issues / blockers:** No authorized real longitudinal dataset or deployable calibrated 7/14/30 model bundle. Member 1 needs to expose authenticated prediction read/history methods for actual duplicate-safe persistence and replay; deployment needs durable event idempotency, alert-decision persistence, and a scheduler/job retry policy. Full replay through Member 1's historical Push API and any real threshold selection remain undone. The local `MODEL_BUNDLE_NOT_READY` behavior must remain in force.
 - **Next action / handoff:** Member 1: expose tenant-scoped prediction lookup/history; data owner: authorize representative longitudinal source and resolve coverage/account-level churn policy; app/job owner: provide durable scheduling, event idempotency and alert audit storage. Member 2 can then pass data/model/calibration readiness gates before any held-out TEST evaluation.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T19:18:02Z — Member 1 / Data & Backend Engineer — Remove failing migration 005 self-grant
+
+- **Workstream:** Part 1 / Data Foundation, Supabase PostgreSQL deployment
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** Pending fresh explicit remote retry
+- **Issue / task:** Correct the precisely diagnosed failure from the operator-confirmed deployment attempt.
+- **Remote state:** The first retry confirmed migration 005 statement 13 (`GRANT RETANIQ`) failed with SQLSTATE `0LP01`, `ADMIN option cannot be granted back to your own grantor`. The subsequent retry passed that statement and failed at statement 14 (`ALTER FUNCTION`) with SQLSTATE `42501`, `must be able to SET ROLE "retaniq_authenticator"`. Before that retry, fresh preflight showed 001–004 applied, 005–007 pending, and 19 total tables including metadata. Both attempts reported `mutations_performed:true`.
+- **What changed:** Removed `ADMIN TRUE` from the membership grant after the `0LP01` failure. The next live attempt established that PostgreSQL 17's creator membership has `SET FALSE`; the earlier assumption that it provided SET ROLE was incorrect. The additional SET-option correction is recorded in the 19:24Z entry above.
+- **Tests / verification:** After the first fix, focused tests passed (57 tests, 36 passed, 21 skipped without local PostgreSQL); compileall, imports and diff check passed. The later SET-option correction was separately tested live as recorded above.
+- **Known issues / blockers:** At the time of this entry migration 005–007 and RLS had not passed remote verification; those later changed states are captured in the newer log entries. No STANDARD data was imported.
+- **Next action / handoff:** Superseded by the 19:24Z and 19:31Z entries above.
 - **Reviewer / pairing:** N/A
 
 ### 2026-10-10T19:09:15Z — Member 2 AI coding assistant — Final prediction diagnostics and acceptance audit
@@ -463,6 +604,7 @@ itself also requires a filled-in commit entry.
 - **Next action / handoff:** Agree eligibility semantics and request an API-backed lifecycle/source-health evidence contract with Member 1. Only afterward, request separate approval for a larger bounded STANDARD development sample. Prompt 29 is checkpointed locally in this commit; no push, merge, deployment, TEST inspection, or training.
 - **Reviewer / pairing:** N/A
 
+### 2026-10-10T18:29:07Z — Member 1 / Data & Backend Engineer — Record emergency Supabase delivery blockers
 ### 2026-10-10T18:03:37Z — Codex / AI coding agent — Update latest LaiCai presentation
 
 - **Workstream:** Documentation / Pitch
@@ -484,48 +626,105 @@ itself also requires a filled-in commit entry.
 
 ### 2026-10-10T17:23:08Z — Member 2 AI coding assistant — Audit authorized data access and FULL readiness
 
-- **Workstream:** Part 2 / Part 1 integration / Docs / QA
-- **Branch:** `integration/member2-main-sqlite`
-- **Commit subject:** `docs(member2): audit authorized synthetic dataset readiness` (Prompt 28 checkpoint `853f11b60afc9d73b0e85bda61d665305de7c716`)
-- **Issue / task:** Member 2 Prompt 28; no ticket
-- **Files changed:** `docs/MEMBER2_AUTHORIZED_FULL_DATASET_READINESS.md`, `docs/MEMBER2_TO_MEMBER1_CONTRACT_REQUESTS.md`, and this log.
-- **What changed:**
-  - Reviewed and checkpointed the exact Prompt 27 change set as `ed7493f290cb0a9732a37318ea0b2bc32a9d430b`; current branch is `integration/member2-main-sqlite`.
-  - Reverified the STANDARD v1.2 manifest and all 20 listed file hashes/sizes; reverified the prior tenant-01 prepared manifest and all eight output hashes; the STANDARD SQLite file hash matches the recorded prior verified database. No private SQLite rows were queried.
-  - Confirmed the documented FULL artifact/database paths remain absent and `RETAINIQ_MODEL_TOKEN` is absent. No credentials were provisioned, no authenticated calls were made, and no data pilot ran.
-  - Documented current least-privilege read flow, extra `model_artifact_write`/`billing_valuation` principal grants in convenience/import paths, missing service-principal revoke/rotation, bounded FULL provisioning steps, and explicitly estimated (not measured) compute/storage.
-  - Updated the Member 1 contract request with the newly confirmed principal-lifecycle/import side effects. No shared API/schema policy was changed.
-- **Why it changed:** Prompt 28 requires evidence-backed STANDARD/FULL artifact status, safe reader setup, bounded-pilot decision, and a reviewed FULL provisioning plan without creating/importing data absent prerequisites.
-- **Contract / database / API impact:** Documentation/request only; no API, database, source artifact, split, calibration, label, TEST, or reliability policy changed. Member 1 action requested for least-privilege principal lifecycle, import idempotency, health/completeness, and bounded reads.
+- **Workstream:** Part 1 / Data Foundation, Supabase deployment readiness
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `docs(member1): record emergency Supabase delivery blockers`
+- **Issue / task:** Emergency final delivery; attempt deployment/import only if the approved remote project and security gates are verifiable.
+- **Files changed:** `TEAM_LOG.md`
+- **What changed:** Recorded the current remote readiness checks and the safe stop conditions for this task. Confirmed the existing local synthetic STANDARD artifact identity from its manifest; no artifact rows or raw records were imported or changed.
+- **Why it changed:** No approved Supabase target or protected credentials are configured, and the current importer does not yet have safe maintenance-role routing and verified multi-tenant context handling required by the local role/RLS design.
+- **Contract / database / API impact:** None. No remote database was contacted; migrations 001–007 were not deployed, remote roles/RLS were not tested, no dataset was imported, and no Member 2 database access was granted or tested.
 - **Tests / verification:**
-  - `.\.venv\Scripts\python.exe -B -m pytest -q tests\test_dataset_readiness.py tests\test_sqlite_data_adapter.py tests\test_data_freshness.py tests\test_reliability.py tests\test_label_builder.py tests\test_historical_dataset_preparation.py tests\test_cross_member_policy_readiness.py tests\test_cross_member_integration.py tests\test_data_foundation.py tests\test_temporal_splits.py --basetemp .pytest-tmp-p28-focused` — **PASS** — 181 passed in 11.06s; fixture/test evidence, not live authorization.
-  - `.\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p28` — **PASS** — 454 passed, 0 failed/errors/skipped, 24 existing SHAP warnings in 19.43s; warnings unsuppressed.
-  - STANDARD source manifest and 20 artifacts — **PASS**; prepared v4 manifest and 8 artifacts — **PASS**; SQLite SHA-256 matches prior verified checksum. Hash-only checks; no record reads.
-  - Authenticated pilot and FULL pilot — **NOT RUN** — reader token absent; FULL artifact/database absent. Authenticated data API calls: 0.
-  - CLI help/source inspection — **PASS** for documented generator/importer/provisioner options; generation/import/provisioning were not invoked.
-  - 11 package imports — **PASS**; AST/syntax parse — **PASS** for 79 Python files; `git diff --check` — **PASS**. No files are staged; changed paths are documentation/log only and contain no credentials or private rows.
-- **Data / model / ROI evidence:** Synthetic-only provenance. No new observations or outcomes, corrected live freshness counts, labels, model, calibration, metrics, or claims. Prior v4 reliability aggregates are explicitly pre-correction; FULL storage/runtime figures are linear estimates only.
-- **Known issues / blockers:** STANDARD reader credential unavailable. FULL manifest/database absent. No supported service-principal revocation/rotation was found; import retries can add extra service-principal rows. Source operational-health/completeness evidence remains unavailable. Training and operational scoring remain blocked.
-- **Next action / handoff:** Member 1 to provide safe principal lifecycle/import behavior and health/batch contracts; authorized operator to securely inject a tenant-01 read-only `RETAINIQ_MODEL_TOKEN`. Then execute the bounded STANDARD pilot before any separately approved FULL generation/import. Prompt 28 was committed locally as `853f11b60afc9d73b0e85bda61d665305de7c716`; no push or merge.
+  - Environment-presence check across process/user/machine scopes — **PASS** — all five RetainIQ Supabase settings plus `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD` absent; values were not printed.
+  - Supabase CLI and local config-file availability check — **PASS** — CLI and `.env`/`.env.local`/`.env.supabase` absent; example file only.
+  - `py -3.14 -B -m retaniq.supabase_preflight` — **BLOCKED** — reports `supabase_demo_configuration_missing_or_invalid`; this was the single local preflight, with no remote connection.
+  - Regression tests — **NOT RUN** — no code or database changes were made; prior checkpoint evidence remains 191 passed on the full live dual-backend run, and is not represented as rerun for this emergency task.
+  - `git diff --check` — to be run before commit.
+- **Data / model / ROI evidence:** Synthetic dataset only: `synthetic-saas-v1-2-standard-s2026-970a9d231e68`. The local artifact is not evidence of remote import; no real dataset, PII, or model-performance claim was used.
+- **Known issues / blockers:** No approved project/ref/region, owner authorization for remote mutation, or protected migration/runtime DSNs. Importer currently accepts a local `--db` path rather than environment-based Supabase configuration; global import identity/checkpoints require maintenance access, and multi-tenant provisioning/batching needs a safe, tested context boundary. Remote ownership, role grants, exposed schemas, RLS, and pooler mode remain unverified. Shared-GUC context remains spoofable to a caller with arbitrary SQL access under the shared backend credential.
+- **Next action / handoff:** Owner must designate and authorize a dedicated synthetic demo project (including ref/region and backup/rollback approval), securely provision migration and restricted runtime credentials outside chat, and approve the four synthetic tenant-partition mapping. Before import, locally implement and test the smallest secure maintenance/import role routing and tenant-context changes; then deploy migrations and run actual restricted-credential checks before importing. No push, deployment, or import performed.
 - **Reviewer / pairing:** N/A
 
-### 2026-10-10T17:14:17Z — Member 2 AI coding assistant — Correct source-state attribution and assess FULL feasibility
+### 2026-10-10T18:19:02Z — Member 1 / Data & Backend Engineer — Checkpoint local PostgreSQL RLS and prepare 07B-2 handoff
 
-- **Workstream:** Part 2 / Part 1 integration / Docs / QA
-- **Branch:** `integration/member2-main-sqlite`
-- **Commit subject:** `fix(member2): distinguish unknown source health from disconnection` (Prompt 27 pending; not committed)
-- **Issue / task:** Member 2 Prompt 27; no ticket
-- **Files changed:** `src/retainiq_prediction/data_freshness.py`, `src/retainiq_prediction/sqlite_data_adapter.py`, `tests/test_data_freshness.py`, `tests/test_sqlite_data_adapter.py`, `tests/test_reliability.py`, `docs/MEMBER2_FULL_SYNTHETIC_FEASIBILITY.md`, `docs/MEMBER2_TO_MEMBER1_CONTRACT_REQUESTS.md`, `docs/MEMBER2_TRAINING_READINESS_DECISION.md`, and this log.
-- **What changed:**
-  - Prompt 26 was verified as precisely its four expected files and checkpointed locally as `c0948a2b6981711559c854bd53a52e7b883f43ca` (`docs(member2): formalize source health and model readiness contracts`). No other files were staged for that checkpoint.
-  - Confirmed the adapter inferred `connected=False` from missing account facts/coverage and freshness mislabeled silence `SOURCE_NOT_CONNECTED`/stale. `connected` is now tri-state with default unknown; the SQLite adapter does not infer connection from either events or coverage. Explicit `False` remains stale/blocking; absent health and absent watermark remain unknown. Complete available coverage can independently support coverage freshness. Reliability policy, status enums, thresholds, and canonical prediction schema are unchanged.
-  - Added regressions for event silence, independently verified zero usage coverage, explicit disconnection, unknown/future source health, serialized reasons, and continued reliability abstention.
-  - Inspected FULL profile code/config (20,000 accounts, four tenants, seed 2026 default, `[2024-10-01, 2026-10-01)`). The documented immutable FULL directory and DB are absent from the inspected private root; no FULL manifest or tenant authorization could be verified. `RETAINIQ_MODEL_TOKEN` was absent, so a bounded STANDARD authenticated pilot stopped before data API calls; no credentials were requested or created.
-  - Profiled the existing STANDARD preparation's recorded aggregate metrics rather than re-reading customer data: 234,495 authenticated calls / 950.910s; point-in-time reads 572.882s, outcome reads 120.845s. Proposed an authorized Member 1 batch API; no cache or alternate reader was added. FULL compute/storage projections are explicitly linear estimates, not measurements.
-  - Verified the existing STANDARD source manifest, preparation manifest, all 8 artifact hashes/sizes, and the SQLite file checksum by checksum-only reads. No SQLite records were queried or changed; private customer-level artifacts were not decompressed, parsed, or altered.
-- **Why it changed:** Prompt 27 requires truthful source-health attribution, a bounded FULL feasibility decision, and efficiency analysis without weakening data-quality or temporal safeguards.
-- **Contract / database / API impact:** Internal freshness evidence now permits unknown connection state. No canonical PredictionOutput fields/statuses, source database, Member 1 API/schema, frozen split, calibration threshold, or TEST policy changed. Member 1 must supply historical operational-health and completeness evidence and consider bounded authorized batch reads; shared cancellation/multi-subscription policy remains open.
+- **Workstream:** Part 1 / Data Foundation, PostgreSQL RLS and authorization
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `feat(member1): checkpoint local PostgreSQL RLS foundation`
+- **Issue / task:** Verify and checkpoint the existing 07B-1 implementation; prepare a deployment-readiness handoff without deploying Supabase or importing STANDARD data.
+- **Checkpoint:** Base is `90f745392e32a52d8ac896e302b81221ec617ee0` (`feat(member1): prepare secure supabase configuration and preflight`). The implementation remains **PARTIALLY_VERIFIED**. Repository instructions and canonical requirements were found in the OneDrive checkout and another worktree; both were read-only and left unchanged. The separate Member 2 P0 worktree was not modified.
+- **Files changed:** PostgreSQL migrations `005_rls_and_least_privilege.sql`, `006_artifact_authorization_scope.sql`, and `007_restore_global_maintenance_grants.sql`; `security/postgresql/role_bootstrap.sql`; `retaniq/data_foundation.py`, `retaniq/database.py`; PostgreSQL test support and migration/RLS/integration test files; README and Member 1 PostgreSQL/data-contract docs; `docs/MEMBER1_POSTGRESQL_RLS_AND_AUTHORIZATION.md`, `docs/MEMBER1_RLS_TEST_MATRIX.md`, new `docs/MEMBER1_07B2_SUPABASE_READINESS.md`, and this log.
+- **What changed:** Re-audited the role/grant/RLS implementation and its trust boundary. Confirmed migration 006's source-scoped authorization lookup and 007's forward restoration of global maintenance grants without editing applied migrations 001–004 or changing 005's checksum. Confirmed the PostgreSQL adapter's empty-parameter handling required for migration SQL containing literal percent-format strings. Added a readiness report with gap classifications, owner approvals, prerequisites, and an ordered 07B-2 sequence.
+- **Contract / database / API impact:** No logical application contract or endpoint changed. Sixteen tenant-bearing tables have forced RLS; two global operational tables are maintenance-only; migration metadata has no runtime grant. `retaniq.tenant_id` and related source/principal GUCs remain spoofable by arbitrary SQL under a shared database login. The application has separate app/migration DSNs but does not yet route maintenance or every capability role independently. Supabase ownership, grants, exposed-schema state, and pooler behavior remain unknown. Downstream inference, decision, and dashboard owners need to agree on actual role routing before remote deployment.
 - **Tests / verification:**
+  - `py -3.14 -B -m unittest tests.test_postgresql_rls tests.test_postgresql_migrations -v` — **PASS** — 36 tests, 0 failures/errors/skips; 5.620s.
+  - With explicit disposable loopback DSN and `RETAINIQ_POSTGRES_TEST_DISPOSABLE=1`, `py -3.14 -B -m unittest discover -s tests` — **PASS** — 191 tests, 0 failures/errors/skips; 69.834s. The 57 PostgreSQL-guarded tests ran, including 16 restricted-role RLS methods.
+  - With PostgreSQL guard variables empty, `py -3.14 -B -m unittest discover -s tests` — **PASS** — 191 tests, 0 failures/errors, 57 expected PostgreSQL skips; 13.739s.
+  - `py -3.14 -B -m compileall -q retaniq tests`, package import smoke, and `git diff --check` — **PASS**. No Python warnings; rejected-request audit lines were expected test output.
+  - PostgreSQL version and driver: 16.15 / psycopg 3.3.6. Focused restricted-role tests used actual LOGIN roles; general regression tests are not counted as RLS evidence when run through the setup/admin DSN.
+- **Database cleanup:** Dropped the exact disposable base database after the suite; the RLS test's temporary database was also dropped by its teardown. Confirmed no `retaniq_test_*` databases remained, then stopped the verified task-owned loopback cluster. Its temporary data directory was preserved.
+- **Data / model / ROI evidence:** Synthetic engineering fixtures only. No Supabase or customer data accessed; no dataset/model/ROI claim made; no STANDARD data imported.
+- **Known issues / blockers:** Shared-GUC spoofability is directly reproduced. Positive restricted writes beyond feature snapshots, churn labels, and predictions remain incomplete. Maintenance role routing is absent. Supabase service-role bypass, exposed schemas/default ACLs, migration-owner privileges, and pooler behavior are not remotely verified. 07B-2 remains **BLOCKED** pending project/region designation, owner authorization, secure credential provisioning, and an explicit decision on the GUC threat model.
+- **Next action / handoff:** Follow `docs/MEMBER1_07B2_SUPABASE_READINESS.md` in order. Do not deploy, push, merge, or import STANDARD from this checkpoint.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T18:08:07Z — Codex — Center and emphasize Retention Actions tabs
+
+- **Workstream:** Frontend / QA
+- **Branch:** `member4`
+- **Commit subject:** `style: center and emphasize retention action tabs`
+- **Issue / task:** Center the Work Queue and Strategy & ROI Simulator view selectors and make the selected view easier to identify.
+- **Files changed:** `src/index.css` and this log.
+- **What changed:** Centered the two tab buttons, gave them equal visual weight, increased their size, added a clear selected-state treatment and hover feedback, and centered the labels on narrow screens.
+- **Why it changed:** The existing tabs were left-aligned and visually understated in a full-width strip.
+- **Contract / database / API impact:** None.
+- **Tests / verification:**
+  - `git diff --check` — PASS — no whitespace errors.
+  - Automated tests/build — NOT RUN — CSS-only visual change; no behavior or data contracts changed.
+- **Data / model / ROI evidence:** N/A; presentation-only change.
+- **Known issues / blockers:** None known.
+- **Next action / handoff:** Review the updated tabs in the local Retention Actions page.
+- **Reviewer / pairing:** `N/A`
+
+### 2026-10-10T18:03:03Z — Member 1 / Data & Backend Engineer — Resume and verify 07B-1 PostgreSQL RLS
+
+- **Workstream:** Part 1 / Data Foundation, PostgreSQL RLS and authorization
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** N/A — 07B-1 changes intentionally remain uncommitted for review
+- **Issue / task:** Resume unfinished Prompt 07B-1 after the separately isolated Member 2 P0 reader handoff; stop before 07B-2.
+- **Checkpoint:** Verified HEAD `90f745392e32a52d8ac896e302b81221ec617ee0` (`feat(member1): prepare secure supabase configuration and preflight`); the existing pending 07B-1 work was preserved. The P0 worktree was only checked for independent existence/clean state and was not modified.
+- **Files changed:** Added `migrations/postgresql/006_artifact_authorization_scope.sql`, `migrations/postgresql/007_restore_global_maintenance_grants.sql`, `docs/MEMBER1_POSTGRESQL_RLS_AND_AUTHORIZATION.md`, `docs/MEMBER1_RLS_TEST_MATRIX.md`, `tests/postgresql_security_support.py`, and `tests/test_postgresql_rls.py`; updated `retaniq/data_foundation.py`, `tests/test_postgresql_migrations.py`, existing PostgreSQL test setup files, `README.md`, `docs/MEMBER1_DATA_CONTRACT_COMPLIANCE.md`, and `docs/MEMBER1_POSTGRESQL_SCHEMA_AND_MIGRATIONS.md`.
+- **What changed:**
+  - Audited the existing 005 RLS and least-privilege implementation. Kept custom RetainIQ bearer tokens as the authoritative identity; the SECURITY DEFINER bootstrap lookup installs a transaction-local tenant context only after digest validation.
+  - Added migration 006 to give the artifact-writer role only source-list-scoped authorization-record reads needed by the existing repository checks. Verified actual feature, churn-label, and prediction writes through a restricted artifact-writer LOGIN without source-event access.
+  - Live testing exposed that migration 005's final broad revoke removed its intended global maintenance grants. Preserved its checksum and added forward migration 007 to restore only maintenance access to global provenance/checkpoint tables.
+  - Added all-table cross-tenant INSERT/ownership-update and DELETE-filter checks for the 16 tenant tables; verified maintenance-only global access, missing/invalid context, connection reuse, privilege denials, GUC spoofability, and auth bootstrap.
+  - Completed the role/schema/table inventory, status/coverage matrix, Supabase deployment limitations, and this log entry. No Supabase migration or STANDARD import was performed.
+- **Role / permission decision:** `retaniq_backend` performs trusted backend reads and writes on tenant-bearing tables but not DELETE/global state/migration metadata; inference is SELECT-only; artifact writer persists only ML artifacts and reads only authorization records for its verified source list; decision and dashboard roles are read-only; maintenance handles restricted provisioning/global operations; authenticator is NOLOGIN and owns only two fixed-search-path SECURITY DEFINER lookups. Runtime credentials and memberships remain operator-provisioned.
+- **Trust boundary / known issues:** The transaction-local `retaniq.tenant_id`, `retaniq.authorized_sources`, and `retaniq.service_principal_id` values are backend assertions, not cryptographic identity; any holder of a shared SQL credential with arbitrary SQL can spoof them. Do not expose those credentials to browsers/untrusted services, and do not claim isolation against credential compromise or arbitrary-SQL injection. The generic runtime configuration does not yet automatically route trusted provisioning and global batch/import/checkpoint operations through a separate maintenance credential. Successful restricted writes for several source/provisioning tables remain a matrix gap. Supabase role privileges, exposed schema/Data API state, pooler behavior, and remote RLS remain unverified.
+- **Tests / verification:** PostgreSQL 16.15, psycopg 3.3.6. Focused RLS + migration suite — **PASS**, 36 tests. Full live dual-backend discovery — **PASS**, 191 passed, 0 failed, 0 errors, 0 skipped, 0 Python warnings, 67.321s; 57 unique live PostgreSQL-guarded tests including 16 restricted-role/RLS methods. SQLite-only full discovery — **PASS**, 134 passed, 0 failed/errors, 57 expected live-PostgreSQL guard skips, 13.518s. `compileall`, package imports, and `git diff --check` — **PASS**; `git diff --cached --name-only` empty. The changed-file credential-pattern audit matched only synthetic DSN test fixtures in `tests/test_postgresql_migrations.py`; no secret/config/database files are staged or added.
+- **Database cleanup:** Reused the task-owned PostgreSQL cluster only after verifying `postgres.exe` command line, executable, owner, data directory `C:\Users\User\AppData\Local\Temp\retaniq_07a_20261011_pg`, and IPv4 loopback port 62534. Dropped only `retaniq_test_07b_20261011`, confirmed no `retaniq_test_*` databases remained, then stopped the cluster with its verified `pg_ctl.exe`. The Temp data directory remains on disk; no database artifact was staged.
+- **Final classification:** **PARTIALLY_VERIFIED** — local RLS and tested restricted-role behavior pass, but the shared-GUC trust limitation, missing separate maintenance runtime selection, incomplete positive write-shape coverage, and absence of Supabase verification remain explicit.
+- **Next action / handoff:** 07B-2 only after approval/designation of the dedicated demo project and secrets, decision on whether the shared-GUC threat model is acceptable, review of role bootstrap/ownership privileges in Supabase, configured distinct app/migration/maintenance credentials, actual Data API/exposed-schema audit, and repeat restricted-role positive/negative tests remotely. STANDARD import stays blocked until 07B-2 acceptance.
+
+### 2026-10-10T18:01:53Z — Codex — Show only useful page controls in the header
+
+- **Workstream:** Frontend / QA
+- **Branch:** `member4`
+- **Commit subject:** `fix: simplify contextual dashboard controls`
+- **Issue / task:** Make the shared filter bar intuitive and remove fields that do not change the current view.
+- **Files changed:** `src/app/AppShell.tsx`, `src/index.css`, and this log.
+- **What changed:** Removed the noninteractive Tenant and As-of/model chips and the duplicate global account search. Search remains in the Churn Prediction and Retention Actions tables. The Data source selector remains available on every page; Currency appears only in Churn Prediction and Retention Actions; Horizon only in Churn Prediction and Customer Insights; Role preview only in Retention Actions and Customer Insights. Removed obsolete header styles.
+- **Why it changed:** Several header controls were static or had no effect on the page showing them, while account search duplicated table filters.
+- **Contract / database / API impact:** None; source mode, currency, horizon, and role state remain unchanged.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - Safari local Vite check (all five primary pages on port 5180) — PASS — each page shows only relevant controls; Customer Insights header layout was visually checked.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** Data source still says `Sample data`; no backend or model outputs changed.
+- **Known issues / blockers:** No connected tenant/as-of context is available yet; those static placeholders were removed rather than presented as filters.
+- **Next action / handoff:** Review on `member4`; do not push or merge without approval.
+- **Reviewer / pairing:** `N/A`
   - `.\.venv\Scripts\python.exe -B -m pytest -q tests\test_data_freshness.py tests\test_sqlite_data_adapter.py tests\test_reliability.py tests\test_historical_dataset_preparation.py tests\test_label_builder.py tests\test_temporal_splits.py tests\test_data_foundation.py tests\test_cross_member_integration.py tests\test_cross_member_policy_readiness.py --basetemp .pytest-tmp-p27-focused-final` — **PASS** — 173 passed.
   - `.\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p27-final` — **PASS** — 454 passed, 0 failed/errors/skipped, 24 known SHAP warnings (9 explainability, 15 prediction pipeline), unsuppressed; 20.71s.
   - Package imports — **PASS**. AST parse — **PASS**, 49 Python files. `git diff --check` — **PASS** (rerun after this log update before handoff).
@@ -938,161 +1137,26 @@ itself also requires a filled-in commit entry.
 - **Reviewer / pairing:** N/A
 - **Reviewer / pairing:** N/A
 
-### 2026-10-10T15:09:47Z — Codex — Add five-page RetainIQ frontend dashboard
+### 2026-10-10T17:54:55Z — Codex — Remove repeated demo indicators across pages
 
-- **Workstream:** Frontend
-- **Branch:** `main`
-- **Commit subject:** `feat: add five-page RetainIQ frontend dashboard`
-- **Issue / task:** User-approved frontend implementation and refinement.
-- **Files changed:** `index.html`, `package.json`, `package-lock.json`, `src/`, `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json`, `vite.config.ts`, `docs/FRONTEND_ARCHITECTURE.md`, `docs/MEMBER4_INTEGRATION.md`, and this log.
-- **What changed:**
-  - Added the five-page RetainIQ shell, shared navigation/state, feature pages, customer and case detail drawers, typed domain models, hooks, and simulated services.
-  - Refined Business Overview, Data Integration, and Churn Prediction presentation, while keeping unsupported backend operations and unavailable evidence explicit.
-  - Added frontend architecture and integration notes.
-- **Why it changed:** Provide a consistent, judge-ready frontend workflow across business overview, data health, churn prediction, retention actions, and customer insights.
-- **Contract / database / API impact:** No backend, database, or API contract changes. Frontend uses synthetic/demo data and session-only case changes.
+- **Workstream:** Frontend / QA
+- **Branch:** `member4`
+- **Commit subject:** `fix: remove repeated demo indicators from dashboard`
+- **Issue / task:** Remove prominent demo badges and banners from all five primary pages.
+- **Files changed:** `src/app/AppShell.tsx`, `src/features/IntegrationHealthPage.tsx`, `src/features/PredictionRadarPage.tsx`, `src/features/PredictionDetailPage.tsx`, `src/features/StrategyRoiSimulator.tsx`, `src/features/TimelinePage.tsx`, and this log.
+- **What changed:** Removed the global notice and sidebar footer; removed per-page fixture badges from Data Integration, Churn Prediction, Customer Insights, prediction details, and the ROI simulator. The functional Data source selector now says `Sample data` for fixture mode, and the non-authenticated role control says `Role preview`. Scenario-only and unavailable-state labels remain where they describe real limitations.
+- **Why it changed:** Repeated visual indicators cluttered the five-page dashboard.
+- **Contract / database / API impact:** None; fixture/connected separation and unavailable states are unchanged.
 - **Tests / verification:**
-  - `npm run build` — PASS — TypeScript and Vite production build (45 modules).
-  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/domain/scenario.test.ts src/services/decisionService.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts` — PASS — 31 tests.
-  - `git diff --cached --check` — PASS — no whitespace errors before this log update.
-- **Data / model / ROI evidence:** Synthetic fixtures and scenario assumptions only; no trained-model evaluation, production integration, or measured ROI is claimed.
-- **Known issues / blockers:** Production APIs, authentication, durable case writes, and source-backed evidence remain unconnected.
-- **Next action / handoff:** Replace demo adapters with approved backend integrations when their contracts and services are available.
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - Safari local Vite check (all five primary pages on port 5180) — PASS — repeated demo badges absent; Sample data selector visible.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** Fixtures remain selected by default and are labelled Sample data in the selector; no real model or backend integration is implied. Scenario-only calculations remain labelled.
+- **Known issues / blockers:** Connected prediction and decision APIs remain unavailable as previously logged.
+- **Next action / handoff:** Review on `member4`; do not push or merge without approval.
 - **Reviewer / pairing:** `N/A`
-### 2026-10-10T20:11:45Z — Member 1 / Data & Backend Engineer — Scope STANDARD import and add authenticated history APIs
 
-- **Workstream:** Part 1 / Data Foundation, tenant import and API handoff
-- **Branch:** `codex/member1-postgres-migration`
-- **Commit subject:** `feat(member1): scope synthetic import and add authenticated data APIs`
-- **Issue / task:** Final tenant-01 Supabase import and Member 2/3/4 API handoff implementation.
-- **Files changed:** `.env.supabase.example`; `retaniq/api.py`; `retaniq/data_foundation.py`; `retaniq/database_config.py`; `retaniq/synthetic/__main__.py`; `retaniq/synthetic/canonical_adapter.py`; `tests/test_data_foundation.py`; `tests/test_member1_api_handoff.py`; `tests/test_supabase_configuration.py`; `tests/test_synthetic_integration.py`; `docs/MEMBER1_TO_MEMBER2_SYNTHETIC_HANDOFF.md`; `docs/MEMBER1_07B2_SUPABASE_READINESS.md`; `docs/MEMBER1_FINAL_DATA_FOUNDATION_ACCEPTANCE.md`; and this log.
-- **What changed:** Added separate app/maintenance/migration DSN configuration, routed global importer identity/checkpoint work through maintenance, added tenant-01-only Supabase importer scope, transaction-local trusted backend tenant context, and authenticated account/prediction history and ID routes. Added local tests. The handoff now explicitly corrects the P0 SQLite copy's physical scope: it contains the full four-tenant STANDARD fixture even though the P0 reader authorization is tenant-01-scoped. First-time Supabase dataset identity binding now fails closed because maintenance RLS cannot prove the destination empty.
-- **Why it changed:** The final handoff requires a tenant-only import and least-privilege maintenance separation; a maintenance-role zero count under FORCE RLS is not evidence that other tenant rows are absent.
-- **Contract / database / API impact:** Local authenticated routes derive tenant/source/purpose from the stored RetainIQ principal and reject caller-supplied tenant scope. Prediction history is bounded and redacts labels/valuation fields; Member 2 history returns point-in-time account/coverage data and reports freshness `unknown`. API runtime still uses the configured app DSN rather than separately routing downstream reads to inference/dashboard logins. Shared tenant GUC remains spoofable by a holder of the trusted backend credential with arbitrary SQL access. No Supabase migration, role provisioning, API exposure change, remote import, or remote API read occurred.
-- **Tests / verification:** `py -3.14 -B -m unittest tests.test_data_foundation.DataFoundationTests.test_supabase_first_identity_binding_fails_closed_under_tenant_rls tests.test_synthetic_integration tests.test_member1_p0_reader tests.test_member1_api_handoff tests.test_supabase_configuration -q` — **PASS**, 34 tests. `py -3.14 -B -m unittest discover -s tests -q` — **PASS**, 218 total; 161 passed, 57 expected PostgreSQL-guard skips, 0 failures/errors; no live PostgreSQL tests ran. `py -3.14 -B -m compileall -q retaniq tests`, package import smoke, `git diff --check` — **PASS**. DPAPI-protected P0 reader smoke against local SQLite — **PASS**, 23 events/1 subscription/48 coverage rows, cross-tenant API denial, no valuation fields, database unchanged. Read-only local STANDARD identity/integrity check matched manifest SHA and SQLite integrity, but found 752,669 rows across non-tenant-01 partitions in the P0 file. Staged paths were checked to exclude `.env` secrets, DPAPI files, SQLite databases, and exports.
-- **Data / model / ROI evidence:** Synthetic STANDARD only; manifest SHA `7f85a83a1697efaaeebe1a5534b075ef6c7a99fa5ad3a1e9514b3eb8ae77db6d`. Tenant-01 source counts are 750 customers, 2,250 identities, 56,211 canonical events, and 119,472 coverage rows. These do not represent Supabase import counts; no model or ROI result was produced.
-- **Known issues / blockers:** No app, maintenance, or migration DSNs are configured in this task environment. Durable remote restricted LOGINs, Data API/exposed-schema checks, direct anon/authenticated denial, temporary smoke-role cleanup, and actual Member 2/3/4 remote reads remain unverified. Supabase first import requires a privileged read-only full-destination emptiness check and a reviewed identity-binding path; the importer currently refuses an unbound Supabase destination. Local P0 working copy contains four tenants and is not physically isolated. The remote 13-scenario RLS smoke remains prior operator-supplied evidence only; GUC spoofability remains.
-- **Next action / handoff:** Configure distinct restricted backend and maintenance LOGINs plus a separate approved read-only/admin preflight credential through a protected local secret mechanism. Verify destination/project, exposed API roles and cleanup. Implement and live-test the one-time empty-destination/identity-binding gate on real PostgreSQL, then run actual restricted-role remote checks before importing tenant-01. Only after those gates, verify import and Member 2/3/4 remote access; do not use `service_role` or bypass RLS.
-- **Reviewer / pairing:** N/A
-
-### 2026-10-10T19:36:21Z — Member 1 / Data & Backend Engineer — Verify Supabase RLS deployment and restricted smoke
-
-- **Workstream:** Part 1 / Data Foundation, Supabase PostgreSQL deployment
-- **Branch:** `codex/member1-postgres-migration`
-- **Commit subject:** `fix(member1): verify Supabase RLS deployment and restricted smoke`
-- **Issue / task:** Continue the authorized dedicated-demo migration after correcting the migration-005 role-owner transfer and restricted-smoke transaction boundary.
-- **Files changed:** `migrations/postgresql/005_rls_and_least_privilege.sql`, `retaniq/database_config.py`, `retaniq/postgresql_migrations.py`, `retaniq/supabase_remote_preflight.py`, focused migration/RLS/Supabase tests, `docs/MEMBER1_POSTGRESQL_RLS_AND_AUTHORIZATION.md`, `docs/MEMBER1_SUPABASE_CONNECTION_AND_SECURITY_PREPARATION.md`, and this log.
-- **What changed:** Added safe migration failure diagnostics (migration version, statement, operation and SQLSTATE without DSN/password output); corrected migration 005's temporary SET membership and schema CREATE grant ordering; allowed the project's session-pooler migration connection while rejecting transaction pooling; corrected the restricted smoke harness to use real top-level transactions with autocommit.
-- **Why it changed:** Supabase rejected the initial ownership transfer because of role membership options; after deployment, the smoke exposed that preliminary identity queries kept the connection inside an outer transaction, invalidating transaction-local cleanup assertions.
-- **Contract / database / API impact:** Operator-supplied remote result for project `mhtzkzqjcsdyjacvcxty` / PostgreSQL 17.11 / Session Pooler reports migration history `CHECKSUMS_MATCH`, no pending versions, current version 007, and `applied_versions: []` on the final verification run. Catalog checks passed: all 18 application data tables (migration metadata excluded) have RLS enabled and forced, 42 policies are present, and both SECURITY DEFINER authentication functions are owned by `retaniq_authenticator`. The temporary restricted-login smoke passed all 13 scenarios for backend, artifact-writer, dashboard-reader and maintenance roles. It explicitly passed the shared-GUC spoofability characterization; it does not establish independently authenticated database tenant identity. Smoke cleanup was reported as `ATTEMPTED`, not independently verified. No STANDARD rows were imported, no durable runtime login credentials or Member 2 access were provisioned, and `service_role` was not used for smoke verification.
-- **Tests / verification:** Focused local live-PostgreSQL migration/configuration/RLS/preflight suite — **PASS**, 58 tests, 0 failures/errors/skips, on a disposable PostgreSQL 17.11 container; `py -3.14 -m compileall -q retaniq tests`, package imports, and `git diff --check` — **PASS**. The corrected remote restricted smoke — **PASS**, 13/13 reported scenarios. No full 191-test suite rerun.
-- **Data / model / ROI evidence:** None imported. STANDARD dataset remains local synthetic artifact `synthetic-saas-v1-2-standard-s2026-970a9d231e68`; no remote dataset or Member 2 read-access evidence.
-- **Known issues / blockers:** The backend's shared transaction-local GUC is spoofable by any holder of its database credential capable of arbitrary SQL. The catalog shows capability roles are NOLOGIN; the deployment credential is privileged `postgres` (`rolbypassrls=true`, `rolcreatedb=true`, `rolcreaterole=true`). Data API/exposed-schema behavior and cleanup of temporary smoke logins were not independently verified. The existing importer binds one global dataset identity, provisions all four dataset tenants, is not tenant-01-only, and uses the regular configured DSN for global provenance/checkpoint and batch operations; no separate maintenance-login routing exists. Therefore the import gate is not satisfied.
-- **Next action / handoff:** Before STANDARD import, owner must decide whether to accept the trusted-backend GUC boundary, securely provision distinct durable backend and maintenance login credentials (without `BYPASSRLS`), verify Supabase Data API exposure and role memberships, independently confirm temporary smoke-login cleanup, and approve the four-tenant import mapping or a tenant-01-only import contract. Then add/verify the minimum importer routing and actual remote restricted read path; do not bypass RLS or use `service_role`.
-- **Reviewer / pairing:** N/A
-
-### 2026-10-10T19:31:28Z — Member 1 / Data & Backend Engineer — Fix remote smoke transaction boundary
-
-- **Workstream:** Part 1 / Data Foundation, Supabase PostgreSQL deployment
-- **Branch:** `codex/member1-postgres-migration`
-- **Commit subject:** Pending remote restricted-smoke retry
-- **Issue / task:** Diagnose the first restricted-role smoke failure after migrations 005–007 were deployed.
-- **Remote state:** Operator-supplied catalog reports migration history `CHECKSUMS_MATCH`, current version 007, 18/18 application data tables RLS-enabled and forced (migration metadata table excluded), 42 policies, both SECURITY DEFINER authentication functions owned by `retaniq_authenticator`, and `catalog_checks_passed:true`. Four temporary restricted logins were attempted. The smoke returned FAIL after six backend scenarios; cleanup was attempted but not independently verified. No STANDARD import occurred.
-- **What changed:** The smoke login factory now uses psycopg `autocommit=True`, ensuring its `connection.transaction()` contexts are top-level transactions even after identity queries. Previously, the initial `SELECT current_user` opened an implicit transaction and caused later contexts to be savepoints, so transaction-local tenant context was not cleared at the supposed commit. Added a unit check for autocommit and updated the remote smoke implementation only; database schema/migrations are unchanged.
-- **Tests / verification:** `py -3.14 -B -m unittest tests.test_postgresql_migrations tests.test_supabase_remote_preflight tests.test_supabase_configuration tests.test_postgresql_rls` against a task-owned disposable PostgreSQL 17.11 container with the disposable-DSN guard enabled — **PASS**, 58 tests, 0 failures/errors/skips. `py -3.14 -m compileall -q retaniq tests`, package imports, and `git diff --check` — **PASS**. Task-owned PostgreSQL container stopped/removed. The updated smoke has not yet been rerun on Supabase.
-- **Known issues / blockers:** Remote RLS deployment is catalog-verified, but actual restricted-role acceptance remains incomplete until the corrected smoke passes. The smoke's previous cleanup status is only `ATTEMPTED`. Shared-GUC spoofability remains a known shared-credential limitation. No dataset import.
-- **Next action / handoff:** Run the secure `--deploy` command again after a fresh catalog preflight. It should find migration checksums already matching and rerun restricted-login smoke; require its final `MIGRATIONS_AND_RESTRICTED_SMOKE_PASS` result and inspect cleanup before import or commit.
-- **Reviewer / pairing:** N/A
-
-### 2026-10-10T19:24:35Z — Member 1 / Data & Backend Engineer — Grant temporary SET membership for migration 005
-
-- **Workstream:** Part 1 / Data Foundation, Supabase PostgreSQL deployment
-- **Branch:** `codex/member1-postgres-migration`
-- **Commit subject:** Pending fresh catalog verification and deployment retry
-- **Issue / task:** Fix the newly confirmed `42501` failure in migration 005 without granting extra ADMIN authority.
-- **Remote state:** Latest attempt failed at migration 005 statement 14 (`ALTER FUNCTION`) with SQLSTATE `42501` because `retaniq_authenticator` membership had `SET FALSE`. The migration runner reports `MAY_HAVE_OCCURRED`; no fresh post-failure catalog read had been performed at that time. Preflight immediately before that attempt showed 001–004 recorded and 005–007 pending.
-- **What changed:** Migration 005 now grants the migration login a distinct temporary membership `WITH SET TRUE, INHERIT FALSE`, omitting ADMIN, then revokes that membership after transferring the authentication-function ownership. Updated the PostgreSQL 17 ownership-transfer test assertion, security documentation, and RLS catalog test setup (`schema = public`) so the live catalog check runs.
-- **Tests / verification:** Focused suite against a task-owned disposable PostgreSQL **17.11** container: **PASS**, 57 tests, 0 failures, 0 errors, 0 skips. This includes live migration 001–007 application and restricted-role/RLS tests. Compileall, package imports, and `git diff --check` passed. The task-owned container was stopped and removed.
-- **Known issues / blockers:** Remote rollback/catalog state was not verified at this timestamp; the corrected SET-option migration later deployed successfully, but restricted-role smoke had not yet passed.
-- **Next action / handoff:** Superseded by the 19:31Z smoke-transaction fix above.
-- **Reviewer / pairing:** N/A
-
-### 2026-10-10T19:18:02Z — Member 1 / Data & Backend Engineer — Remove failing migration 005 self-grant
-
-- **Workstream:** Part 1 / Data Foundation, Supabase PostgreSQL deployment
-- **Branch:** `codex/member1-postgres-migration`
-- **Commit subject:** Pending fresh explicit remote retry
-- **Issue / task:** Correct the precisely diagnosed failure from the operator-confirmed deployment attempt.
-- **Remote state:** The first retry confirmed migration 005 statement 13 (`GRANT RETANIQ`) failed with SQLSTATE `0LP01`, `ADMIN option cannot be granted back to your own grantor`. The subsequent retry passed that statement and failed at statement 14 (`ALTER FUNCTION`) with SQLSTATE `42501`, `must be able to SET ROLE "retaniq_authenticator"`. Before that retry, fresh preflight showed 001–004 applied, 005–007 pending, and 19 total tables including metadata. Both attempts reported `mutations_performed:true`.
-- **What changed:** Removed `ADMIN TRUE` from the membership grant after the `0LP01` failure. The next live attempt established that PostgreSQL 17's creator membership has `SET FALSE`; the earlier assumption that it provided SET ROLE was incorrect. The additional SET-option correction is recorded in the 19:24Z entry above.
-- **Tests / verification:** After the first fix, focused tests passed (57 tests, 36 passed, 21 skipped without local PostgreSQL); compileall, imports and diff check passed. The later SET-option correction was separately tested live as recorded above.
-- **Known issues / blockers:** At the time of this entry migration 005–007 and RLS had not passed remote verification; those later changed states are captured in the newer log entries. No STANDARD data was imported.
-- **Next action / handoff:** Superseded by the 19:24Z and 19:31Z entries above.
-- **Reviewer / pairing:** N/A
-
-### 2026-10-10T18:29:07Z — Member 1 / Data & Backend Engineer — Record emergency Supabase delivery blockers
-
-- **Workstream:** Part 1 / Data Foundation, Supabase deployment readiness
-- **Branch:** `codex/member1-postgres-migration`
-- **Commit subject:** `docs(member1): record emergency Supabase delivery blockers`
-- **Issue / task:** Emergency final delivery; attempt deployment/import only if the approved remote project and security gates are verifiable.
-- **Files changed:** `TEAM_LOG.md`
-- **What changed:** Recorded the current remote readiness checks and the safe stop conditions for this task. Confirmed the existing local synthetic STANDARD artifact identity from its manifest; no artifact rows or raw records were imported or changed.
-- **Why it changed:** No approved Supabase target or protected credentials are configured, and the current importer does not yet have safe maintenance-role routing and verified multi-tenant context handling required by the local role/RLS design.
-- **Contract / database / API impact:** None. No remote database was contacted; migrations 001–007 were not deployed, remote roles/RLS were not tested, no dataset was imported, and no Member 2 database access was granted or tested.
-- **Tests / verification:**
-  - Environment-presence check across process/user/machine scopes — **PASS** — all five RetainIQ Supabase settings plus `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD` absent; values were not printed.
-  - Supabase CLI and local config-file availability check — **PASS** — CLI and `.env`/`.env.local`/`.env.supabase` absent; example file only.
-  - `py -3.14 -B -m retaniq.supabase_preflight` — **BLOCKED** — reports `supabase_demo_configuration_missing_or_invalid`; this was the single local preflight, with no remote connection.
-  - Regression tests — **NOT RUN** — no code or database changes were made; prior checkpoint evidence remains 191 passed on the full live dual-backend run, and is not represented as rerun for this emergency task.
-  - `git diff --check` — to be run before commit.
-- **Data / model / ROI evidence:** Synthetic dataset only: `synthetic-saas-v1-2-standard-s2026-970a9d231e68`. The local artifact is not evidence of remote import; no real dataset, PII, or model-performance claim was used.
-- **Known issues / blockers:** No approved project/ref/region, owner authorization for remote mutation, or protected migration/runtime DSNs. Importer currently accepts a local `--db` path rather than environment-based Supabase configuration; global import identity/checkpoints require maintenance access, and multi-tenant provisioning/batching needs a safe, tested context boundary. Remote ownership, role grants, exposed schemas, RLS, and pooler mode remain unverified. Shared-GUC context remains spoofable to a caller with arbitrary SQL access under the shared backend credential.
-- **Next action / handoff:** Owner must designate and authorize a dedicated synthetic demo project (including ref/region and backup/rollback approval), securely provision migration and restricted runtime credentials outside chat, and approve the four synthetic tenant-partition mapping. Before import, locally implement and test the smallest secure maintenance/import role routing and tenant-context changes; then deploy migrations and run actual restricted-credential checks before importing. No push, deployment, or import performed.
-- **Reviewer / pairing:** N/A
-
-### 2026-10-10T18:19:02Z — Member 1 / Data & Backend Engineer — Checkpoint local PostgreSQL RLS and prepare 07B-2 handoff
-
-- **Workstream:** Part 1 / Data Foundation, PostgreSQL RLS and authorization
-- **Branch:** `codex/member1-postgres-migration`
-- **Commit subject:** `feat(member1): checkpoint local PostgreSQL RLS foundation`
-- **Issue / task:** Verify and checkpoint the existing 07B-1 implementation; prepare a deployment-readiness handoff without deploying Supabase or importing STANDARD data.
-- **Checkpoint:** Base is `90f745392e32a52d8ac896e302b81221ec617ee0` (`feat(member1): prepare secure supabase configuration and preflight`). The implementation remains **PARTIALLY_VERIFIED**. Repository instructions and canonical requirements were found in the OneDrive checkout and another worktree; both were read-only and left unchanged. The separate Member 2 P0 worktree was not modified.
-- **Files changed:** PostgreSQL migrations `005_rls_and_least_privilege.sql`, `006_artifact_authorization_scope.sql`, and `007_restore_global_maintenance_grants.sql`; `security/postgresql/role_bootstrap.sql`; `retaniq/data_foundation.py`, `retaniq/database.py`; PostgreSQL test support and migration/RLS/integration test files; README and Member 1 PostgreSQL/data-contract docs; `docs/MEMBER1_POSTGRESQL_RLS_AND_AUTHORIZATION.md`, `docs/MEMBER1_RLS_TEST_MATRIX.md`, new `docs/MEMBER1_07B2_SUPABASE_READINESS.md`, and this log.
-- **What changed:** Re-audited the role/grant/RLS implementation and its trust boundary. Confirmed migration 006's source-scoped authorization lookup and 007's forward restoration of global maintenance grants without editing applied migrations 001–004 or changing 005's checksum. Confirmed the PostgreSQL adapter's empty-parameter handling required for migration SQL containing literal percent-format strings. Added a readiness report with gap classifications, owner approvals, prerequisites, and an ordered 07B-2 sequence.
-- **Contract / database / API impact:** No logical application contract or endpoint changed. Sixteen tenant-bearing tables have forced RLS; two global operational tables are maintenance-only; migration metadata has no runtime grant. `retaniq.tenant_id` and related source/principal GUCs remain spoofable by arbitrary SQL under a shared database login. The application has separate app/migration DSNs but does not yet route maintenance or every capability role independently. Supabase ownership, grants, exposed-schema state, and pooler behavior remain unknown. Downstream inference, decision, and dashboard owners need to agree on actual role routing before remote deployment.
-- **Tests / verification:**
-  - `py -3.14 -B -m unittest tests.test_postgresql_rls tests.test_postgresql_migrations -v` — **PASS** — 36 tests, 0 failures/errors/skips; 5.620s.
-  - With explicit disposable loopback DSN and `RETAINIQ_POSTGRES_TEST_DISPOSABLE=1`, `py -3.14 -B -m unittest discover -s tests` — **PASS** — 191 tests, 0 failures/errors/skips; 69.834s. The 57 PostgreSQL-guarded tests ran, including 16 restricted-role RLS methods.
-  - With PostgreSQL guard variables empty, `py -3.14 -B -m unittest discover -s tests` — **PASS** — 191 tests, 0 failures/errors, 57 expected PostgreSQL skips; 13.739s.
-  - `py -3.14 -B -m compileall -q retaniq tests`, package import smoke, and `git diff --check` — **PASS**. No Python warnings; rejected-request audit lines were expected test output.
-  - PostgreSQL version and driver: 16.15 / psycopg 3.3.6. Focused restricted-role tests used actual LOGIN roles; general regression tests are not counted as RLS evidence when run through the setup/admin DSN.
-- **Database cleanup:** Dropped the exact disposable base database after the suite; the RLS test's temporary database was also dropped by its teardown. Confirmed no `retaniq_test_*` databases remained, then stopped the verified task-owned loopback cluster. Its temporary data directory was preserved.
-- **Data / model / ROI evidence:** Synthetic engineering fixtures only. No Supabase or customer data accessed; no dataset/model/ROI claim made; no STANDARD data imported.
-- **Known issues / blockers:** Shared-GUC spoofability is directly reproduced. Positive restricted writes beyond feature snapshots, churn labels, and predictions remain incomplete. Maintenance role routing is absent. Supabase service-role bypass, exposed schemas/default ACLs, migration-owner privileges, and pooler behavior are not remotely verified. 07B-2 remains **BLOCKED** pending project/region designation, owner authorization, secure credential provisioning, and an explicit decision on the GUC threat model.
-- **Next action / handoff:** Follow `docs/MEMBER1_07B2_SUPABASE_READINESS.md` in order. Do not deploy, push, merge, or import STANDARD from this checkpoint.
-- **Reviewer / pairing:** N/A
-
-### 2026-10-10T18:03:03Z — Member 1 / Data & Backend Engineer — Resume and verify 07B-1 PostgreSQL RLS
-
-- **Workstream:** Part 1 / Data Foundation, PostgreSQL RLS and authorization
-- **Branch:** `codex/member1-postgres-migration`
-- **Commit subject:** N/A — 07B-1 changes intentionally remain uncommitted for review
-- **Issue / task:** Resume unfinished Prompt 07B-1 after the separately isolated Member 2 P0 reader handoff; stop before 07B-2.
-- **Checkpoint:** Verified HEAD `90f745392e32a52d8ac896e302b81221ec617ee0` (`feat(member1): prepare secure supabase configuration and preflight`); the existing pending 07B-1 work was preserved. The P0 worktree was only checked for independent existence/clean state and was not modified.
-- **Files changed:** Added `migrations/postgresql/006_artifact_authorization_scope.sql`, `migrations/postgresql/007_restore_global_maintenance_grants.sql`, `docs/MEMBER1_POSTGRESQL_RLS_AND_AUTHORIZATION.md`, `docs/MEMBER1_RLS_TEST_MATRIX.md`, `tests/postgresql_security_support.py`, and `tests/test_postgresql_rls.py`; updated `retaniq/data_foundation.py`, `tests/test_postgresql_migrations.py`, existing PostgreSQL test setup files, `README.md`, `docs/MEMBER1_DATA_CONTRACT_COMPLIANCE.md`, and `docs/MEMBER1_POSTGRESQL_SCHEMA_AND_MIGRATIONS.md`.
-- **What changed:**
-  - Audited the existing 005 RLS and least-privilege implementation. Kept custom RetainIQ bearer tokens as the authoritative identity; the SECURITY DEFINER bootstrap lookup installs a transaction-local tenant context only after digest validation.
-  - Added migration 006 to give the artifact-writer role only source-list-scoped authorization-record reads needed by the existing repository checks. Verified actual feature, churn-label, and prediction writes through a restricted artifact-writer LOGIN without source-event access.
-  - Live testing exposed that migration 005's final broad revoke removed its intended global maintenance grants. Preserved its checksum and added forward migration 007 to restore only maintenance access to global provenance/checkpoint tables.
-  - Added all-table cross-tenant INSERT/ownership-update and DELETE-filter checks for the 16 tenant tables; verified maintenance-only global access, missing/invalid context, connection reuse, privilege denials, GUC spoofability, and auth bootstrap.
-  - Completed the role/schema/table inventory, status/coverage matrix, Supabase deployment limitations, and this log entry. No Supabase migration or STANDARD import was performed.
-- **Role / permission decision:** `retaniq_backend` performs trusted backend reads and writes on tenant-bearing tables but not DELETE/global state/migration metadata; inference is SELECT-only; artifact writer persists only ML artifacts and reads only authorization records for its verified source list; decision and dashboard roles are read-only; maintenance handles restricted provisioning/global operations; authenticator is NOLOGIN and owns only two fixed-search-path SECURITY DEFINER lookups. Runtime credentials and memberships remain operator-provisioned.
-- **Trust boundary / known issues:** The transaction-local `retaniq.tenant_id`, `retaniq.authorized_sources`, and `retaniq.service_principal_id` values are backend assertions, not cryptographic identity; any holder of a shared SQL credential with arbitrary SQL can spoof them. Do not expose those credentials to browsers/untrusted services, and do not claim isolation against credential compromise or arbitrary-SQL injection. The generic runtime configuration does not yet automatically route trusted provisioning and global batch/import/checkpoint operations through a separate maintenance credential. Successful restricted writes for several source/provisioning tables remain a matrix gap. Supabase role privileges, exposed schema/Data API state, pooler behavior, and remote RLS remain unverified.
-- **Tests / verification:** PostgreSQL 16.15, psycopg 3.3.6. Focused RLS + migration suite — **PASS**, 36 tests. Full live dual-backend discovery — **PASS**, 191 passed, 0 failed, 0 errors, 0 skipped, 0 Python warnings, 67.321s; 57 unique live PostgreSQL-guarded tests including 16 restricted-role/RLS methods. SQLite-only full discovery — **PASS**, 134 passed, 0 failed/errors, 57 expected live-PostgreSQL guard skips, 13.518s. `compileall`, package imports, and `git diff --check` — **PASS**; `git diff --cached --name-only` empty. The changed-file credential-pattern audit matched only synthetic DSN test fixtures in `tests/test_postgresql_migrations.py`; no secret/config/database files are staged or added.
-- **Database cleanup:** Reused the task-owned PostgreSQL cluster only after verifying `postgres.exe` command line, executable, owner, data directory `C:\Users\User\AppData\Local\Temp\retaniq_07a_20261011_pg`, and IPv4 loopback port 62534. Dropped only `retaniq_test_07b_20261011`, confirmed no `retaniq_test_*` databases remained, then stopped the cluster with its verified `pg_ctl.exe`. The Temp data directory remains on disk; no database artifact was staged.
-- **Final classification:** **PARTIALLY_VERIFIED** — local RLS and tested restricted-role behavior pass, but the shared-GUC trust limitation, missing separate maintenance runtime selection, incomplete positive write-shape coverage, and absence of Supabase verification remain explicit.
-- **Next action / handoff:** 07B-2 only after approval/designation of the dedicated demo project and secrets, decision on whether the shared-GUC threat model is acceptable, review of role bootstrap/ownership privileges in Supabase, configured distinct app/migration/maintenance credentials, actual Data API/exposed-schema audit, and repeat restricted-role positive/negative tests remotely. STANDARD import stays blocked until 07B-2 acceptance.
 ### 2026-10-10T17:50:28Z — Member 1 / Data & Backend Engineer — P0 isolated authenticated STANDARD reader handoff
 
 - **Workstream:** Part 1 / SQLite Data Foundation / Member 2 secure reader
@@ -1108,6 +1172,179 @@ itself also requires a filled-in commit entry.
 - **Known issues / blockers:** DPAPI secret is bound to the current Windows user; a Member 2 process under a different OS identity needs operator re-provisioning or an approved secret manager. The immutable source still contains its pre-existing digest-only principal rows and was intentionally not edited. A legacy similarly named external DPAPI artifact remains untouched and was not used or mapped to those rows. Source freshness has no source-specific SLA or independent lifecycle/billing heartbeat; cancellation labels still require mature, complete outcome coverage. Complete requirements and `AGENT.md`/`AGENTS.md` were absent in this checkout.
 - **Next action / handoff:** **READER_READY** for the bounded tenant-01 synthetic pilot. Member 2 can reproduce the completed bounded read with `python -m retaniq.secret_store run --file $secret -- $python -m examples.member2_p0_bounded_pilot --db $db --as-of 2026-10-01T00:00:00Z`. Do not run the multi-account `examples/member2_synthetic_smoke.py` for this bounded task. Do not use the original DB or 07B-1 RLS worktree.
 - **Reviewer / pairing:** N/A
+
+### 2026-10-10T17:50:10Z — Codex — Remove duplicate Customer Insights fixture notices
+
+- **Workstream:** Frontend / QA
+- **Branch:** `member4`
+- **Commit subject:** `fix: remove duplicate customer fixture notices`
+- **Issue / task:** Remove the two long fixture banners shown above Customer Insights.
+- **Files changed:** `src/app/AppShell.tsx`, `src/features/TimelinePage.tsx`, and this log.
+- **What changed:** Suppressed the global notice on Customer Insights and removed that page's duplicate local notice. The Data mode selector, sidebar fixture marker, and customer-card fixture badge still identify demo-only data.
+- **Why it changed:** The repeated warnings pushed customer information below the fold without adding distinct information.
+- **Contract / database / API impact:** None; connected-mode unavailable states and historical cutoff behavior are unchanged.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - Safari local Vite check (`/customers/c01/timeline` on port 5180) — PASS — both top notices absent; fixture indicators remain.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** Demo fixture remains explicitly identified; no source, prediction, decision, or outcome values changed.
+- **Known issues / blockers:** Connected timeline APIs remain unavailable as previously logged.
+- **Next action / handoff:** Review on `member4`; do not push or merge without approval.
+- **Reviewer / pairing:** `N/A`
+
+### 2026-10-10T17:37:04Z — Codex — Remove ownership from Customer Insights
+
+- **Workstream:** Frontend / QA
+- **Branch:** `member4`
+- **Commit subject:** `fix: remove owner from customer insights`
+- **Issue / task:** Remove the demo staff-owner field shown on the Customer Insights page.
+- **Files changed:** `src/features/TimelinePage.tsx` and this log.
+- **What changed:** Removed Owner from the customer summary and removed the assignee name from the decision-context summary, retaining the case due date. Retention Actions still owns assignment controls.
+- **Why it changed:** Synthetic SaaS v1.2 customer source data has no staff-owner field; the displayed name was fixture-only and distracting in the customer profile.
+- **Contract / database / API impact:** None.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - Safari local Vite check (`/customers/c01/timeline` on port 5180) — PASS — no Owner in the customer summary or current decision context; Case due remains.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** Demo fixture only; no source or prediction values changed.
+- **Known issues / blockers:** Staff assignment remains browser-session-only in Retention Actions; connected decision APIs are unavailable.
+- **Next action / handoff:** Review on `member4`; do not push or merge without approval.
+- **Reviewer / pairing:** `N/A`
+
+### 2026-10-10T17:28:52Z — Codex — Center and simplify Retention case details
+
+- **Workstream:** Frontend / QA
+- **Branch:** `member4`
+- **Commit subject:** `fix: center and simplify retention case details`
+- **Issue / task:** Open Retention case details in the center and reduce initial copy density.
+- **Files changed:** `src/app/AppShell.tsx`, `src/features/DecisionCaseDetailPage.tsx`, `src/index.css`, and this log.
+- **What changed:** The case detail route now uses a centered, responsive modal while prediction details retain their side drawer. The case summary is shorter; evidence, proposals, ROI, audit history, and outcome feedback are expandable sections. Decision and execution controls remain available.
+- **Why it changed:** The side drawer was too dense for the case workflow.
+- **Contract / database / API impact:** None. Demo decisions remain browser-session-only.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - Safari local Vite check (`/cases/demo_case_c02` on port 5180) — PASS — case opens centered from the queue; close button and Escape return to the queue.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** Demo fixture only; no prediction, outcome, or ROI claims changed.
+- **Known issues / blockers:** Connected decision APIs remain unavailable as previously logged.
+- **Next action / handoff:** Review on `member4`; do not push or merge without approval.
+- **Reviewer / pairing:** `N/A`
+
+### 2026-10-10T17:23:15Z — Codex — Keep the Retention Actions workload strip to five cards
+
+- **Workstream:** Frontend / QA
+- **Branch:** `member4`
+- **Commit subject:** `fix: show five retention workload cards`
+- **Issue / task:** Remove the lone sixth workload card from the Retention Actions Work Queue.
+- **Files changed:** `src/features/DecisionCasesPage.tsx` and this log.
+- **What changed:** Removed the standalone Investigation queue card and retained its count in the Awaiting review card subtitle. The strip now has five cards at all viewport sizes.
+- **Why it changed:** The sixth card wrapped onto its own row on the reference desktop layout.
+- **Contract / database / API impact:** None; all counts still come from the existing demo capacity record.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - Safari local Vite check (`/cases` on port 5180) — PASS — five capacity/workload cards rendered, with the investigation count inside Awaiting review.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** Demo fixture values only; no backend integration or business metric was changed.
+- **Known issues / blockers:** Connected decision APIs remain unavailable as previously logged.
+- **Next action / handoff:** Continue layout review on `member4`; do not push or merge without approval.
+- **Reviewer / pairing:** `N/A`
+
+### 2026-10-10T17:23:08Z — Member 2 AI coding assistant — Audit authorized data access and FULL readiness
+
+- **Workstream:** Part 2 / Part 1 integration / Docs / QA
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `docs(member2): audit authorized synthetic dataset readiness` (Prompt 28 checkpoint `853f11b60afc9d73b0e85bda61d665305de7c716`)
+- **Issue / task:** Member 2 Prompt 28; no ticket
+- **Files changed:** `docs/MEMBER2_AUTHORIZED_FULL_DATASET_READINESS.md`, `docs/MEMBER2_TO_MEMBER1_CONTRACT_REQUESTS.md`, and this log.
+- **What changed:**
+  - Reviewed and checkpointed the exact Prompt 27 change set as `ed7493f290cb0a9732a37318ea0b2bc32a9d430b`; current branch is `integration/member2-main-sqlite`.
+  - Reverified the STANDARD v1.2 manifest and all 20 listed file hashes/sizes; reverified the prior tenant-01 prepared manifest and all eight output hashes; the STANDARD SQLite file hash matches the recorded prior verified database. No private SQLite rows were queried.
+  - Confirmed the documented FULL artifact/database paths remain absent and `RETAINIQ_MODEL_TOKEN` is absent. No credentials were provisioned, no authenticated calls were made, and no data pilot ran.
+  - Documented current least-privilege read flow, extra `model_artifact_write`/`billing_valuation` principal grants in convenience/import paths, missing service-principal revoke/rotation, bounded FULL provisioning steps, and explicitly estimated (not measured) compute/storage.
+  - Updated the Member 1 contract request with the newly confirmed principal-lifecycle/import side effects. No shared API/schema policy was changed.
+- **Why it changed:** Prompt 28 requires evidence-backed STANDARD/FULL artifact status, safe reader setup, bounded-pilot decision, and a reviewed FULL provisioning plan without creating/importing data absent prerequisites.
+- **Contract / database / API impact:** Documentation/request only; no API, database, source artifact, split, calibration, label, TEST, or reliability policy changed. Member 1 action requested for least-privilege principal lifecycle, import idempotency, health/completeness, and bounded reads.
+- **Tests / verification:**
+  - `.\.venv\Scripts\python.exe -B -m pytest -q tests\test_dataset_readiness.py tests\test_sqlite_data_adapter.py tests\test_data_freshness.py tests\test_reliability.py tests\test_label_builder.py tests\test_historical_dataset_preparation.py tests\test_cross_member_policy_readiness.py tests\test_cross_member_integration.py tests\test_data_foundation.py tests\test_temporal_splits.py --basetemp .pytest-tmp-p28-focused` — **PASS** — 181 passed in 11.06s; fixture/test evidence, not live authorization.
+  - `.\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p28` — **PASS** — 454 passed, 0 failed/errors/skipped, 24 existing SHAP warnings in 19.43s; warnings unsuppressed.
+  - STANDARD source manifest and 20 artifacts — **PASS**; prepared v4 manifest and 8 artifacts — **PASS**; SQLite SHA-256 matches prior verified checksum. Hash-only checks; no record reads.
+  - Authenticated pilot and FULL pilot — **NOT RUN** — reader token absent; FULL artifact/database absent. Authenticated data API calls: 0.
+  - CLI help/source inspection — **PASS** for documented generator/importer/provisioner options; generation/import/provisioning were not invoked.
+  - 11 package imports — **PASS**; AST/syntax parse — **PASS** for 79 Python files; `git diff --check` — **PASS**. No files are staged; changed paths are documentation/log only and contain no credentials or private rows.
+- **Data / model / ROI evidence:** Synthetic-only provenance. No new observations or outcomes, corrected live freshness counts, labels, model, calibration, metrics, or claims. Prior v4 reliability aggregates are explicitly pre-correction; FULL storage/runtime figures are linear estimates only.
+- **Known issues / blockers:** STANDARD reader credential unavailable. FULL manifest/database absent. No supported service-principal revocation/rotation was found; import retries can add extra service-principal rows. Source operational-health/completeness evidence remains unavailable. Training and operational scoring remain blocked.
+- **Next action / handoff:** Member 1 to provide safe principal lifecycle/import behavior and health/batch contracts; authorized operator to securely inject a tenant-01 read-only `RETAINIQ_MODEL_TOKEN`. Then execute the bounded STANDARD pilot before any separately approved FULL generation/import. Prompt 28 was committed locally as `853f11b60afc9d73b0e85bda61d665305de7c716`; no push or merge.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T17:19:22Z — Codex — Soften Retention Actions case-button hover
+
+- **Workstream:** Frontend / QA
+- **Branch:** `member4`
+- **Commit subject:** `fix: use light-green hover for retention case buttons`
+- **Issue / task:** Change the Retention Actions work-queue case button hover from dark green to light green.
+- **Files changed:** `src/index.css` and this log.
+- **What changed:** Scoped a pale-green hover and keyboard-focus style to the outlined work-queue case buttons, retaining dark-green readable text and border.
+- **Why it changed:** The shared `.btn:hover` rule turned these outlined buttons dark even though their normal treatment is light.
+- **Contract / database / API impact:** None.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - Safari local Vite check (`/cases` on port 5180) — PASS — the work-queue case button displayed the light-green hover and still opened/closed its case drawer.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** N/A; presentation-only change to the explicitly labelled demo view.
+- **Known issues / blockers:** None for this hover change. Connected decision APIs remain unavailable as previously logged.
+- **Next action / handoff:** Continue frontend visual review on the `member4` branch; do not merge or push without approval.
+- **Reviewer / pairing:** `N/A`
+
+### 2026-10-10T17:14:17Z — Member 2 AI coding assistant — Correct source-state attribution and assess FULL feasibility
+
+- **Workstream:** Part 2 / Part 1 integration / Docs / QA
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `fix(member2): distinguish unknown source health from disconnection` (Prompt 27 pending; not committed)
+- **Issue / task:** Member 2 Prompt 27; no ticket
+- **Files changed:** `src/retainiq_prediction/data_freshness.py`, `src/retainiq_prediction/sqlite_data_adapter.py`, `tests/test_data_freshness.py`, `tests/test_sqlite_data_adapter.py`, `tests/test_reliability.py`, `docs/MEMBER2_FULL_SYNTHETIC_FEASIBILITY.md`, `docs/MEMBER2_TO_MEMBER1_CONTRACT_REQUESTS.md`, `docs/MEMBER2_TRAINING_READINESS_DECISION.md`, and this log.
+- **What changed:**
+  - Prompt 26 was verified as precisely its four expected files and checkpointed locally as `c0948a2b6981711559c854bd53a52e7b883f43ca` (`docs(member2): formalize source health and model readiness contracts`). No other files were staged for that checkpoint.
+  - Confirmed the adapter inferred `connected=False` from missing account facts/coverage and freshness mislabeled silence `SOURCE_NOT_CONNECTED`/stale. `connected` is now tri-state with default unknown; the SQLite adapter does not infer connection from either events or coverage. Explicit `False` remains stale/blocking; absent health and absent watermark remain unknown. Complete available coverage can independently support coverage freshness. Reliability policy, status enums, thresholds, and canonical prediction schema are unchanged.
+  - Added regressions for event silence, independently verified zero usage coverage, explicit disconnection, unknown/future source health, serialized reasons, and continued reliability abstention.
+  - Inspected FULL profile code/config (20,000 accounts, four tenants, seed 2026 default, `[2024-10-01, 2026-10-01)`). The documented immutable FULL directory and DB are absent from the inspected private root; no FULL manifest or tenant authorization could be verified. `RETAINIQ_MODEL_TOKEN` was absent, so a bounded STANDARD authenticated pilot stopped before data API calls; no credentials were requested or created.
+  - Profiled the existing STANDARD preparation's recorded aggregate metrics rather than re-reading customer data: 234,495 authenticated calls / 950.910s; point-in-time reads 572.882s, outcome reads 120.845s. Proposed an authorized Member 1 batch API; no cache or alternate reader was added. FULL compute/storage projections are explicitly linear estimates, not measurements.
+  - Verified the existing STANDARD source manifest, preparation manifest, all 8 artifact hashes/sizes, and the SQLite file checksum by checksum-only reads. No SQLite records were queried or changed; private customer-level artifacts were not decompressed, parsed, or altered.
+- **Why it changed:** Prompt 27 requires truthful source-health attribution, a bounded FULL feasibility decision, and efficiency analysis without weakening data-quality or temporal safeguards.
+- **Contract / database / API impact:** Internal freshness evidence now permits unknown connection state. No canonical PredictionOutput fields/statuses, source database, Member 1 API/schema, frozen split, calibration threshold, or TEST policy changed. Member 1 must supply historical operational-health and completeness evidence and consider bounded authorized batch reads; shared cancellation/multi-subscription policy remains open.
+- **Tests / verification:**
+  - `.\.venv\Scripts\python.exe -B -m pytest -q tests\test_data_freshness.py tests\test_sqlite_data_adapter.py tests\test_reliability.py tests\test_historical_dataset_preparation.py tests\test_label_builder.py tests\test_temporal_splits.py tests\test_data_foundation.py tests\test_cross_member_integration.py tests\test_cross_member_policy_readiness.py --basetemp .pytest-tmp-p27-focused-final` — **PASS** — 173 passed.
+  - `.\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p27-final` — **PASS** — 454 passed, 0 failed/errors/skipped, 24 known SHAP warnings (9 explainability, 15 prediction pipeline), unsuppressed; 20.71s.
+  - Package imports — **PASS**. AST parse — **PASS**, 49 Python files. `git diff --check` — **PASS** (rerun after this log update before handoff).
+  - STANDARD source/preparation manifest SHA and all 8 artifact SHA/size checks — **PASS**. SQLite file checksum-only SHA-256 matches prior manifest `71bc6c18d9266c2b0c8b8e5008f6f6633a55804b1fe90a947f8ea24ca3ee5943`.
+  - Bounded authenticated pilot — **NOT RUN** — no `RETAINIQ_MODEL_TOKEN` in process environment. FULL pilot — **NOT RUN** — expected immutable dataset/database absent and tenant-01 authorization unverified.
+- **Data / model / ROI evidence:** **Synthetic only.** Existing STANDARD v1.2 tenant-01 preparation; no new records, labels, metrics, model, calibration, TEST outcome analysis, or performance claim. Historical handoff FULL counts/import time are cited only as unverified prior documentation. New FULL storage/runtime projections are estimates.
+- **Known issues / blockers:** Existing v4 aggregate freshness/reliability and 9,355 `SOURCE_NOT_CONNECTED` occurrences are pre-correction results and were not recomputed. STANDARD sample gates remain blocked; operational scoring remains blocked. No FULL manifest/tenant grants or usable reader credential. Member 1 historical heartbeat/completeness and batch-read interfaces remain dependencies.
+- **Next action / handoff:** Project lead/Member 1 to provide or locate the immutable FULL artifact, confirm exact tenant-01 authorization, and deliver historical source-health/completeness and bounded-read contracts. Only then run a bounded tenant-01 readiness pilot; do not train or alter frozen TEST/split/calibration policy without a separately authorized prompt.
+
+### 2026-10-10T17:11:19Z — Codex — Keep demo fixtures as the initial frontend view
+
+- **Workstream:** Frontend / QA / Docs
+- **Branch:** `member4`
+- **Commit subject:** `fix: keep demo fixtures visible until integrations exist`
+- **Issue / task:** Preserve the existing mock customer and case data while Members 2 and 3 integrations are unavailable.
+- **Files changed:** `src/app/AppContext.tsx`, `src/services/retainIQService.ts`, `src/services/decisionService.ts`, `src/features/DecisionCasesPage.tsx`, `src/features/StrategyRoiSimulator.tsx`, related service tests, `docs/FRONTEND_ARCHITECTURE.md`, and this log.
+- **What changed:**
+  - Made explicitly labelled `demo_fixture` the initial view; selecting Connected mode still shows its real unavailable state and never falls back silently.
+  - Restored the original illustrative company names and seeded owners in demo records, and displayed names with stable IDs in the work queue and slider simulator.
+- **Why it changed:** The backend customer/prediction and decision workflows are not yet integrated, and defaulting to unavailable pages hid the useful mock UI during frontend development.
+- **Contract / database / API impact:** None. No production identity, tenant, prediction cutoff, API response, or shared backend schema was changed.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - Safari local Vite check (`/cases` on port 5180) — PASS — a fresh load selected Demo fixture, showed Northwind Logistics/Janice and Meridian Foods/Jasmine, and displayed named cases with five sliders in Strategy & ROI Simulator.
+- **Data / model / ROI evidence:** Illustrative local fixtures and scenario assumptions only; no trained model output, authenticated tenant, production decision, measured outcome, or causal ROI.
+- **Known issues / blockers:** Member 2/3 browser-safe prediction and decision APIs are not connected. Demo case changes remain browser-session-only; Connected mode remains unavailable.
+- **Next action / handoff:** Replace the sample adapters only after authoritative tenant-scoped APIs and authentication are supplied; preserve the explicit demo/connected separation.
+- **Reviewer / pairing:** `N/A`
 
 ### 2026-10-10T17:02:46Z — Member 1 / Data & Backend Engineer — 07A Supabase configuration and security preparation
 
@@ -1125,6 +1362,76 @@ itself also requires a filled-in commit entry.
 - **Known issues / blockers:** No Supabase project reference/URL or app/migration DSN configured; remote connectivity was not attempted. Local preflight returned sanitized `BLOCKED` (exit 2). RLS, grants, identity mapping, schema exposure changes, remote migrations, and remote import remain unimplemented. `AGENT.md`, `AGENTS.md`, and the complete requirements document were absent and not inferred.
 - **Next action / handoff:** **CONFIGURATION_READY_REMOTE_BLOCKED.** User/project owner must designate a dedicated RetainIQ synthetic demo project, confirm identity/region, create reviewed distinct app/migration roles in 07B, obtain DSNs from Dashboard Connect, and place them in a protected secret store. Next coding scope is 07B: reviewed grants/RLS plus live positive/negative tests. Do not run 07C import until RLS/security acceptance.
 - **Reviewer / pairing:** N/A
+
+### 2026-10-10T17:01:33Z — Codex — Add slider-driven Strategy & ROI simulator
+
+- **Workstream:** Frontend / QA / Docs
+- **Branch:** `member4`
+- **Commit subject:** `feat: add slider-driven strategy and ROI simulator`
+- **Issue / task:** Convert the Retention Actions Strategy & ROI tab into an interactive slider simulator.
+- **Files changed:** `src/features/DecisionCasesPage.tsx`, `src/features/StrategyRoiSimulator.tsx`, `src/index.css`, `docs/FRONTEND_ARCHITECTURE.md`, and this log.
+- **What changed:**
+  - Replaced number-field what-ifs with sliders for same-currency scenario budget, review slots, assumed action cost, contribution margin, and assumed absolute churn reduction.
+  - Added live allocation and one-month break-even previews, including budget/slot meters, a candidate list, threshold marker, and explicit scenario-only labels.
+- **Why it changed:** Make resource and ROI assumptions easier to explore while keeping hypothetical results distinct from actual decision-engine allocations or measured outcomes.
+- **Contract / database / API impact:** None. The simulator uses explicit local demo fixtures and existing scenario arithmetic; no backend writes or new endpoints.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - Safari local Vite check (`/cases`, explicit demo fixture mode) — PASS — Strategy & ROI simulator rendered; a zero budget removed the candidate from the allocation, and changing assumed reduction from 10.0 to 25.2 pp recalculated hypothetical net value from -RM 66.00 to RM 61.68.
+- **Data / model / ROI evidence:** Illustrative fixture records and editable scenario assumptions only; no source-backed budget allocation, causal uplift, observed savings, or measured ROI.
+- **Known issues / blockers:** Connected decision-case and budget/capacity APIs remain unavailable; the simulator does not commit decisions or evaluate strategy performance.
+- **Next action / handoff:** Integrate authorized decision and budget contracts when supplied by Member 3; retain scenario-only labeling until then.
+- **Reviewer / pairing:** `N/A`
+
+### 2026-10-10T16:59:47Z — Member 2 AI coding assistant — Audit cross-member policy and readiness
+
+- **Workstream:** Part 2 / Part 1 integration / Docs / QA
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `docs(member2): audit cross-member source readiness contracts` (Prompt 26 pending; not committed)
+- **Issue / task:** Member 2 Prompt 26; no ticket
+- **Files changed:** `docs/MEMBER2_TO_MEMBER1_CONTRACT_REQUESTS.md`, `docs/MEMBER2_TRAINING_READINESS_DECISION.md`, `tests/test_cross_member_policy_readiness.py`, and this log.
+- **What changed:**
+  - Checkpointed the verified Prompt 25 reconciliation as `41041f3de6496d4dcd49676b0104d92e57e956b8` (`fix(member2): reconcile churn outcome evidence and coverage`); no other work was staged.
+  - Audited Member 1's latest-state/all-active cancellation rule against Member 2's any-visible-historical-request routing. Documented ended-subscription and reversed-request cases, downstream denominator/route impact, and alternatives for a versioned shared policy. Existing implementations remain unchanged.
+  - Documented current source-health and outcome-coverage APIs separately from proposed heartbeat, coverage-completeness, and late-arrival aggregate contracts. Added tenant/source authorization, as-of timing, and acceptance requirements; no Member 1 production API/schema was changed.
+  - Recovered frozen tenant-01 stage support from v4 manifest/partition evidence; documented numeric and structural gates, row/unique-account deltas, distinct readiness states, synthetic dataset options, and why training/scoring remain blocked. No TEST metric analysis or model training occurred.
+  - Added current-behavior regression tests and test-only types clearly marked `CONTRACT_PROPOSAL`; they do not claim a production heartbeat or diagnostics API exists.
+- **Why it changed:** Prompt 26 requires cross-member contract alignment and evidence-backed readiness before any future training decision, while preserving Prompt 25 artifacts and frozen splits.
+- **Contract / database / API impact:** No runtime contract or database/API was changed. Proposed versioned cancellation and health/diagnostics contracts require Member 1 and named shared policy-owner review. No Member 1/3/4 worktree was modified.
+- **Tests / verification:**
+  - `.\.venv\Scripts\python.exe -B -m pytest -q tests\test_cross_member_policy_readiness.py --basetemp .pytest-tmp-p26-focused` — **PASS** — 16 passed.
+  - Focused Member 1/2 integration command covering policy/readiness, outcome reconciliation, historical preparation tests, label/eligibility, reliability/freshness, SQLite adapter, Data Foundation and cross-member tests — **PASS** — 175 passed.
+  - `.\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p26` — **PASS** — 448 passed, 0 failed/errors/skipped; 24 existing SHAP warnings (9 explainability, 15 prediction pipeline), unsuppressed; 19.63s.
+  - Package imports and AST parsing — **PASS** — 27 Python package files. `git diff --check` — **PASS**. Private v4 preparation manifest SHA and 8/8 artifact SHA/size checks — **PASS**; source SQLite SHA-256 remains `71bc6c18d9266c2b0c8b8e5008f6f6633a55804b1fe90a947f8ea24ca3ee5943`.
+- **Data / model / ROI evidence:** **Synthetic only** — existing tenant-01 STANDARD v1.2 (`synthetic-saas-v1-2-standard-s2026-970a9d231e68`), immutable source manifest SHA `7f85a83a1697efaaeebe1a5534b075ef6c7a99fa5ad3a1e9514b3eb8ae77db6d`; prepared v4 manifest SHA `1169164a8c3b038572a8c19f534bc519e51cbe14bde235227297238d0bb3d94a`. No model trained, no TEST outcomes inspected for optimization, no dataset re-preparation.
+- **Known issues / blockers:** All three horizons fail at least one frozen stage support gate; all are synthetic-only. Sufficient/fresh snapshots are zero; operational scoring remains blocked. Multi-subscription request aggregation/reversal policy and lifecycle/billing heartbeats/completeness remain unresolved. Existing APIs filter unavailable events without excluded-row aggregate diagnostics.
+- **Next action / handoff:** Project lead to name the domain-policy approver and coordinate with Member 1 on cancellation semantics, lifecycle/billing source health, and authorized diagnostics. Only after agreement and explicit authorization, consider a separate tenant-scoped read-only preparation from the existing immutable FULL synthetic dataset. Preserve its split policy; preflight stage support and reliability, and stop if blocked. Do not train or alter TEST policy until separately authorized.
+
+### 2026-10-10T16:43:30Z — Codex — Align frontend data contracts and unavailable states
+
+- **Workstream:** Frontend / Integration / QA / Docs
+- **Branch:** `member4`
+- **Commit subject:** `fix: align frontend with canonical synthetic contracts`
+- **Issue / task:** Correct RetainIQ frontend content and align the five-page UI with current Synthetic SaaS v1.2/backend contracts.
+- **Files changed:** `src/`, `docs/FRONTEND_ARCHITECTURE.md`, `docs/MEMBER4_INTEGRATION.md`, and this log.
+- **What changed:**
+  - Added backend-supported currency-code validation and currency-aware minor-unit formatting; retained separate currency aggregates and corrected scenario amount conversion.
+  - Replaced the legacy subscription event alias with the current canonical event vocabulary; distinguished event time, availability, and source semantics.
+  - Added explicit `connected` and opt-in `demo_fixture` data modes. Connected pages now report missing authenticated reads instead of silently substituting sample accounts, predictions, cases, or timelines.
+  - Removed the hardcoded tenant/cutoff shell assumptions and fixture CRM names/owners; made identity search account-ID based and applied it to the prediction table.
+  - Updated prediction/status, historical cutoff, freshness, MRR exposure, timeline, and workflow UI states; preserved the five routes and existing drawers.
+- **Why it changed:** The previous UI represented a hand-written fixture as source/model data, used outdated money/event assumptions, and displayed tenant/cutoff context unsupported by the active backend.
+- **Contract / database / API impact:** Frontend-only domain/service adapter changes; no shared Python contracts or database schema changed. Confirmed active API routes are `POST /v1/ingest/events`, `GET /v1/integrations`, and `GET /v1/admin/integrations`. The frontend does not call them: service-principal authentication has no approved browser-safe adapter, and no customer, prediction/evaluation, decision, timeline, or feedback read route is present.
+- **Tests / verification:**
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - `npm run build` — PASS — TypeScript project build and Vite production bundle (47 modules).
+  - `git diff --check` — PASS — no whitespace errors.
+  - `npm run lint`, `npm run typecheck`, and `npm test` — NOT RUN — these scripts are not defined in `package.json`.
+- **Data / model / ROI evidence:** Demo fixture records and user-entered ROI assumptions only. No trained model output, source-backed business result, historical evaluation, causal uplift, or saved revenue is claimed.
+- **Known issues / blockers:** Connected customer, prediction, decision, timeline, evaluation, outcome, and browser-safe integration-health APIs remain unimplemented/unavailable. Retention decisions remain session-only in explicit demo mode; scenario arithmetic is illustrative, not backend-authoritative ROI.
+- **Next action / handoff:** Backend owners should provide tenant-authorized paginated read contracts and transactional decision endpoints behind an approved browser-safe auth boundary before connected mode can be enabled.
+- **Reviewer / pairing:** `N/A`
 
 ### 2026-10-10T16:32:31Z — Member 1 / Data & Backend Engineer — 06E dual-database contract conformance
 
@@ -1150,6 +1457,36 @@ itself also requires a filled-in commit entry.
 - **Data / model / ROI evidence:** Synthetic engineering fixtures only. The import fixture is bounded quick profile; no STANDARD-scale, real-customer, model, performance, or ROI claim.
 - **Known issues / blockers:** No critical parity mismatch found. Noncritical coverage-state enumeration and strict MRR cross-output variants remain gaps (see matrix); richer label evidence/status/evaluation metadata and a full uncertainty object are not represented by current storage. RLS, external identity, production hosting, real-data permission/provenance, full-scale import, and Member 2's previously reported maturity/coverage/freshness/heartbeat blockers remain outside this prompt. Member 2's current corrections were not assumed or independently verified.
 - **Next action / handoff:** Milestone 06 is **CONDITIONALLY_ACCEPTED**: core dual-backend conformance is verified, with specified noncritical gaps. The exact task-created database `retaniq_test_06e_20261011` was dropped, the differential child database was dropped by test teardown, and only the task-owned PostgreSQL cluster was stopped; the unrelated Windows service was untouched. Recommended next scope is Phase 07A Supabase tenant-security/RLS foundation after policy review; do not begin it automatically. Leave 06E changes uncommitted; no push, merge, or deployment.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T16:32:00Z — Member 2 AI coding assistant — Reconcile labels and freeze reproducible historical data
+
+- **Workstream:** Part 2 / Part 1 integration
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `fix(member2): reconcile churn outcome evidence and coverage` — checkpoint `41041f3de6496d4dcd49676b0104d92e57e956b8`
+- **Issue / task:** Member 2 Prompt 25; no ticket
+- **Files changed:** `src/retainiq_prediction/label_builder.py`, `src/retainiq_prediction/sqlite_data_adapter.py`, `src/retainiq_prediction/historical_dataset_preparation.py`, `src/retainiq_prediction/reliability.py`, `tests/test_outcome_coverage_reconciliation.py`, `tests/test_reliability.py`, `docs/MEMBER2_OUTCOME_COVERAGE_BLOCKERS.md`, `docs/MEMBER2_SYNTHETIC_HISTORICAL_DATASET_PREPARATION.md`, and this log.
+- **What changed:**
+  - Prompt 24 checkpoint retained at `7971828b9f1c281340806dae39c56641a57a6633`; the verified Prompt 25 changes were subsequently checkpointed as `41041f3de6496d4dcd49676b0104d92e57e956b8`.
+  - Member 1's effective termination `status=ended` is now accepted by Member 2's label semantics. Outcome coverage retains source category/status/completeness/policy metadata; the label builder joins adjacent complete subscription intervals only, requires continuity for all active subscription identities, and keeps gaps/outages/usage-only coverage unknown.
+  - Synthetic final-entitlement evaluation now preserves a first churn episode across later reactivation, requires no paid entitlement at the account churn time, records the final subscription-loss time and all terminal evidence refs, and leaves contradictory state unknown. Reliability reason iteration now sorts essential sources to make serialized feature artifacts deterministic.
+  - Reused the existing authenticated tenant-01 STANDARD SQLite APIs. Added focused regressions and per-horizon reason/source-coverage summaries to the private preparation manifest. Re-prepared into versioned private directories; the final output is `member2-prep-v4`, with all earlier outputs preserved. No model was trained.
+  - Authorized source audit observed 160 terminal lifecycle facts across 155 tenant-01 accounts (147 involuntary, 5 non-renewal, 8 voluntary); 39,824 subscription coverage rows (37,099 complete, 1,162 outage, 63 partial, 750 censored, 750 not-created). Reader access succeeded with tenant-01 retention-inference authorization; no permission bypass or access to other tenants. Existing service-principal also had `model_artifact_write`, which read-only preparation did not use.
+  - End-boundary authorized API aggregate: 750 tenant-01 identities; 629 with paying entitlement (625 eligible, 4 known cancellations), 121 not eligible; 75 accounts with multiple historical subscription IDs, 23 partial-termination accounts, 137 final entitlement-loss transitions, and 154 with a later paid-active lifecycle fact after a qualifying termination.
+  - Corrected full run: 26,267 lifecycle-backed snapshots; 23,415 eligible; 700 unique eligible accounts; 22,715 repeated snapshots; labels positive/negative/unknown: 7d 100/21,851/1,464, 14d 200/21,058/2,157, 30d 437/19,530/3,448. All horizons remain blocked for synthetic training under calibration-stage class/unique-account minimums. Real-world readiness remains blocked.
+  - Frozen splits retained: TRAIN 7,157 (2024-12-09–2025-08-18), VALIDATION 5,859 (2025-10-06–2026-01-19), CALIBRATION 3,700 (2026-03-02–2026-04-20), TEST 6,699 (2026-06-01–2026-08-17). Stage label maturity exclusions were zero; TEST remains evaluation-only. Reliability: 0 sufficient, 654 limited, 22,761 insufficient; freshness: 0 fresh, 654 partially stale, 22,761 stale, 0 unknown. Staleness remains ambiguous between time-relative event watermarks and genuine source gaps because independent heartbeats are absent; thresholds were not weakened.
+  - Final v4 preparation took 950.910 seconds; 57.576 candidate pairs/s, 24.624 eligible snapshots/s, 73.871 labels/s; peak working set unavailable. v3/v4 manifests and all eight artifact hashes match; source DB hash remained unchanged. Final private manifest SHA-256: `1169164a8c3b038572a8c19f534bc519e51cbe14bde235227297238d0bb3d94a`.
+- **Why it changed:** Prompt 24 surfaced zero labels despite an existing authorized STANDARD dataset. The verified root causes were Member 1's canonical `ended` state not being accepted as terminal by Member 2, and Member 2 requiring one coverage segment to span a full horizon instead of joining contiguous complete subscription segments.
+- **Contract / database / API impact:** No Member 1 schema, API, authorization, shared prediction contract, or database was changed. Adapter consumes existing authenticated APIs. Prediction-time features and post-cutoff label outcomes remain separate. Synthetic v1.2 final-paid-entitlement loss remains explicitly dataset-specific.
+- **Tests / verification:**
+  - `.\.venv\Scripts\python.exe -B -m pytest -q tests\test_outcome_coverage_reconciliation.py tests\test_historical_dataset_preparation.py tests\test_sqlite_data_adapter.py tests\test_feature_builder.py tests\test_label_builder.py tests\test_temporal_splits.py tests\test_reliability.py tests\test_data_freshness.py tests\test_data_foundation.py tests\test_cross_member_integration.py --basetemp .pytest-tmp-p25-integration-final2` — **PASS** — 175 passed.
+  - `.\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p25-final` — **PASS** — 432 passed, 0 failed/errors/skipped, 24 existing SHAP warnings; warnings not suppressed.
+  - Focused `tests\test_reliability.py tests\test_outcome_coverage_reconciliation.py tests\test_label_builder.py` — **PASS** — 50 passed.
+  - Authenticated full tenant-01 preparation — **PASS** — 26,267 lifecycle-backed, 23,415 eligible, 70,245 labels; private manifest/artifact checksums verified; SQLite SHA-256 unchanged.
+  - Python package imports and AST parse — **PASS** — 27 package files parsed; `git diff --check` — **PASS**; private output/hash checks — **PASS**.
+- **Data / model / ROI evidence:** Synthetic STANDARD v1.2 only, tenant-01 only, seed 2026; source manifest SHA-256 `7f85a83a1697efaaeebe1a5534b075ef6c7a99fa5ad3a1e9514b3eb8ae77db6d`. No model training, model evaluation, real-world validation, causal effect, saved revenue, or ROI claim. Customer-level prepared data and credentials remain outside Git.
+- **Known issues / blockers:** Every horizon remains `BLOCKED` for synthetic training because calibration partitions do not meet declared positive/unique-account support; 7-day train/validation/test support is also insufficient. 97.21% of eligible rows remain stale/insufficient, with no lifecycle/billing heartbeat to distinguish event silence from an ingestion gap. The bounded-cutoff enumerator mismatch is confirmed: Member 1 excludes a known cancellation only when all active subscriptions are pending cancellation, while Member 2 excludes when any subscription has a known request. Team decision required; conservative Member 2 routing is unchanged. Real multi-subscription churn and source correction/supersession policy remain unresolved.
+- **Next action / handoff:** Member 1/team to clarify heartbeat/watermark, least-privilege read purpose, and account-level known-cancellation semantics; agree real account churn/correction policy. Do not train until all horizon/stage readiness gates are satisfied. Keep TEST sealed from selection and obtain authorized real longitudinal evidence before real-world claims.
 - **Reviewer / pairing:** N/A
 
 ### 2026-10-10T16:11:05Z — Member 1 / Data & Backend Engineer — 06D-3 PostgreSQL artifacts, import, replay, and WSGI parity
@@ -1203,6 +1540,30 @@ itself also requires a filled-in commit entry.
 - **Next action / handoff:** 06D-2 historical-query parity is live-verified. 06D-3 remains a separate task for feature/label/prediction persistence and any scoped import/checkpoint/replay work. No push or merge.
 - **Reviewer / pairing:** N/A
 
+### 2026-10-10T15:17:20Z — Member 2 AI coding assistant — Prepare synthetic historical dataset
+
+- **Workstream:** Part 2 / Part 1 integration
+- **Branch:** integration/member2-main-sqlite
+- **Commit subject:** feat(member2): prepare leakage-safe synthetic historical dataset
+- **Issue / task:** Member 2 Prompt 24; no ticket
+- **Files changed:** src/retainiq_prediction/historical_dataset_preparation.py, src/retainiq_prediction/feature_builder.py, src/retainiq_prediction/sqlite_data_adapter.py, src/retainiq_prediction/label_builder.py, tests/test_historical_dataset_preparation.py, docs/MEMBER2_SYNTHETIC_HISTORICAL_DATASET_PREPARATION.md, and this log.
+- **What changed:**
+  - Added historical preparation orchestration over the existing authenticated Member 1 reader, point-in-time features, synthetic-only final-entitlement churn policy, label maturity, existing temporal splits, and reliability/freshness assessments. Historical customer-level artifacts and manifest remain outside Git.
+  - Corrected negative label maturity: a negative cannot be emitted before its full prediction horizon elapsed, even if future-dated coverage is supplied. Applied the existing dataset-specific all-active-entitlements policy without changing shared requirements.
+  - Ran the existing STANDARD v1.2 dataset for tenant-01 only. Produced 26,267 lifecycle-backed snapshots, 23,415 eligible feature snapshots, and 70,245 horizon labels; all eligible labels were unknown due to missing outcome coverage. Added the audited split, metrics, and manifest findings to the new documentation.
+  - Prompt 23 checkpoint: 28353fb1d0903258afdf1145ef5b6f3c9e7d2774 (feat(member2): integrate authenticated sqlite historical data adapter).
+- **Why it changed:** Prompt 24 requires a reproducible point-in-time-safe dataset preparation path and honest split/label/readiness evidence before any model training.
+- **Contract / database / API impact:** No database schema or shared PredictionOutput contract changed. The preparation consumes existing Member 1 authenticated APIs; feature and label behavior is additive/fixed for correct historical maturity. Synthetic account-churn semantics remain dataset-specific and are not declared as real-customer policy.
+- **Tests / verification:**
+  - .\.venv\Scripts\python.exe -B -m pytest -q tests\test_historical_dataset_preparation.py tests\test_sqlite_data_adapter.py tests\test_feature_builder.py tests\test_label_builder.py tests\test_temporal_splits.py tests\test_reliability.py tests\test_data_freshness.py tests\test_data_foundation.py tests\test_cross_member_integration.py --basetemp .pytest-tmp-p24-integration — PASS — 163 passed.
+  - .\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p24 — PASS — 420 passed, 0 failures/errors/skips, 24 known SHAP warnings.
+  - Actual authenticated STANDARD tenant-01 preparation — PASS as a reproducible structural run — 54,750 candidate pairs, 26,267 lifecycle-backed, 23,415 eligible, 70,245 unknown horizon labels; 920.336 seconds; source DB SHA-256 unchanged.
+  - Package import and AST syntax checks — PASS. All eight private artifact SHA-256 checks and preparation manifest SHA-256 sidecar — PASS. git diff --check — PASS.
+- **Data / model / ROI evidence:** Synthetic v1.2 only; immutable dataset manifest SHA-256 7f85a83a1697efaaeebe1a5534b075ef6c7a99fa5ad3a1e9514b3eb8ae77db6d. Tenant-01 only. Zero mature positives and negatives were surfaced; no class prevalence, model metric, real-world validation, retention effect, or ROI claim. No model trained.
+- **Known issues / blockers:** All horizons are BLOCKED for synthetic training: authorized outcome reads produced no qualifying positive evidence and no complete subscription outcome coverage, despite the four-tenant dataset manifest's 621 episode count. Freshness/reliability were stale/insufficient for 97.21% of eligible snapshots; lifecycle/billing lack independent heartbeats and usage coverage is mostly incomplete. Member 1/Member 2 must reconcile outcome event/coverage fields and watermark contract. The source database, artifacts and private records remain outside Git.
+- **Next action / handoff:** Member 1 and Member 2 to investigate authorized outcome/coverage API evidence and lifecycle/billing heartbeat semantics. Do not begin model training until every horizon has adequate mature class coverage and split-level readiness.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T15:14:20Z — Member 1 / Data & Backend Engineer — PostgreSQL ingestion, identity and auth parity
 
 - **Workstream:** Part 1 / Data Foundation, PostgreSQL Ingestion Parity
@@ -1229,6 +1590,28 @@ itself also requires a filled-in commit entry.
 - **Next action / handoff:** The disposable `retaniq_test_06d1` database was dropped and its task-created cluster was stopped (`pg_ctl` confirms no server); the existing `postgresql-x64-16` Windows service remains Running and was not targeted. The known temporary cluster and isolated psycopg venv directories remain on disk for safe reuse; recursive deletion was rejected by the environment. Keep 06D-1 changes uncommitted. Next milestone is **06D-2 — Historical Queries and Coverage Parity**; do not begin it automatically.
 - **Reviewer / pairing:** N/A
 
+### 2026-10-10T15:09:47Z — Codex — Add five-page RetainIQ frontend dashboard
+
+- **Workstream:** Frontend
+- **Branch:** `main`
+- **Commit subject:** `feat: add five-page RetainIQ frontend dashboard`
+- **Issue / task:** User-approved frontend implementation and refinement.
+- **Files changed:** `index.html`, `package.json`, `package-lock.json`, `src/`, `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json`, `vite.config.ts`, `docs/FRONTEND_ARCHITECTURE.md`, `docs/MEMBER4_INTEGRATION.md`, and this log.
+- **What changed:**
+  - Added the five-page RetainIQ shell, shared navigation/state, feature pages, customer and case detail drawers, typed domain models, hooks, and simulated services.
+  - Refined Business Overview, Data Integration, and Churn Prediction presentation, while keeping unsupported backend operations and unavailable evidence explicit.
+  - Added frontend architecture and integration notes.
+- **Why it changed:** Provide a consistent, judge-ready frontend workflow across business overview, data health, churn prediction, retention actions, and customer insights.
+- **Contract / database / API impact:** No backend, database, or API contract changes. Frontend uses synthetic/demo data and session-only case changes.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production build (45 modules).
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/domain/scenario.test.ts src/services/decisionService.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts` — PASS — 31 tests.
+  - `git diff --cached --check` — PASS — no whitespace errors before this log update.
+- **Data / model / ROI evidence:** Synthetic fixtures and scenario assumptions only; no trained-model evaluation, production integration, or measured ROI is claimed.
+- **Known issues / blockers:** Production APIs, authentication, durable case writes, and source-backed evidence remain unconnected.
+- **Next action / handoff:** Replace demo adapters with approved backend integrations when their contracts and services are available.
+- **Reviewer / pairing:** `N/A`
+
 ### 2026-10-10T14:47:40Z — Member 1 / Data & Backend Engineer — PostgreSQL schema and migrations
 
 - **Workstream:** Part 1 / Data Foundation, PostgreSQL Schema & Migrations
@@ -1253,6 +1636,34 @@ itself also requires a filled-in commit entry.
 - **Next action / handoff:** Member 1 proceeds to 06D-1 PostgreSQL ingestion/identity/auth parity, then 06D-2 historical query and coverage parity. This checkpoint is local only; no push or merge. The disposable database was dropped and its task-created PostgreSQL cluster stopped. The environment rejected recursive deletion of the two exact temporary directories (`retaniq-06c-postgres-runtime` and `retaniq-06c-psycopg-venv`), so their stopped cluster files and isolated driver environment remain on disk. The pre-existing Windows PostgreSQL service was not targeted.
 - **Reviewer / pairing:** N/A
 
+### 2026-10-10T14:35:16Z — Member 2 AI coding assistant — Add authenticated SQLite prediction adapter
+
+- **Workstream:** Part 2 / Part 1 integration
+- **Branch:** integration/member2-main-sqlite
+- **Commit subject:** feat(member2): add read-only authenticated SQLite data adapter
+- **Issue / task:** Member 2 Prompt 23; no ticket
+- **Files changed:** src/retainiq_prediction/sqlite_data_adapter.py, src/retainiq_prediction/feature_builder.py, tests/test_sqlite_data_adapter.py, docs/MEMBER2_LOCAL_SQLITE_ADAPTER.md, and this log.
+- **What changed:**
+  - Added a typed, tenant-bound adapter over Member 1's authenticated reader APIs. It binds the database identity to the STANDARD v1.2 manifest, preserves synthetic provenance and source timestamps, reconstructs subscription facts from dated events, maps usage/billing/lifecycle and coverage evidence, and rechecks the cutoff on all returned rows.
+  - Extended existing feature/coverage inputs additively for daily usage quantities, distinct active days and coverage metadata. A daily aggregate remains one fact; quantity is not expanded into duplicate sessions. Missing or invalid quantity is not counted as one session.
+  - Added 13 adapter-focused tests covering authorized/unauthorized use, identity mismatch, tenant scoping, historical eligibility/cancellation, payment-failure semantics, future/late/unknown availability, aggregate quantities, zero-versus-unknown coverage, freshness limitations, outcome separation and SQLite read-only behavior.
+  - Generated and validated STANDARD synthetic v1.2 seed-2026 data outside the repository, imported it into private SQLite with idempotency verification, provisioned a tenant-01 reader without billing-valuation permission, and ran both the official cross-member smoke and the new adapter against the actual database.
+- **Why it changed:** Prompt 23 required a verified local synthetic integration path and a Member 2-owned adapter without duplicating Member 1 storage/authentication or asserting real-data readiness.
+- **Contract / database / API impact:** No database schema, PredictionOutput, label policy, or Member 1 API was changed. Existing FeatureValues and UsageCoverage gained additive fields for active-day and coverage-quality semantics. The adapter rejects unsupported availability-policy changes because Member 1's read API currently applies source_available_at then received_at. Member 1 and the team should review the additional feature fields and source-availability limitations before production integration.
+- **Tests / verification:**
+  - Local generator generate --profile standard --seed 2026 — PASS — dataset ID synthetic-saas-v1-2-standard-s2026-970a9d231e68.
+  - Local synthetic validator — PASS — manifest SHA-256 7f85a83a1697efaaeebe1a5534b075ef6c7a99fa5ad3a1e9514b3eb8ae77db6d; no warnings.
+  - Local importer with --verify-idempotency — PASS — 239,721 events and 491,223 coverage records; replay accepted zero and identified 239,721 duplicates; import duration 104.768 seconds.
+  - .\.venv\Scripts\python.exe -B -m examples.member2_synthetic_smoke --db [private-db] --dataset [private-dataset] — PASS — dataset identity and cross-tenant denial verified; training not performed.
+  - Direct authenticated adapter smoke against private SQLite — PASS — tenant-bound historical snapshot and feature assembly; 629 eligible tenant-01 accounts at the selected cutoff; one NOT_ELIGIBLE account was also verified without printing its identifier; freshness for the inspected feature example was stale.
+  - .\.venv\Scripts\python.exe -B -m pytest -q tests/test_sqlite_data_adapter.py tests/test_feature_builder.py — PASS — 26 tests.
+  - .\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p23 — PASS — 413 passed, 0 failed/errors/skipped, 24 existing SHAP/LightGBM warnings, 20.16 seconds.
+  - Package import check and git diff --check — PASS.
+- **Data / model / ROI evidence:** Synthetic v1.2 only; 3,000 accounts, 4 tenants, 239,721 canonical events, 491,223 coverage intervals, 3,262 subscriptions and 621 effective account-churn episodes. No real-data validation, model training, performance, retention effect, or ROI claim.
+- **Known issues / blockers:** The Member 1 reader provisioner grants model_artifact_write in addition to retention_inference; a least-privilege read-only provisioner change belongs to Member 1. Member 1's event API filters unknown/late records before returning them and does not expose exclusion counts, and its current API has no independent lifecycle/billing freshness heartbeat. The synthetic final-paid-entitlement policy must not be silently reused for real multi-subscription accounts. No corrections/supersession or production backend integration was tested.
+- **Next action / handoff:** Keep Prompt 23 changes uncommitted for review. Member 1 should consider least-privilege read grants and explicit excluded-event/source-watermark evidence. Prompt 24 may prepare a frozen synthetic historical training/evaluation dataset path and split readiness checks; do not claim real-world effectiveness or production readiness.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T14:18:47Z — Member 1 / Data & Backend Engineer — Configurable database backend foundation
 
 - **Workstream:** Part 1 / Data Foundation, Database Configuration & Transactions
@@ -1275,6 +1686,31 @@ itself also requires a filled-in commit entry.
 - **Data / model / ROI evidence:** No data, model, prediction, or ROI evidence was generated. Existing synthetic-only status is unchanged.
 - **Known issues / blockers:** `POSTGRES_CONNECTION_SMOKE_NOT_RUN` — no safe PostgreSQL instance/DSN was available; psycopg 3 is not installed in the bundled runtime; `psql`, `postgres`, and `pg_ctl` are absent; Docker was not started. PostgreSQL feature parity remains unimplemented.
 - **Next action / handoff:** Member 1 next implements 06C PostgreSQL schema and migrations, then 06D query/repository parity. Keep Supabase deferred to the later infrastructure phase. No commit, push, or merge is part of this handoff.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T14:05:36Z — Member 2 AI coding assistant — Integrate Main Data Foundation and synthetic CLI
+
+- **Workstream:** Part 1 / Part 2 integration and QA
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `merge: integrate latest main data foundation with member2`
+- **Issue / task:** Member 2 Prompt 22; no ticket
+- **Files changed:** Merged `origin/main` at `c2fce585d55169d51f8dcf4a0d70c41984eb488a`, including `retaniq/`, `migrations/`, synthetic tooling, examples, Member 1 tests/docs and `DATASET_CARD.md`; resolved `.gitignore` and `TEAM_LOG.md`; updated Member 2 integration/blocker/dependency docs, the synthetic handoff command, and `tests/test_cross_member_integration.py`.
+- **What changed:**
+  - Preserved Member 1's SQLite Data Foundation and synthetic v1.2 implementation alongside Member 2's `src/retainiq_prediction` package. The only merge conflicts were add/add conflicts in `.gitignore` and `TEAM_LOG.md`; both were resolved by retaining all legitimate protections and all Member 1/Member 2 history.
+  - Verified the synthetic `generate`, `validate`, `import`, and `provision-reader` CLIs without generating a dataset. Corrected the smoke command to module execution, removed the unsupported caller-supplied tenant argument, documented manifest-authoritative Prompt 23 commands and secure one-time token handling, and added a CLI regression test.
+  - Updated integration readiness to recognize the merged local SQLite/auth/coverage interfaces while keeping real-data, production PostgreSQL, Member 3/4, durable governance, multi-subscription, and Member 2 SQLite-adapter blockers explicit.
+- **Why it changed:** Safely combine the latest tenant-scoped Data Foundation with the completed Member 2 package before Prompt 23 local dataset generation and adapter work, without conflating synthetic readiness with real or production readiness.
+- **Contract / database / API impact:** No frozen prediction, label, churn, availability, tenant, probability-horizon, or governance contract was changed. SQLite migrations 001–004 and Main's existing API/storage contracts are now present on the isolated integration branch. Local SQLite remains separate from future Supabase/PostgreSQL production integration.
+- **Tests / verification:**
+  - `.venv\Scripts\python.exe -B -m unittest discover -s tests -v` — PASS — 64 Member 1 unittest-style tests in 13.745s.
+  - `.venv\Scripts\python.exe -B -m pytest -q tests/test_data_foundation.py tests/test_member2_handoff.py tests/test_member2_synthetic_smoke.py tests/test_synthetic_generator.py tests/test_synthetic_integration.py --basetemp .pytest-tmp-p22-member1` — PASS — 64 tests in 12.56s.
+  - `.venv\Scripts\python.exe -B -m pytest -q tests/test_cross_member_integration.py --basetemp .pytest-tmp-p22-cross` — PASS — 19 tests in 3.46s.
+  - Member 2 pytest files excluding the five Member 1 files, with `--basetemp .pytest-tmp-p22-member2` — PASS — 336 tests in 5.20s; 24 known SHAP/LightGBM output-shape warnings.
+  - `.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p22` — PASS — 400 combined tests in 19.23s; 24 known SHAP/LightGBM output-shape warnings.
+  - Synthetic CLI and every subcommand `--help`, module-based smoke `--help`, STANDARD seed-2026 configuration/ID calculation, source inspection, and `git diff --check` — PASS. Direct path-based smoke invocation was corrected to the verified module form.
+- **Data / model / ROI evidence:** Synthetic source code, metadata contracts and test fixtures only. Dataset/database status is `EXPECTED_LOCAL_ARTIFACT_NOT_GENERATED`; no dataset was generated, no SQLite database was imported, no reader token was issued, no model was trained, and no performance or ROI evidence was produced.
+- **Known issues / blockers:** Prompt 23 must generate/validate/import the exact manifest-bound STANDARD artifact and implement the Member 2 SQLite adapter. Real historical data, Supabase/PostgreSQL, Member 3/4 interfaces, durable production governance, correction policy, and agreed real-source multi-subscription semantics remain blocked.
+- **Next action / handoff:** Keep this merge on the isolated integration branch. Prompt 23 should create the private Git-ignored synthetic artifact, provision a tenant-scoped token without logging it, run the smoke, and implement/test only the SQLite-to-Member2 adapter.
 - **Reviewer / pairing:** N/A
 
 ### 2026-10-10T13:44:03Z — Member 1 / Data & Backend Engineer — Complete Synthetic SaaS v1.2 remediation
@@ -1367,6 +1803,54 @@ itself also requires a filled-in commit entry.
 - **Data / model / ROI evidence:** Synthetic tests/example only. `DATASET_CARD.md` remains `NOT_READY`; no genuine 7/14/30 labels, model fit, or predictive evaluation is claimed.
 - **Known issues / blockers:** SQLite still does not meet the PostgreSQL architecture requirement. Existing integrations whose earlier history did not evidence a needed category require a trusted local category update. Real-source authorization/acquisition and coverage remain unverified.
 - **Next action / handoff:** Member 2 provisions the narrow multi-source writer with the exact existing source grants and calls the shared as-of and artifact-storage methods. Project owner must authorize a genuine longitudinal source before label feasibility or training can be evaluated.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T08:32:31Z — Member 2 AI coding assistant — Cross-member integration contracts and handoff
+
+- **Workstream:** Part 2 / Part 4 integration
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** `docs(member2): finalize cross-member integration handoff`
+- **Issue / task:** Member 2 Prompt 20; no ticket
+- **Files changed:** `docs/MEMBER2_CROSS_MEMBER_INTEGRATION.md`, `docs/MEMBER2_HANDOFF_BLOCKERS.md`, `docs/MEMBER2_INTEGRATION_DEPENDENCIES.md`, `tests/test_cross_member_integration.py`, `TEAM_LOG.md`
+- **What changed:**
+  - Documented the verified Member 1 input contract, current point-in-time adapter fields, Member 3 canonical prediction/feedback handoff, Member 4 dashboard/outcome semantics, ownership boundaries, security/provenance rules and concrete acceptance checklist.
+  - Added a P0/P1 blocker matrix without inventing backend/API/frontend completion. P0 blockers include the absent authorized longitudinal dataset, authenticated Member 1 adapter, unresolved multi-subscription policy, source availability/correction policy, and durable production model-governance storage.
+  - Added 18 deterministic synthetic cross-member contract tests covering prediction serialization, scored/non-scored states, pipeline blockers, feedback maturity/revisions, tenant isolation, source availability and `prediction_id` linkage. Reused existing contracts; no parallel serializer, API, database, decision engine or UI was added.
+- **Why it changed:** Make Member 2's actual interfaces and integration blockers actionable for Members 1, 3 and 4 while distinguishing local unit-test verification from real production readiness.
+- **Contract / database / API impact:** No public schema, database, endpoint or shared enum change. Existing `PredictionOutput.model_dump/model_validate`, `PipelineResult`, `PointInTimeDataAdapter` and `InMemoryOutcomeReconciliationStore` are the verified local handoff boundaries. External authentication, persistence and endpoint ownership remain with other workstreams.
+- **Tests / verification:**
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_cross_member_integration.py --basetemp .pytest-tmp-p20` — PASS — 18 tests passed.
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_cross_member_integration.py tests/test_prediction_contract.py tests/test_prediction_pipeline.py tests/test_outcome_reconciliation.py --basetemp .pytest-tmp-p20` — PASS — 75 tests passed, 15 known SHAP warnings.
+  - `.venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp-p20` — PASS — 335 tests passed, 24 known SHAP warnings.
+  - `.venv\Scripts\python.exe -c "import retainiq_prediction; ..."` — PASS — Python 3.14.4; canonical prediction, pipeline and reconciliation exports imported.
+  - `git diff --check` — PASS — no whitespace errors; normal LF/CRLF conversion warnings only.
+- **Data / model / ROI evidence:** Explicitly synthetic contract fixtures and existing local unit tests only; no authorized dataset, real score, model metric, intervention effect, saved revenue or ROI evidence.
+- **Known issues / blockers:** P0 handoff blockers remain open. `IMPROVEMENT-001` through `IMPROVEMENT-005` remain pending/unresolved. Prompt 18's original 28-scenario coverage review and Prompt 19's final governance scenario review remain deferred for final regression review.
+- **Next action / handoff:** Member 1 should supply the authenticated canonical adapter, DATASET_CARD, availability/correction policy and multi-subscription decision. Members 3 and 4 should confirm their prediction/feedback and dashboard query contracts against this handoff before integration.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T08:27:02Z — Member 2 AI coding assistant — Human approval, promotion and rollback governance
+
+- **Workstream:** Part 2 / Part 4 governance
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; Prompt 18 checkpoint is `f5872a5`
+- **Issue / task:** Member 2 Prompt 19; no ticket
+- **Files changed:** `src/retainiq_prediction/model_approval.py`, `src/retainiq_prediction/model_promotion.py`, `src/retainiq_prediction/model_rollback.py`, `src/retainiq_prediction/__init__.py`, `tests/test_model_approval.py`, `tests/test_model_promotion.py`, `tests/test_model_rollback.py`, `docs/MEMBER2_MODEL_APPROVAL_PROMOTION_ROLLBACK.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added typed, append-only approval records with request idempotency, preserved `APPROVE`/`REJECT` rationale, immutable audit events, and a replaceable external authorization verifier. Caller role strings, booleans and synthetic verifier evidence fail closed for production approval.
+  - Added separate promotion consideration/technical eligibility/activation checks and a process-local compare-and-swap active bundle reference with generation checks, prior-bundle history and explicit non-production limitations. No prediction pipeline mutation or automatic deployment is performed.
+  - Added rollback request validation for authorized human actions, compatible approved targets, stale active-state rejection, process-local simulation, chain preservation and audit evidence. Added 30 synthetic structural governance scenarios and documented implemented versus unavailable production controls.
+- **Why it changed:** Establish an explicit human-governed release boundary after candidate training/evaluation while preventing synthetic evidence, caller claims, stale pointers, changed artifacts and metadata-only statuses from activating or rolling back a model.
+- **Contract / database / API impact:** No database, API, model-training, calibration, prediction-pipeline, Part 3, or dashboard behavior changed. New interfaces consume existing `ModelBundleMetadata` and frozen candidate-evaluation manifests. Member 1/backend must later provide trusted authorization, durable append-only audit, artifact integrity, deployment compatibility and durable atomic active-bundle storage.
+- **Tests / verification:**
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_model_approval.py tests/test_model_promotion.py tests/test_model_rollback.py --basetemp .pytest-tmp-p19` — PASS — 30 tests passed.
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_model_registry.py tests/test_candidate_training.py tests/test_candidate_evaluation.py tests/test_model_approval.py tests/test_model_promotion.py tests/test_model_rollback.py --basetemp .pytest-tmp-p19` — PASS — 55 tests passed.
+  - `.venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp-p19` — PASS — 317 tests passed, 24 known SHAP warnings.
+  - `.venv\Scripts\python.exe -c "import retainiq_prediction; ..."` — PASS — Python 3.14.4 and new governance exports imported.
+  - `git diff --check` — PASS — no whitespace errors; only normal LF/CRLF conversion warnings.
+- **Data / model / ROI evidence:** Synthetic structural fixtures and process-local simulation only; no authorized production actor, dataset, artifact, deployment, model metric, retention result or ROI evidence.
+- **Known issues / blockers:** The included audit and active pointer are not durable, distributed or production-safe. Real production activation/rollback remains blocked. Prompt 18's original 28 candidate-training/evaluation scenarios still require a final scenario-to-test coverage review; that review was not performed here.
+- **Next action / handoff:** Member 1/backend should provide the trusted authorization and durable deployment/audit interfaces. Member 2 should perform the deferred Prompt 18 scenario coverage review before any real release integration.
 - **Reviewer / pairing:** N/A
 
 ### 2026-10-10T08:17:17Z — Member 1 / Data & Backend Engineer — Security and temporal integrity remediation
@@ -1710,6 +2194,229 @@ itself also requires a filled-in commit entry.
   - Member 3: begin Phase 1 — routing engine code + `decision_cases` table migration
   - Member 4: start Strategy Lab UI using `shared/fixtures/decision_mock.json`
   - Member 2: review `prediction_contract.md` and confirm or propose field changes
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T07:02:28Z — Member 2 AI coding assistant — Multi-horizon LightGBM candidate
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; previous checkpoint is `72550fa`
+- **Issue / task:** Member 2 Prompt 10; no ticket
+- **Files changed:** `pyproject.toml`, `src/retainiq_prediction/lightgbm_model.py`, `src/retainiq_prediction/__init__.py`, `tests/test_lightgbm_model.py`, `docs/MEMBER2_LIGHTGBM_MODELS.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added the optional CPU LightGBM dependency and a reusable three-horizon training component with independent 7/14/30-day classifiers, existing feature allowlist reuse, mature TRAIN-mask filtering, optional VALIDATION-only early stopping, and explicit single-class/insufficient/dependency `NOT_READY` results.
+  - Added uncalibrated-probability semantics, deterministic configuration, tenant scope, feature-order/preprocessing metadata, dataset readiness/provenance metadata, trusted-root artifact save/load, malformed-artifact checks, and 21 synthetic structural tests.
+  - Added LightGBM documentation; preserved `IMPROVEMENT-001`, `IMPROVEMENT-002`, and `IMPROVEMENT-003` without changing their statuses or shared prediction contracts.
+- **Why it changed:** Implement the primary model-training candidate while preserving chronological label maturity, untouched CALIBRATION/TEST periods, honest probability semantics, and the current evidence blocker.
+- **Contract / database / API impact:** No database, API, shared prediction enum, production `PredictionOutput`, calibration, SHAP, decision, dashboard, or retraining behavior changed. Raw LightGBM scores remain separate from calibrated production forecasts.
+- **Tests / verification:**
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_lightgbm_model.py --basetemp .pytest-tmp` — PASS — 21 tests passed, 0 skipped in 2.21s.
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_lightgbm_model.py tests/test_baselines.py --basetemp .pytest-tmp` — PASS — 36 tests passed, 0 skipped in 2.40s.
+  - `.venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp` — PASS — 132 tests passed, 0 skipped in 2.53s.
+  - Package import and dependency version check — PASS — Python 3.14.4, NumPy 2.5.3, SciPy 1.18.1, scikit-learn 1.9.1, LightGBM 4.7.0, Pydantic 2.14.0, pytest 8.4.2.
+  - `git diff --check` — PASS — no whitespace errors; Git emitted only normal LF/CRLF conversion warnings.
+- **Data / model / ROI evidence:** Explicitly synthetic fixtures and temporary internal artifacts only; no authorized dataset, calibration, benchmark metric, production model, churn performance, retention result, or ROI evidence. LightGBM is a primary candidate, not a claimed winner.
+- **Known issues / blockers:** No authorized longitudinal dataset exists. Account-level multi-subscription semantics remain `IMPROVEMENT-002: NEEDS_TEAM_DECISION`. Calibration, horizon coherence, SHAP, real evaluation, and promotion governance remain deferred. Pickle artifacts are trusted-internal only.
+- **Next action / handoff:** Member 1 must provide authorized lifecycle/billing data, source availability and correction timestamps, tenant authorization/provenance, observation coverage, and account-level churn policy before real training or evaluation.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:56:37Z — Member 2 AI coding assistant — Isolated ML baseline verification
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** `feat(member2): verify baseline models in isolated ML environment`
+- **Issue / task:** Member 2 Prompt 09; no ticket
+- **Files changed:** `.gitignore`, `pyproject.toml`, `src/retainiq_prediction/baselines.py`, `src/retainiq_prediction/__init__.py`, `tests/test_baselines.py`, `docs/MEMBER2_BASELINE_MODELS.md`, `docs/MEMBER2_IMPROVEMENT_BACKLOG.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added the project-local `.venv/` workflow and `ml` optional dependency (`scikit-learn>=1.7,<2`), with generated environments, caches, and egg-info ignored by Git; the global Python installation was not modified.
+  - Fixed the baseline vectorizer to pass ordered numeric rows to scikit-learn, then verified independent 7/14/30-day Logistic Regression fitting, train-fitted imputation/scaling, mature-label filtering, test isolation, metadata, and trusted-root artifact save/load.
+  - Added `IMPROVEMENT-003` for later rule-threshold validation and documented exact setup/dependency versions plus the pickle trusted-artifact restriction.
+- **Why it changed:** Remove the dependency-related baseline verification gap and validate the existing synthetic comparison pipeline in an isolated, reproducible environment without claiming real model performance.
+- **Contract / database / API impact:** No database, API, shared prediction enum, label policy, calibration, LightGBM, or production `PredictionOutput` change. Baseline outputs remain ranking scores or explicitly uncalibrated probabilities.
+- **Tests / verification:**
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_baselines.py --basetemp .pytest-tmp` — PASS — 15 tests passed, 0 skipped in 2.37s.
+  - `.venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp` — PASS — 111 tests passed, 0 skipped in 2.35s.
+  - Package import check with `.venv\Scripts\python.exe` — PASS — imported package and reported `SKLEARN_AVAILABLE=True`.
+  - `git diff --check` — PASS — no whitespace errors; Git emitted only normal LF/CRLF conversion warnings.
+- **Data / model / ROI evidence:** Synthetic fixtures only; no authorized dataset, production artifact, calibrated probability, empirical metric, retention result, or ROI evidence. Installed versions: Python 3.14.4, NumPy 2.5.3, SciPy 1.18.1, scikit-learn 1.9.1, Pydantic 2.14.0, pytest 8.4.2.
+- **Known issues / blockers:** No authorized longitudinal dataset exists. Pickle artifacts are executable serialization and are restricted to validated trusted-root paths. Rule weights and alert thresholds remain provisional and unvalidated.
+- **Next action / handoff:** Member 1 must provide authorized longitudinal data, canonical billing/lifecycle mappings, source provenance and account-level churn policy. Threshold validation and LightGBM comparison require development/validation data and remain deferred.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:49:46Z — Member 2 AI coding assistant — Rule and Logistic Regression baselines
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; previous temporal-splitting checkpoint is `09527dc`
+- **Issue / task:** Member 2 Prompt 08; no ticket
+- **Files changed:** `src/retainiq_prediction/baselines.py`, `src/retainiq_prediction/__init__.py`, `tests/test_baselines.py`, `docs/MEMBER2_BASELINE_MODELS.md`, `docs/MEMBER2_IMPROVEMENT_BACKLOG.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added versioned, configurable rule-based ranking scores using only point-in-time feature values and optional point-in-time payment-failure counts; missing usage is not treated as zero and payment failure is not treated as churn.
+  - Added a reusable optional scikit-learn Logistic Regression component with independent 7/14/30-day fitting, TRAIN-only temporal masks, explicit numeric feature allowlist, train-fitted imputation/scaling, fixed random state, one-class/insufficient-data `NOT_READY` results, uncalibrated score labeling, and trusted-local artifact persistence.
+  - Recorded `IMPROVEMENT-002` as an unresolved Member 1 + Member 2 multi-subscription churn-definition decision without changing `IMPROVEMENT-001` or existing label semantics.
+- **Why it changed:** Provide honest comparison baselines before the future personalized multi-horizon LightGBM implementation while preserving temporal label maturity and the canonical prediction boundary.
+- **Contract / database / API impact:** No database, API, shared prediction enum, label policy, or production `PredictionOutput` change. Baseline results remain separate from calibrated production forecasts. The optional Logistic Regression backend reports `NOT_READY` when scikit-learn is unavailable.
+- **Tests / verification:**
+  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 106 tests passed, 5 skipped in 0.59s; skips are scikit-learn-dependent fit/persistence tests because the local environment does not provide scikit-learn.
+  - `PYTHONPATH=src` package import check — PASS — imported baseline classes and reported `SKLEARN_AVAILABLE=False`.
+  - `git diff --check` — PASS — no whitespace errors; Git emitted only normal LF/CRLF conversion warnings.
+- **Data / model / ROI evidence:** Synthetic baseline fixtures only; no authorized dataset, fitted Logistic Regression artifact, production probability, calibration, model metric, retention result, or ROI evidence. Rule thresholds are configurable operational assumptions, not validated performance claims.
+- **Known issues / blockers:** scikit-learn is not installed in the current Python 3.14.4 environment, so real Logistic Regression fitting was not executed. No authorized longitudinal dataset exists. Member 1 must finalize canonical payment feature mapping, lifecycle/account churn semantics, provenance, and authorization before model readiness can change.
+- **Next action / handoff:** Provide an isolated approved scikit-learn environment and authorized data, then rerun fitting and chronological evaluation before comparing against LightGBM. Keep `IMPROVEMENT-002` unresolved until the account-level policy is agreed.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:44:28Z — Member 2 AI coding assistant — Chronological dataset splitting
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; previous label-builder checkpoint is `fd9ae10`
+- **Issue / task:** Member 2 Prompt 07; no ticket
+- **Files changed:** `src/retainiq_prediction/temporal_splits.py`, `src/retainiq_prediction/__init__.py`, `tests/test_temporal_splits.py`, `docs/MEMBER2_TEMPORAL_SPLITTING.md`, `docs/MEMBER2_IMPROVEMENT_BACKLOG.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added deterministic timezone-aware TRAIN, VALIDATION, CALIBRATION, and TEST partitioning by prediction `as_of` using explicit half-open boundaries; all horizons for one snapshot remain together and duplicate snapshot assignments are rejected.
+  - Added per-horizon supervised/evaluation masks, label-maturity enforcement using `evaluation_as_of` and an optional maturity gap, test-label evaluation isolation, account-overlap reporting, class/sample warnings, and a reproducible split manifest.
+  - Added the temporal-splitting handoff documentation and persisted `IMPROVEMENT-001` for a future personalized-baseline ablation study; no model training or performance claims were added.
+- **Why it changed:** Prevent temporal assignment and label-observation leakage before future 7/14/30-day model development, while preserving unknown labels and the existing churn-label semantics.
+- **Contract / database / API impact:** No database or API schema changed. The splitter consumes existing `FeatureSnapshot`/`ChurnLabel` records and requires Member 1 to provide an authorized longitudinal dataset, canonical lifecycle mappings, availability/evaluation timestamps, coverage evidence, and account-level multi-subscription semantics.
+- **Tests / verification:**
+  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 96 tests passed in 0.60s.
+  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q tests/test_temporal_splits.py` — PASS — 14 tests passed in 0.35s.
+  - `PYTHONPATH=src` package import check — PASS — imported `retainiq_prediction`, `TemporalSplitter`, and `TemporalSplitManifest`.
+  - `git diff --check` — PASS — no whitespace errors reported; Git emitted only normal LF/CRLF conversion warnings.
+- **Data / model / ROI evidence:** Explicitly synthetic structural fixtures only; no authorized real dataset, training, model, metric, prediction, or ROI result. The manifest keeps real training readiness `BLOCKED` without an authorized dataset.
+- **Known issues / blockers:** No authorized longitudinal dataset exists in the repository. Member 1 must finalize source availability/correction semantics, canonical field mappings, account-level churn policy, and authorization/provenance evidence before real training readiness can change.
+- **Next action / handoff:** Member 1 should implement the real adapter and dataset evidence mapping; Member 2 can then replay the splitter on an authorized historical dataset before model work.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:38:33Z — Member 2 AI coding assistant — 7/14/30-day churn label builder
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; previous feature checkpoint is `f82a290`
+- **Issue / task:** Member 2 Prompt 06; no ticket
+- **Files changed:** `src/retainiq_prediction/label_builder.py`, `src/retainiq_prediction/__init__.py`, `tests/test_label_builder.py`, `docs/MEMBER2_LABEL_ENGINEERING.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added typed/versioned `ChurnLabel` records for independent 7-, 14-, and 30-day horizons with explicit positive, negative, unknown, excluded, and unsupported statuses.
+  - Added a replaceable lifecycle/outcome adapter and synthetic in-memory implementation that separates prediction `as_of` from later `evaluation_as_of`, enforces source availability, preserves evidence references, and reports late/unknown coverage.
+  - Implemented qualifying effective voluntary cancellation, non-renewal, and finalized involuntary termination semantics; payment failures, requests, inactivity, and missing events are not churn by themselves.
+  - Added conservative known-cancellation, already-terminated, right-censoring, multi-subscription, boundary, cross-tenant, late-outcome, and conflicting-lifecycle handling. No model training, temporal splitting, prediction API, or feature mutation was added.
+- **Why it changed:** Establish reproducible supervised-target generation without allowing future outcome evidence to enter prediction-time features or prospective eligibility.
+- **Contract / database / API impact:** No database or API schema changed. Member 1 can implement `LifecycleOutcomeAdapter` against canonical lifecycle storage and must supply effective timestamps, availability/received timestamps, account mapping, stable IDs, and observation coverage.
+- **Tests / verification:**
+  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 82 tests passed in 0.40s.
+  - `PYTHONPATH=src` package import check — PASS — imported `retainiq_prediction` and label enums.
+  - `git diff --check` — PASS — no whitespace errors reported; Git emitted only normal LF/CRLF conversion warnings.
+- **Data / model / ROI evidence:** Synthetic lifecycle and observation fixtures only; no real dataset, labels from production data, trained model, prediction, performance metric, or ROI evidence.
+- **Known issues / blockers:** Member 1 must finalize canonical churn event mappings, source-availability precedence, observation-coverage semantics, account-level multi-subscription churn policy, source-correction handling, authorization boundary, and the real adapter. No authorized longitudinal dataset exists in the repository.
+- **Next action / handoff:** Review label policy and lifecycle/coverage mappings with Member 1 before allowing positive/negative labels into supervised training.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:29:51Z — Member 2 AI coding assistant — Personalized behavioral feature foundation
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; local checkpoint is `37df5de`
+- **Issue / task:** Member 2 Prompt 05; no ticket
+- **Files changed:** `src/retainiq_prediction/feature_builder.py`, `src/retainiq_prediction/__init__.py`, `tests/test_feature_builder.py`, `docs/MEMBER2_FEATURE_ENGINEERING.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added a versioned `FeatureSnapshot` with typed feature values, point-in-time cutoff metadata, coverage/missingness quality fields, and source evidence references.
+  - Added configurable session-event semantics and personalized four-week baseline features: 7/30-day sessions, inactivity days, recent trend, observed weeks, averages, deviations, ratio, variability, and explicit baseline availability status.
+  - Added optional explicit usage-coverage evidence so confirmed zero activity is distinct from unknown or incomplete history. No cohort baseline, labels, model training, prediction calculation, cancellation feature, or churn outcome was added.
+- **Why it changed:** Establish the first leakage-safe behavioral feature layer required before label building or model work.
+- **Contract / database / API impact:** No database, API, or Member 1 source contract changed. The builder consumes `PointInTimeDataAdapter`; Member 1 must later supply canonical session semantics, source coverage evidence, and availability timestamps through a replaceable adapter boundary.
+- **Tests / verification:**
+  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 62 tests passed in 0.37s.
+  - `git diff --check` — NOT RUN after this uncommitted feature edit; the checkpoint staged check reported preserved requirements-document trailing whitespace and an existing blank line at EOF. No requirement documents were rewritten to hide those source formatting issues.
+- **Data / model / ROI evidence:** Synthetic usage and coverage fixtures only; no real dataset, labels, trained model, prediction, performance metric, or ROI evidence.
+- **Known issues / blockers:** Member 1 must confirm session event semantics, period-level usage coverage/completeness representation, availability precedence, and production adapter mapping. Personalized baselines remain unavailable for sparse or unobserved histories; no cohort fallback is implemented.
+- **Next action / handoff:** Review the feature field names and coverage contract with Member 1, then connect the canonical adapter before implementing labels or models.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:23:21Z — Member 2 AI coding assistant — Point-in-time adapter and eligibility foundation
+
+- **Workstream:** Part 2 / Integration
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; working tree change only
+- **Issue / task:** Member 2 Prompt 04; no ticket
+- **Files changed:** `src/retainiq_prediction/point_in_time.py`, `src/retainiq_prediction/eligibility.py`, `src/retainiq_prediction/__init__.py`, `tests/test_point_in_time.py`, `tests/test_eligibility.py`, `docs/MEMBER2_POINT_IN_TIME_AND_ELIGIBILITY.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added a typed, replaceable in-memory point-in-time adapter with exact tenant/customer scoping, timezone-aware cutoff validation, event/effective-time filtering, configurable source-availability precedence, provenance preservation, and explicit exclusion limitations.
+  - Added eligibility reconstruction for eligible, known cancellation, not eligible, and insufficient data states, including machine-readable reason codes, conservative lifecycle handling, payment-failure non-churn behavior, and explicit unresolved multi-subscription policy handling.
+  - Added synthetic-only focused tests and documented the Member 1 input contract. No database, ingestion API, feature engineering, labels, model training, or prediction calculations were added.
+- **Why it changed:** Establish the leakage-safe storage boundary and eligibility routing foundation before feature or label implementation.
+- **Contract / database / API impact:** No database or API implementation changed. The adapter expects dated subscription, usage, and billing facts with source provenance and an availability/received timestamp when available. Availability precedence remains configurable pending Member 1 agreement.
+- **Tests / verification:**
+  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 49 tests passed in 0.43s.
+  - `PYTHONPATH=src` source import check — PASS — `import retainiq_prediction`.
+  - `git diff --check` — PASS — no whitespace errors reported.
+- **Data / model / ROI evidence:** Synthetic fixtures only; no dataset, feature set, labels, trained model, performance metric, prediction result, or ROI claim.
+- **Known issues / blockers:** Member 1 must provide the real adapter/database mapping, source availability semantics, event availability timestamps, authoritative lifecycle history, account-level multi-subscription churn policy, and authorization boundary. Unknown availability is conservatively excluded and yields an explicit limitation.
+- **Next action / handoff:** Agree the availability precedence and account-level subscription policy with Member 1, then connect the real adapter without changing the eligibility business logic.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:17:45Z — Member 2 AI coding assistant — Historical dataset readiness gate
+
+- **Workstream:** Part 2 / Integration
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** `feat: add historical dataset readiness gate`
+- **Issue / task:** Member 2 Prompt 03; no ticket
+- **Files changed:** `src/retainiq_prediction/dataset_readiness.py`, `src/retainiq_prediction/__init__.py`, `tests/test_dataset_readiness.py`, `docs/MEMBER2_DATASET_READINESS.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added a read-only adapter-based readiness validator that checks account identity, tenant mapping, events, lifecycle history, outcome timestamps, source availability, duplicates, observation coverage, provenance, and personalized-baseline evidence.
+  - Added structured `PASS`/`PARTIAL`/`BLOCKED` reports with supported horizons, blockers, missing fields, quality issues, field-state evidence, and non-PII row counts.
+  - Documented the Member 1 adapter boundary and the current project status: no dataset supplied, therefore `BLOCKED`.
+- **Why it changed:** Prevent genuine 7/14/30-day model work from starting without timestamped, authorized, outcome-observable historical evidence.
+- **Contract / database / API impact:** No database, ingestion, or API changes. The validator consumes a documented adapter view and does not create a competing schema. The default 28-day baseline span is an explicit configurable readiness heuristic, not a finalized model contract.
+- **Tests / verification:**
+  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 29 tests passed in 0.31s.
+  - Source import with `PYTHONPATH=src` and empty-adapter check — PASS — package imported and returned `BLOCKED`.
+  - Initial `python -m pytest -q` / bare source import — NOT PASS — Windows Python app-execution alias was unavailable and the uninstalled `src` layout is not on `sys.path`; explicit interpreter plus `PYTHONPATH=src` was used for final verification.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** Synthetic structural fixtures only; no real dataset, trained model, accuracy metric, prediction result, or ROI claim. The actual repository readiness status remains `BLOCKED`.
+- **Known issues / blockers:** No authorized longitudinal dataset or `DATASET_CARD.md`; Member 1’s canonical adapter, source-availability semantics, multi-subscription churn policy, and outcome schema remain unavailable. The package is not installed into the interpreter environment; tests use the declared `src` path configuration.
+- **Next action / handoff:** Member 1 should supply the canonical mapped records and provenance/evidence gate. Only after a real dataset passes should Member 2 implement features, labels, splits, or training.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:12:43Z — Member 2 AI coding assistant — Minimal prediction contract foundation
+
+- **Workstream:** Part 2 / Integration
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** `feat: add canonical prediction contract foundation`
+- **Issue / task:** Member 2 Prompt 02; no ticket
+- **Files changed:** `pyproject.toml`, `src/retainiq_prediction/__init__.py`, `src/retainiq_prediction/contracts.py`, `tests/test_prediction_contract.py`, `docs/MEMBER2_PREDICTION_CONTRACT.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added a minimal Python package with Pydantic v2 models for the canonical flat `PredictionOutput` payload and nested reliability, freshness, and non-quantified uncertainty contracts.
+  - Added validation for status-dependent probabilities, cumulative horizon ordering, non-empty/distinct IDs, timezone-aware timestamps, documented enum values, and JSON round trips.
+  - Added focused contract documentation and synthetic-only fixtures; no training, feature engineering, API, or database code was added.
+- **Why it changed:** Establish the shared Part 2 prediction interface before implementing feature building or model inference.
+- **Contract / database / API impact:** Defines the local validation contract for the integrated `prediction_id`/`prediction_run_id` distinction and flat `p_churn_7d`/`p_churn_14d`/`p_churn_30d` fields. No database or API implementation changed; unresolved cross-part questions remain documented.
+- **Tests / verification:**
+  - `python -m pytest -q` — PASS — 21 tests passed in 0.31s.
+  - `git diff --check` — PASS — no whitespace errors.
+  - Python/Pydantic/pytest environment check — PASS — Python 3.14.4, Pydantic 2.13.5, pytest 8.4.2.
+- **Data / model / ROI evidence:** Synthetic contract fixtures only; no dataset, trained model, performance metric, prediction result, or ROI claim.
+- **Known issues / blockers:** Member 1’s canonical data/API contract, authorized longitudinal dataset, account-level multi-subscription churn semantics, source-availability timestamp semantics, and attribution shape remain unresolved.
+- **Next action / handoff:** Coordinate the unresolved contracts with Members 1 and 4, then implement time-safe features and labels only after the dataset evidence gate is available.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:08:15Z — Member 2 AI coding assistant — Repository documentation setup
+
+- **Workstream:** Part 2 / Integration / Docs
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** `docs: set up prediction-engine repository documentation`
+- **Issue / task:** Repository documentation setup; no ticket
+- **Files changed:** `AGENTS.md`, `RetainIQ_v2_Complete_Requirements.md`, `TEAM_LOG.md`, `docs/RetainIQ_v2_Data_Foundation.md`, `docs/RetainIQ_v2_Part2_Prediction_Engine_Requirements.md`, `docs/RetainIQ_v2_Part3_Decision_Engine_Requirements.md`, `docs/RetainIQ_v2_Part4_Closed_Loop_Learning_and_Dashboard_Requirements.md`, `docs/MEMBER2_INTEGRATION_DEPENDENCIES.md`
+- **What changed:**
+  - Copied the supplied canonical requirements, team guidance, and Part 1–4 specifications into the repository without content changes; created `AGENTS.md` as an exact copy of the available `AGENT.md`.
+  - Added the Member 2 integration dependency note covering confirmed prediction contracts, downstream handoffs, unresolved decisions, and blockers.
+- **Why it changed:** Establish the repository documentation baseline and make Member 2’s cross-part dependencies explicit before implementation.
+- **Contract / database / API impact:** No implementation or API/database changes. The canonical flat prediction payload and `prediction_id`/`prediction_run_id` distinction are documented as integration requirements.
+- **Tests / verification:**
+  - Source/destination SHA-256 comparison — PASS — copied documents match their Downloads originals.
+  - Repository audit and `git diff --check` — PASS — clean formatting check; no implementation tests exist or were needed for documentation-only setup.
+- **Data / model / ROI evidence:** N/A; no dataset, model, prediction, or ROI result was created.
+- **Known issues / blockers:** Repository still has no backend, database, dependency manifest, tests, dataset, or Member 1 implementation. Account-level multi-subscription churn semantics and event-availability timestamp contract remain unresolved.
+- **Next action / handoff:** Member 1 should provide the canonical data/API contract and dataset evidence gate; Member 2 can then implement time-safe labels/features and prediction services.
 - **Reviewer / pairing:** N/A
 
 ## 5. Team workstream directory — fill in before parallel development

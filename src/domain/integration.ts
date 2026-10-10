@@ -1,6 +1,13 @@
 export type SourceStatus = 'healthy' | 'warning' | 'failed' | 'unknown';
+export const CANONICAL_EVENT_TYPES = [
+  'session_started', 'feature_used', 'usage_aggregate_updated',
+  'payment_failed', 'payment_succeeded', 'invoice_payment_failed', 'invoice_paid',
+  'subscription_created', 'subscription_updated', 'cancellation_requested',
+  'subscription_cancelled_effective', 'subscription_non_renewed_effective', 'subscription_involuntary_terminated',
+] as const;
+export type CanonicalEventType = typeof CANONICAL_EVENT_TYPES[number];
 export type SourceHealth = {
-  source: string; status: SourceStatus; event_types: string[];
+  category: 'usage' | 'billing' | 'subscription'; source: string; status: SourceStatus; event_types: CanonicalEventType[];
   last_success_at: string | null; last_attempt_at: string | null;
   latest_occurred_at: string | null; latest_available_at: string | null;
   processed_count: number; rejected_count: number; error_count: number;
@@ -20,5 +27,5 @@ export type RejectedEvent = {
 export type DataAlert = { id: string; severity: 'warning' | 'error'; title: string; detail: string; source: string | null };
 export type IntegrationOverview = {
   sources: SourceHealth[]; coverage: Coverage; rejected_events: RejectedEvent[];
-  alerts: DataAlert[]; evidence_kind: 'synthetic' | 'source_backed';
+  alerts: DataAlert[]; evidence_kind: 'demo_fixture' | 'source_backed';
 };

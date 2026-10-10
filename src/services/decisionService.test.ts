@@ -6,6 +6,8 @@ test('routes include all five queues and quality cases allow only investigation'
   decisionService.resetDemo();
   const cases = await decisionService.listCases();
   assert.deepEqual(new Set(cases.map(item => item.route)), new Set(['PRIORITY_REVIEW', 'HUMAN_REVIEW', 'OBSERVE', 'KNOWN_CANCELLATION', 'NOT_ELIGIBLE']));
+  assert.equal(cases.find(item => item.customer_id === 'c01')?.owner, 'Janice');
+  assert.equal(cases.find(item => item.customer_id === 'c03')?.owner, 'Jasmine');
   const quality = cases.find(item => item.customer_id === 'c07')!;
   assert.equal(proposalsFor(quality).find(item => item.id === 'DATA_INVESTIGATION')?.eligible, true);
   assert.equal(proposalsFor(quality).find(item => item.id === 'ACCOUNT_CHECK_IN')?.eligible, false);
