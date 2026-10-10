@@ -299,6 +299,7 @@ tbody tr:hover { background: #fbfaf7; }
 .pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 2px 0; color: var(--muted); font-size: 11px; }
 .pagination > div { display: flex; gap: 7px; }
 .table-action { padding: 5px 9px; font-size: 11px; }
+.btn.outline.table-action:hover:not(:disabled), .btn.outline.table-action:focus-visible { color: var(--forest-deep); background: var(--forest-soft); border-color: #cbd9cd; }
 .source-card .values b { overflow-wrap: anywhere; }
 
 @media (max-width: 1100px) {

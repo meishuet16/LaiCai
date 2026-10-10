@@ -72,6 +72,25 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T17:19:22Z — Codex — Soften Retention Actions case-button hover
+
+- **Workstream:** Frontend / QA
+- **Branch:** `member4`
+- **Commit subject:** `fix: use light-green hover for retention case buttons`
+- **Issue / task:** Change the Retention Actions work-queue case button hover from dark green to light green.
+- **Files changed:** `src/index.css` and this log.
+- **What changed:** Scoped a pale-green hover and keyboard-focus style to the outlined work-queue case buttons, retaining dark-green readable text and border.
+- **Why it changed:** The shared `.btn:hover` rule turned these outlined buttons dark even though their normal treatment is light.
+- **Contract / database / API impact:** None.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - Safari local Vite check (`/cases` on port 5180) — PASS — the work-queue case button displayed the light-green hover and still opened/closed its case drawer.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** N/A; presentation-only change to the explicitly labelled demo view.
+- **Known issues / blockers:** None for this hover change. Connected decision APIs remain unavailable as previously logged.
+- **Next action / handoff:** Continue frontend visual review on the `member4` branch; do not merge or push without approval.
+- **Reviewer / pairing:** `N/A`
+
 ### 2026-10-10T17:11:19Z — Codex — Keep demo fixtures as the initial frontend view
 
 - **Workstream:** Frontend / QA / Docs
