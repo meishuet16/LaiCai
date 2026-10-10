@@ -332,6 +332,30 @@ Members may cover several workstreams. Update assignments through a logged commi
 - **Next action / handoff:** Connect the real Member 1 adapter and dataset evidence, then fit and evaluate each calibrator on frozen chronological cohorts before any production promotion or PredictionOutput assembly.
 - **Reviewer / pairing:** N/A
 
+### 2026-10-10T07:25:22Z — Member 2 AI coding assistant — Reliability gate and source freshness
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; previous calibration checkpoint is `b65a10c`
+- **Issue / task:** Member 2 Prompt 12; no ticket
+- **Files changed:** `src/retainiq_prediction/reliability.py`, `src/retainiq_prediction/data_freshness.py`, `src/retainiq_prediction/__init__.py`, `tests/test_reliability.py`, `tests/test_data_freshness.py`, `docs/MEMBER2_RELIABILITY_AND_FRESHNESS.md`, `docs/MEMBER2_IMPROVEMENT_BACKLOG.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added versioned deterministic reliability assessments with machine-readable reason codes, human-readable explanations, evidence/coverage summaries, feature compatibility checks, cold-start handling, explicit zero-usage-with-coverage handling, and no numerical confidence field.
+  - Added source-level freshness assessment for subscription lifecycle, billing, usage coverage, and configured optional sources. It preserves input cutoffs, availability basis, per-source evidence, missing-source status, watermarks, tenant/account scope, and conservative future-metadata exclusion.
+  - Added combined readiness routing that preserves known-cancellation and not-eligible states, abstains on insufficient eligibility/data, and requires a complete three-horizon calibrated bundle with `DatasetStatus.PASS` before scoring can be allowed.
+  - Added `IMPROVEMENT-004` for held-out post-coherence calibration validation. No `PredictionOutput`, uncertainty, SHAP, API, decision engine, dashboard, benchmark, or retraining implementation changed.
+- **Why it changed:** Establish the explainable data/applicability gate and source-health boundary required before future production scoring, without treating silence as churn or reliability as confidence.
+- **Contract / database / API impact:** No database or API schema changed. New modules are additive internal assessments and reuse existing canonical enum values and `AvailabilityPolicy`. Member 1 must supply real source heartbeats/watermarks, lifecycle/coverage mappings, authorization-scoped evidence, and validated source thresholds.
+- **Tests / verification:**
+  - `& .venv\Scripts\python.exe -m pytest -q tests/test_data_freshness.py tests/test_reliability.py --basetemp .pytest-tmp` — PASS — 29 tests passed in 2.22s.
+  - `& .venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp` — PASS — 186 tests passed in 2.96s.
+  - `& .venv\Scripts\python.exe -c "import sys, pydantic; import retainiq_prediction"` — PASS — Python 3.14.4, Pydantic 2.14.0, package import succeeded, and uncertainty remained `not_quantified`/`none`/`null`.
+  - `git diff --check` — PASS — no whitespace errors; Git emitted only normal LF/CRLF conversion warnings.
+- **Data / model / ROI evidence:** Synthetic structural fixtures only; no authorized longitudinal dataset, production freshness SLA, OOD detector, confidence estimate, prediction, predictive metric, retention result, or ROI claim.
+- **Known issues / blockers:** Real readiness remains `BLOCKED`. Member 1 must finalize source availability versus `received_at` precedence, source heartbeat/watermark semantics, account-level multi-subscription policy, lifecycle/coverage mappings, authorization/provenance, and production freshness thresholds. Limited/insufficient rules require validation on held-out real data.
+- **Next action / handoff:** Connect the canonical Member 1 source evidence adapter, validate policy thresholds and reliability cohorts on authorized chronological replay, then integrate the gate with future inference without changing abstention semantics.
+- **Reviewer / pairing:** N/A
+
 ## 6. Shared integration agreements — verify before changing
 
 - **Prediction anchor:** `prediction_id` = unique account forecast snapshot; `prediction_run_id` = inference batch/job ID.

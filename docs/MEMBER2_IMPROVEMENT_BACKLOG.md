@@ -59,3 +59,17 @@ development/validation data only, and compare against the final models under
 the same alert budget.
 
 Threshold tuning is not implemented in the current milestone.
+
+## IMPROVEMENT-004: Post-Adjustment Calibration Validation
+
+Status: PENDING_REAL_DATA
+
+Description:
+
+Evaluate Brier Score, calibration quality and horizon-ordering violation
+frequency before and after the monotonic coherence adjustment on appropriate
+held-out historical cohorts.
+
+This requires an authorized real dataset and completed model/calibration
+artifacts. The empirical comparison is not implemented in the current
+milestone.
