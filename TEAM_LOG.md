@@ -72,6 +72,28 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T15:09:47Z — Codex — Add five-page RetainIQ frontend dashboard
+
+- **Workstream:** Frontend
+- **Branch:** `main`
+- **Commit subject:** `feat: add five-page RetainIQ frontend dashboard`
+- **Issue / task:** User-approved frontend implementation and refinement.
+- **Files changed:** `index.html`, `package.json`, `package-lock.json`, `src/`, `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json`, `vite.config.ts`, `docs/FRONTEND_ARCHITECTURE.md`, `docs/MEMBER4_INTEGRATION.md`, and this log.
+- **What changed:**
+  - Added the five-page RetainIQ shell, shared navigation/state, feature pages, customer and case detail drawers, typed domain models, hooks, and simulated services.
+  - Refined Business Overview, Data Integration, and Churn Prediction presentation, while keeping unsupported backend operations and unavailable evidence explicit.
+  - Added frontend architecture and integration notes.
+- **Why it changed:** Provide a consistent, judge-ready frontend workflow across business overview, data health, churn prediction, retention actions, and customer insights.
+- **Contract / database / API impact:** No backend, database, or API contract changes. Frontend uses synthetic/demo data and session-only case changes.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production build (45 modules).
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/domain/scenario.test.ts src/services/decisionService.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts` — PASS — 31 tests.
+  - `git diff --cached --check` — PASS — no whitespace errors before this log update.
+- **Data / model / ROI evidence:** Synthetic fixtures and scenario assumptions only; no trained-model evaluation, production integration, or measured ROI is claimed.
+- **Known issues / blockers:** Production APIs, authentication, durable case writes, and source-backed evidence remain unconnected.
+- **Next action / handoff:** Replace demo adapters with approved backend integrations when their contracts and services are available.
+- **Reviewer / pairing:** `N/A`
+
 ### 2026-10-10T13:44:03Z — Member 1 / Data & Backend Engineer — Complete Synthetic SaaS v1.2 remediation
 
 - **Workstream:** Part 1 / Data Foundation, Synthetic QA, Integration & Docs
