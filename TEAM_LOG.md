@@ -73,6 +73,26 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T22:24:49Z — Codex — Configure Render Data Foundation deployment
+
+- **Workstream:** Part 1 / Data Foundation / Docs
+- **Branch:** `codex/render-data-foundation-deploy`
+- **Commit subject:** `docs: configure Render Data Foundation deployment`
+- **Issue / task:** Render Data Foundation deployment plan, Task 3
+- **Files changed:** `requirements-render.txt`, `render.yaml`, `docs/RENDER_DEPLOYMENT.md`, and `TEAM_LOG.md`.
+- **What changed:** Added Render dependency installation for the editable project, PostgreSQL dependencies, and Gunicorn; added the Singapore `laicai-api` Blueprint with `/healthz` and auto deploy disabled; documented temporary `/tmp` SQLite staging, Supabase runtime settings, restricted app credentials, and operator-only schema migration/import boundaries.
+- **Why it changed:** Provide the requested deployment configuration and operator guidance while keeping database credentials and data operations outside the runtime Blueprint.
+- **Contract / database / API impact:** Configuration and documentation only. Existing WSGI startup initializes SQLite schema or verifies PostgreSQL schema. Authenticated routes and tenant scope remain unchanged; Member 3's Decision Engine is out of scope.
+- **Tests / verification:**
+  - `git diff --check` — **PASS** — no whitespace errors.
+  - Manual review of Render service fields and build/start commands — **PASS** — matches Task 3; no migration or import commands are configured.
+  - `rg -n -i "password|secret|postgres|service_role|migration|import|run:|command:" render.yaml requirements-render.txt docs/RENDER_DEPLOYMENT.md` — **PASS** — only documentation references and placeholders were found; no credential values or migration/import commands occur in the Blueprint.
+  - Automated tests — **NOT RUN** — configuration/documentation-only task; no application code changed.
+- **Data / model / ROI evidence:** N/A. No data, model, or ROI claims were added.
+- **Known issues / blockers:** None known. `/tmp` SQLite staging data is volatile and must not be used for persistent production storage.
+- **Next action / handoff:** An authorized operator must provide protected runtime settings and prepare/migrate a Supabase database before any production runtime use. No deployment or database operation was performed.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T22:23:20Z — Codex — Add environment-configured Render WSGI entry point
 
 - **Workstream:** Part 1 / Data Foundation / Integration

@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: laicai-api
+    runtime: python
+    region: singapore
+    rootDir: .
+    buildCommand: pip install -r requirements-render.txt
+    startCommand: gunicorn render_wsgi:application --bind 0.0.0.0:$PORT
+    healthCheckPath: /healthz
+    autoDeployTrigger: "off"
