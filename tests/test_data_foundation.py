@@ -4,6 +4,8 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 from retaniq.api import create_app
 from retaniq.data_foundation import (
@@ -100,7 +102,8 @@ class DataFoundationTests(unittest.TestCase):
         create_tenant(self.db, "tenant-a")
         create_tenant(self.db, "tenant-b")
         self.token_a = create_integration(
-            self.db, "tenant-a", "product_app", authorized_categories=("usage", "billing", "subscription"),
+            self.db, "tenant-a", "product_app",
+            authorized_categories=("usage", "billing", "subscription"),
         )
         self.token_b = create_integration(self.db, "tenant-b", "product_app")
         create_customer(self.db, "tenant-a", "customer-a")
@@ -109,6 +112,11 @@ class DataFoundationTests(unittest.TestCase):
         map_customer_identity(self.db, "tenant-b", "product_app", "acct-a", "customer-b")
         self.principal_a = authenticate_integration(self.db, self.token_a)
         self.principal_b = authenticate_integration(self.db, self.token_b)
+        artifact_token = create_service_principal(
+            self.db, "tenant-a", role="analyst", authorized_sources=("product_app",),
+            authorized_purposes=("retention_inference", "billing_valuation", "model_artifact_write"),
+        )
+        self.artifact_writer = authenticate_service_principal(self.db, artifact_token)
 
     def tearDown(self):
         self.temp.cleanup()
@@ -230,6 +238,26 @@ class DataFoundationTests(unittest.TestCase):
         self.assertEqual((accepted["accepted"], accepted["duplicates"]), (2, 0))
         self.assertEqual((replay["accepted"], replay["duplicates"]), (0, 2))
         self.assertEqual(len(get_observation_coverage_as_of(database, reader, "customer-a", T3)), 3)
+
+    def test_supabase_first_identity_binding_fails_closed_under_tenant_rls(self):
+        config = SimpleNamespace(is_supabase=True)
+        connection = MagicMock()
+        connection.execute.return_value.fetchone.return_value = None
+        database_context = MagicMock()
+        database_context.__enter__.return_value = connection
+        identity = {
+            "dataset_id": "synthetic-saas-v1-2-quick-s2026-test",
+            "dataset_version": "1.2",
+            "dataset_type": "synthetic_saas",
+            "target_policy_version": "effective-account-churn-v1-2",
+            "generator_version": "synthetic-saas-v1-2",
+            "manifest_sha256": "a" * 64,
+        }
+        with patch("retaniq.data_foundation.resolve_database_config", return_value=config), \
+                patch("retaniq.data_foundation._db", return_value=database_context):
+            with self.assertRaisesRegex(ValueError, "privileged read-only preflight"):
+                bind_dataset_identity("supabase-config", **identity)
+        self.assertEqual(connection.execute.call_count, 1)
 
     def test_schema_001_upgrade_preserves_history_and_refuses_conflicting_owners(self):
         migration_001 = (Path(__file__).resolve().parents[1] / "migrations" / "001_data_foundation.sql").read_text(
@@ -463,15 +491,15 @@ class DataFoundationTests(unittest.TestCase):
         def operations(customer_id, suffix):
             return (
                 lambda: store_feature_snapshot(
-                    self.db, self.principal_a, customer_id, T1, f"cross-source-{suffix}", T1,
+                    self.db, self.artifact_writer, customer_id, T1, f"cross-source-{suffix}", T1,
                     {"sessions_7d": 1}, "available",
                 ),
                 lambda: store_churn_label(
-                    self.db, self.principal_a, customer_id, T0, 7, "unknown", T1,
+                    self.db, self.artifact_writer, customer_id, T0, 7, "unknown", T1,
                     f"cross-source-label-{suffix}",
                 ),
                 lambda: store_prediction(
-                    self.db, self.principal_a,
+                    self.db, self.artifact_writer,
                     {"prediction_id": f"cross-source-pred-{suffix}",
                      "prediction_run_id": f"cross-source-run-{suffix}", "customer_id": customer_id,
                      "as_of": T1, "generated_at": T2, "status": "abstained", "p_churn_7d": None,
@@ -530,6 +558,32 @@ class DataFoundationTests(unittest.TestCase):
                     )
                 expected_code = "purpose_not_authorized" if index == 0 else "unauthorized"
                 self.assertEqual(denied.exception.code, expected_code)
+
+    def test_artifact_only_service_grant_is_explicit_and_source_scoped(self):
+        token = create_service_principal(
+            self.db, "tenant-a", role="analyst", authorized_sources=("product_app",),
+            authorized_purposes=("model_artifact_write",),
+        )
+        writer = authenticate_service_principal(self.db, token)
+        snapshot_id = store_feature_snapshot(
+            self.db, writer, "customer-a", T1, "artifact-only-v1", T1, {"sessions_7d": 1}, "available",
+        )
+        self.assertTrue(snapshot_id)
+        with self.assertRaises(DataFoundationError) as denied_read:
+            get_events_as_of(self.db, writer, "customer-a", T2)
+        self.assertEqual(denied_read.exception.code, "purpose_not_authorized")
+
+    def test_inference_only_integration_cannot_write_artifacts(self):
+        token = create_integration(
+            self.db, "tenant-a", "inference_only", authorized_purposes=("retention_inference",),
+        )
+        map_customer_identity(self.db, "tenant-a", "inference_only", "inference-acct", "customer-a")
+        reader = authenticate_integration(self.db, token)
+        with self.assertRaises(DataFoundationError) as denied:
+            store_feature_snapshot(
+                self.db, reader, "customer-a", T1, "no-write-v1", T1, {"sessions_7d": 1}, "available",
+            )
+        self.assertEqual(denied.exception.code, "purpose_not_authorized")
 
     def test_authorized_model_writer_can_read_multiple_sources_and_persist_artifacts(self):
         from retaniq import data_foundation as foundation
@@ -857,7 +911,7 @@ class DataFoundationTests(unittest.TestCase):
             "usage_trend_category": "declining",
         }
         snapshot_id = store_feature_snapshot(
-            self.db, self.principal_a, "customer-a", T1, "features-safe-v1", T1,
+            self.db, self.artifact_writer, "customer-a", T1, "features-safe-v1", T1,
             safe_features, "available",
         )
         self.assertTrue(snapshot_id)
@@ -877,7 +931,7 @@ class DataFoundationTests(unittest.TestCase):
                 ],
             },
         }
-        self.assertEqual(store_prediction(self.db, self.principal_a, safe_prediction), "pred-safe-explanation")
+        self.assertEqual(store_prediction(self.db, self.artifact_writer, safe_prediction), "pred-safe-explanation")
 
         unsafe_feature_values = (
             {"source_note": "The customer said they may leave next month."},
@@ -896,7 +950,7 @@ class DataFoundationTests(unittest.TestCase):
             with self.subTest(feature=features):
                 with self.assertRaises(DataFoundationError):
                     store_feature_snapshot(
-                        self.db, self.principal_a, "customer-a", T1, f"unsafe-feature-{index}", T1,
+                        self.db, self.artifact_writer, "customer-a", T1, f"unsafe-feature-{index}", T1,
                         features, "available",
                     )
 
@@ -919,7 +973,7 @@ class DataFoundationTests(unittest.TestCase):
             with self.subTest(explanation=explanations):
                 with self.assertRaises(DataFoundationError):
                     store_prediction(
-                        self.db, self.principal_a,
+                        self.db, self.artifact_writer,
                         {**safe_prediction, "prediction_id": f"pred-unsafe-explanation-{index}",
                          "customer_id": customer_id, "as_of": T2, "feature_snapshot_id": None,
                          "explanations_by_horizon": explanations},
@@ -934,7 +988,7 @@ class DataFoundationTests(unittest.TestCase):
             with self.subTest(reason=free_text):
                 with self.assertRaises(DataFoundationError):
                     store_prediction(
-                        self.db, self.principal_a,
+                        self.db, self.artifact_writer,
                         {**safe_prediction, "prediction_id": f"pred-unsafe-reason-{index}",
                          "customer_id": customer_id, "as_of": T2, "feature_snapshot_id": None,
                          "reliability_reasons": [free_text]},
@@ -1331,43 +1385,43 @@ class DataFoundationTests(unittest.TestCase):
 
     def test_feature_label_prediction_storage_contracts(self):
         feature_id = store_feature_snapshot(
-            self.db, self.principal_a, "customer-a", T1, "features-v1", T1,
+            self.db, self.artifact_writer, "customer-a", T1, "features-v1", T1,
             {"sessions_7d": 3, "mrr_minor": 2500, "currency": "MYR"}, "available",
         )
         self.assertTrue(feature_id)
         with self.assertRaises(DataFoundationError):
             store_feature_snapshot(
-                self.db, self.principal_a, "customer-a", T1, "features-v1", T1,
+                self.db, self.artifact_writer, "customer-a", T1, "features-v1", T1,
                 {"email": "private@example.invalid"}, "available",
             )
         with self.assertRaises(DataFoundationError):
             store_feature_snapshot(
-                self.db, self.principal_a, "customer-a", T1, "features-v2", T1,
+                self.db, self.artifact_writer, "customer-a", T1, "features-v2", T1,
                 {"account_contact_email": "private@example.invalid"}, "available",
             )
         store_churn_label(
-            self.db, self.principal_a, "customer-a", T1, 7, "unknown", T1,
+            self.db, self.artifact_writer, "customer-a", T1, 7, "unknown", T1,
             "churn-label-v1",
         )
         with self.assertRaises(DataFoundationError) as invalid_label:
             store_churn_label(
-                self.db, self.principal_a, "customer-a", T0, 7, True, T3,
+                self.db, self.artifact_writer, "customer-a", T0, 7, True, T3,
                 "churn-label-bool-v1",
             )
         self.assertEqual(invalid_label.exception.code, "invalid_contract")
         with self.assertRaises(DataFoundationError):
             store_churn_label(
-                self.db, self.principal_a, "customer-a", T1, 30, 0, T1,
+                self.db, self.artifact_writer, "customer-a", T1, 30, 0, T1,
                 "churn-label-v1",
             )
         with self.assertRaises(DataFoundationError) as insufficient_positive_coverage:
             store_churn_label(
-                self.db, self.principal_a, "customer-a", T0, 7, 1, T0,
+                self.db, self.artifact_writer, "customer-a", T0, 7, 1, T0,
                 "churn-label-positive-v1", outcome_at=T1,
             )
         self.assertEqual(insufficient_positive_coverage.exception.code, "invalid_contract")
         prediction_id = store_prediction(
-            self.db, self.principal_a,
+            self.db, self.artifact_writer,
             {"prediction_id": "pred-1", "prediction_run_id": "run-1", "customer_id": "customer-a",
              "as_of": T1, "generated_at": T2, "status": "scored", "p_churn_7d": 0.1,
              "p_churn_14d": 0.2, "p_churn_30d": 0.3, "feature_version": "features-v1",
@@ -1379,7 +1433,7 @@ class DataFoundationTests(unittest.TestCase):
         self.assertEqual(prediction_id, "pred-1")
         with self.assertRaises(DataFoundationError) as future_input:
             store_prediction(
-                self.db, self.principal_a,
+                self.db, self.artifact_writer,
                 {"prediction_id": "pred-future-input", "prediction_run_id": "run-future-input",
                  "customer_id": "customer-a", "as_of": T0, "generated_at": T2, "status": "abstained",
                  "p_churn_7d": None, "p_churn_14d": None, "p_churn_30d": None,
@@ -1396,7 +1450,7 @@ class DataFoundationTests(unittest.TestCase):
             with self.subTest(unsafe_reason=unsafe_reason):
                 with self.assertRaises(DataFoundationError) as caught:
                     store_prediction(
-                        self.db, self.principal_a,
+                        self.db, self.artifact_writer,
                         {"prediction_id": f"pred-private-reason-{index}",
                          "prediction_run_id": f"run-private-reason-{index}",
                          "customer_id": "customer-a", "as_of": T0, "generated_at": T2,
@@ -1409,7 +1463,7 @@ class DataFoundationTests(unittest.TestCase):
                 self.assertEqual(caught.exception.code, "invalid_contract")
         with self.assertRaises(DataFoundationError):
             store_prediction(
-                self.db, self.principal_a,
+                self.db, self.artifact_writer,
                 {"prediction_id": "pred-2", "prediction_run_id": "run-2", "customer_id": "customer-a",
                  "as_of": T1, "generated_at": T2, "status": "scored", "p_churn_7d": 0.2,
                  "p_churn_14d": 0.1, "p_churn_30d": 0.3, "feature_version": "features-v1",
@@ -1424,15 +1478,15 @@ class DataFoundationTests(unittest.TestCase):
                 self.db, "tenant-a", "product_app", f"acct-{customer_id}", customer_id,
             )
         other_account_snapshot = store_feature_snapshot(
-            self.db, self.principal_a, "customer-other", T1, "features-v1", T1,
+            self.db, self.artifact_writer, "customer-other", T1, "features-v1", T1,
             {"sessions_7d": 1}, "available",
         )
         other_cutoff_snapshot = store_feature_snapshot(
-            self.db, self.principal_a, "customer-cutoff", T2, "features-v1", T2,
+            self.db, self.artifact_writer, "customer-cutoff", T2, "features-v1", T2,
             {"sessions_7d": 2}, "available",
         )
         other_version_snapshot = store_feature_snapshot(
-            self.db, self.principal_a, "customer-version", T1, "features-v2", T1,
+            self.db, self.artifact_writer, "customer-version", T1, "features-v2", T1,
             {"sessions_7d": 3}, "available",
         )
         base = {
@@ -1451,7 +1505,7 @@ class DataFoundationTests(unittest.TestCase):
             with self.subTest(feature_snapshot_id=feature_id):
                 with self.assertRaises(DataFoundationError) as caught:
                     store_prediction(
-                        self.db, self.principal_a,
+                        self.db, self.artifact_writer,
                         {**base, "customer_id": customer_id, "prediction_id": f"pred-mismatch-{index}",
                          "feature_snapshot_id": feature_id},
                     )

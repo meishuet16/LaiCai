@@ -11,6 +11,8 @@ from .canonical_adapter import import_dataset, provision_member2_reader
 from .config import SyntheticConfig
 from .generator import generate_dataset
 from .validator import validate_dataset
+from retaniq.secret_store import store_dpapi_secret
+from retaniq.database_config import DatabaseConfig
 
 
 def _default_output() -> Path:
@@ -40,13 +42,17 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument("--profile", choices=("quick", "standard", "full", "stress"))
         command.add_argument("--output", type=Path, default=_default_output())
         if name == "import":
-            command.add_argument("--db", type=Path, required=True)
+            command.add_argument("--db", type=str,
+                                 help="database target; omit to use protected Supabase environment configuration")
             command.add_argument("--verify-idempotency", action="store_true")
+            command.add_argument("--tenant-id",
+                                 help="explicitly restrict import to one tenant (Supabase requires tenant-01)")
     reader = commands.add_parser("provision-reader", help="create a one-time, tenant/source-scoped Member 2 credential")
     reader.add_argument("--dataset", type=Path, required=True)
     reader.add_argument("--db", type=Path, required=True)
     reader.add_argument("--tenant-id", required=True)
-    reader.add_argument("--billing-valuation", action="store_true")
+    reader.add_argument("--secret-file", type=Path, required=True,
+                        help="destination for the current-user DPAPI-protected token")
     return parser
 
 
@@ -86,16 +92,19 @@ def main(argv: list[str] | None = None) -> int:
             result = validate_dataset(_resolve_dataset(args))
             result["elapsed_seconds"] = round(time.perf_counter() - started, 3)
         elif args.command == "import":
+            database = args.db if args.db else DatabaseConfig.from_environment()
             result = import_dataset(
-                _resolve_dataset(args), args.db,
+                _resolve_dataset(args), database,
                 verify_idempotency=args.verify_idempotency,
+                tenant_id=args.tenant_id,
             )
             result["elapsed_seconds"] = round(time.perf_counter() - started, 3)
         else:
             result = provision_member2_reader(
                 args.dataset, args.db, args.tenant_id,
-                include_billing_valuation=args.billing_valuation,
+                deliver_token=lambda token: store_dpapi_secret(args.secret_file, token),
             )
+            result["secret_file"] = str(args.secret_file.expanduser().resolve())
         print(json.dumps(result, ensure_ascii=True, sort_keys=True))
         return 0 if result.get("status") not in {"FAIL", "PARTIAL"} else 1
     except (OSError, ValueError) as exc:

@@ -575,7 +575,8 @@ This section distinguishes the **product defined above** from the **code current
 | Frontend connected to a production backend, authenticated tenant, persistent server-side human decisions | **Not connected / not verified on `main`** |
 | Trained real-world 7/14/30-day LightGBM serving, fitted SHAP explanations and legitimate held-out model metrics | **Not established on `main`** |
 | Independent real-data evidence of earlier/better alerts or more subsequently churned MRR captured | **Not validated** |
-| Deployed PostgreSQL/Supabase environment, full closed-loop retraining promotion, causal retention uplift | **Not established on `main`** |
+| PostgreSQL/Supabase data foundation | **Schema/RLS deployed and first bind verified** on the dedicated demo project; tenant-01 STANDARD import and remote API smoke are still pending |
+| Full closed-loop retraining promotion and causal retention uplift | **Not established on `main`** |
 
 **Remaining integration gates:** (1) authorized historical-data acceptance, (2) trained time-safe model and frozen evaluation, (3) versioned prediction-to-case API integration, (4) authenticated transactional decision workflow, (5) mature feedback and approved model governance, and (6) verified deployed end-to-end demo. Features under development on other branches should be documented as implemented only when merged and tested.
 
@@ -586,6 +587,9 @@ This section distinguishes the **product defined above** from the **code current
 - [Historical/synthetic data isolation](docs/HYBRID_DATASET_STRATEGY.md)
 - [Member 1 → Member 2 data contract](docs/MEMBER1_TO_MEMBER2_DATA_HANDOFF.md)
 - [Member 1 → Member 2 synthetic handoff](docs/MEMBER1_TO_MEMBER2_SYNTHETIC_HANDOFF.md)
+- [PostgreSQL RLS and authorization](docs/MEMBER1_POSTGRESQL_RLS_AND_AUTHORIZATION.md)
+- [Supabase connection and security preparation](docs/MEMBER1_SUPABASE_CONNECTION_AND_SECURITY_PREPARATION.md)
+- [Member 1 final Data Foundation acceptance](docs/MEMBER1_FINAL_DATA_FOUNDATION_ACCEPTANCE.md)
 - [Frontend architecture and route boundaries](docs/FRONTEND_ARCHITECTURE.md)
 - [Frontend integration notes](docs/MEMBER4_INTEGRATION.md)
 - [Team implementation and verification history](TEAM_LOG.md)

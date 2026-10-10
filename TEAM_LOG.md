@@ -72,6 +72,29 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T21:23:45Z — Codex / Member 1 — Merge PostgreSQL and Supabase foundation into main
+
+- **Workstream:** Part 1 / Integration
+- **Branch:** `codex/member1-main-merge` targeting `main`
+- **Commit subject:** `merge: integrate Member 1 PostgreSQL and Supabase foundation`
+- **Issue / task:** User-authorized merge of `codex/member1-postgres-migration` into the latest `origin/main`, including conflict resolution.
+- **Files changed:** Member 1 PostgreSQL migrations, runtime/database configuration, RLS/security tooling, tenant-scoped import/API code, tests and documentation; merged `README.md` and `TEAM_LOG.md`.
+- **What changed:**
+  - Integrated the complete Member 1 PostgreSQL/Supabase history through source commit `2a4b205572e8b9f575bd97d373cd999aa1cade46` with the latest main frontend/documentation history.
+  - Resolved README and team-log conflicts by retaining main's judge-facing README, adding accurate PostgreSQL/Supabase first-bind status and Member 1 security documentation links, and preserving both branches' development records.
+  - Included the secure one-time Supabase first-bind and DPAPI-protected restricted backend/maintenance import wrappers. Operator-supplied remote evidence confirms migrations 001–007, forced RLS on 18 tables, two restricted logins without BYPASSRLS, and the approved tenant-01 dataset identity bind. STANDARD tenant rows are not yet imported.
+- **Why it changed:** Make the verified Member 1 Data Foundation available from `main` without discarding concurrent frontend or documentation work.
+- **Contract / database / API impact:** Adds SQLite/PostgreSQL dual-backend support, PostgreSQL migrations 001–007, RLS/capability roles, Supabase preflight/first-bind/import entry points, and authenticated history APIs. No remote database mutation was performed during this merge.
+- **Tests / verification:**
+  - `py -3.14 -B -m unittest tests.test_supabase_first_bind -v` — **PASS** — 16/16.
+  - `py -3.14 -B -m compileall -q retaniq tests` — **PASS**.
+  - Initial `npm run build` — **BLOCKED by missing local dependencies** (`tsc` unavailable); `npm ci` completed with 0 vulnerabilities, then `npm run build` — **PASS** — 46 modules transformed.
+  - `git diff --check` and conflict-marker scan — **PASS** before staging.
+- **Data / model / ROI evidence:** Approved synthetic STANDARD manifest only. Supabase first bind exists, but tenant-01 import/API smoke and any model/ROI evidence remain pending.
+- **Known issues / blockers:** Shared transaction-local tenant GUC remains a trusted-backend boundary rather than independent database authentication. Tenant-01 STANDARD import and bounded remote API smoke have not yet run.
+- **Next action / handoff:** Import only tenant-01 through the restricted backend/maintenance logins, verify expected counts and cross-tenant absence, then run the bounded authenticated API smoke.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T20:57:28Z — ChatGPT / Docs — Refresh README homepage rendering
 
 - **Workstream:** Docs / GitHub Repository Presentation
@@ -138,6 +161,323 @@ itself also requires a filled-in commit entry.
 - **Known issues / blockers:** Production APIs, authentication, durable case writes, and source-backed evidence remain unconnected.
 - **Next action / handoff:** Replace demo adapters with approved backend integrations when their contracts and services are available.
 - **Reviewer / pairing:** `N/A`
+### 2026-10-10T20:11:45Z — Member 1 / Data & Backend Engineer — Scope STANDARD import and add authenticated history APIs
+
+- **Workstream:** Part 1 / Data Foundation, tenant import and API handoff
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `feat(member1): scope synthetic import and add authenticated data APIs`
+- **Issue / task:** Final tenant-01 Supabase import and Member 2/3/4 API handoff implementation.
+- **Files changed:** `.env.supabase.example`; `retaniq/api.py`; `retaniq/data_foundation.py`; `retaniq/database_config.py`; `retaniq/synthetic/__main__.py`; `retaniq/synthetic/canonical_adapter.py`; `tests/test_data_foundation.py`; `tests/test_member1_api_handoff.py`; `tests/test_supabase_configuration.py`; `tests/test_synthetic_integration.py`; `docs/MEMBER1_TO_MEMBER2_SYNTHETIC_HANDOFF.md`; `docs/MEMBER1_07B2_SUPABASE_READINESS.md`; `docs/MEMBER1_FINAL_DATA_FOUNDATION_ACCEPTANCE.md`; and this log.
+- **What changed:** Added separate app/maintenance/migration DSN configuration, routed global importer identity/checkpoint work through maintenance, added tenant-01-only Supabase importer scope, transaction-local trusted backend tenant context, and authenticated account/prediction history and ID routes. Added local tests. The handoff now explicitly corrects the P0 SQLite copy's physical scope: it contains the full four-tenant STANDARD fixture even though the P0 reader authorization is tenant-01-scoped. First-time Supabase dataset identity binding now fails closed because maintenance RLS cannot prove the destination empty.
+- **Why it changed:** The final handoff requires a tenant-only import and least-privilege maintenance separation; a maintenance-role zero count under FORCE RLS is not evidence that other tenant rows are absent.
+- **Contract / database / API impact:** Local authenticated routes derive tenant/source/purpose from the stored RetainIQ principal and reject caller-supplied tenant scope. Prediction history is bounded and redacts labels/valuation fields; Member 2 history returns point-in-time account/coverage data and reports freshness `unknown`. API runtime still uses the configured app DSN rather than separately routing downstream reads to inference/dashboard logins. Shared tenant GUC remains spoofable by a holder of the trusted backend credential with arbitrary SQL access. No Supabase migration, role provisioning, API exposure change, remote import, or remote API read occurred.
+- **Tests / verification:** `py -3.14 -B -m unittest tests.test_data_foundation.DataFoundationTests.test_supabase_first_identity_binding_fails_closed_under_tenant_rls tests.test_synthetic_integration tests.test_member1_p0_reader tests.test_member1_api_handoff tests.test_supabase_configuration -q` — **PASS**, 34 tests. `py -3.14 -B -m unittest discover -s tests -q` — **PASS**, 218 total; 161 passed, 57 expected PostgreSQL-guard skips, 0 failures/errors; no live PostgreSQL tests ran. `py -3.14 -B -m compileall -q retaniq tests`, package import smoke, `git diff --check` — **PASS**. DPAPI-protected P0 reader smoke against local SQLite — **PASS**, 23 events/1 subscription/48 coverage rows, cross-tenant API denial, no valuation fields, database unchanged. Read-only local STANDARD identity/integrity check matched manifest SHA and SQLite integrity, but found 752,669 rows across non-tenant-01 partitions in the P0 file. Staged paths were checked to exclude `.env` secrets, DPAPI files, SQLite databases, and exports.
+- **Data / model / ROI evidence:** Synthetic STANDARD only; manifest SHA `7f85a83a1697efaaeebe1a5534b075ef6c7a99fa5ad3a1e9514b3eb8ae77db6d`. Tenant-01 source counts are 750 customers, 2,250 identities, 56,211 canonical events, and 119,472 coverage rows. These do not represent Supabase import counts; no model or ROI result was produced.
+- **Known issues / blockers:** No app, maintenance, or migration DSNs are configured in this task environment. Durable remote restricted LOGINs, Data API/exposed-schema checks, direct anon/authenticated denial, temporary smoke-role cleanup, and actual Member 2/3/4 remote reads remain unverified. Supabase first import requires a privileged read-only full-destination emptiness check and a reviewed identity-binding path; the importer currently refuses an unbound Supabase destination. Local P0 working copy contains four tenants and is not physically isolated. The remote 13-scenario RLS smoke remains prior operator-supplied evidence only; GUC spoofability remains.
+- **Next action / handoff:** Configure distinct restricted backend and maintenance LOGINs plus a separate approved read-only/admin preflight credential through a protected local secret mechanism. Verify destination/project, exposed API roles and cleanup. Implement and live-test the one-time empty-destination/identity-binding gate on real PostgreSQL, then run actual restricted-role remote checks before importing tenant-01. Only after those gates, verify import and Member 2/3/4 remote access; do not use `service_role` or bypass RLS.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T19:36:21Z — Member 1 / Data & Backend Engineer — Verify Supabase RLS deployment and restricted smoke
+
+- **Workstream:** Part 1 / Data Foundation, Supabase PostgreSQL deployment
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `fix(member1): verify Supabase RLS deployment and restricted smoke`
+- **Issue / task:** Continue the authorized dedicated-demo migration after correcting the migration-005 role-owner transfer and restricted-smoke transaction boundary.
+- **Files changed:** `migrations/postgresql/005_rls_and_least_privilege.sql`, `retaniq/database_config.py`, `retaniq/postgresql_migrations.py`, `retaniq/supabase_remote_preflight.py`, focused migration/RLS/Supabase tests, `docs/MEMBER1_POSTGRESQL_RLS_AND_AUTHORIZATION.md`, `docs/MEMBER1_SUPABASE_CONNECTION_AND_SECURITY_PREPARATION.md`, and this log.
+- **What changed:** Added safe migration failure diagnostics (migration version, statement, operation and SQLSTATE without DSN/password output); corrected migration 005's temporary SET membership and schema CREATE grant ordering; allowed the project's session-pooler migration connection while rejecting transaction pooling; corrected the restricted smoke harness to use real top-level transactions with autocommit.
+- **Why it changed:** Supabase rejected the initial ownership transfer because of role membership options; after deployment, the smoke exposed that preliminary identity queries kept the connection inside an outer transaction, invalidating transaction-local cleanup assertions.
+- **Contract / database / API impact:** Operator-supplied remote result for project `mhtzkzqjcsdyjacvcxty` / PostgreSQL 17.11 / Session Pooler reports migration history `CHECKSUMS_MATCH`, no pending versions, current version 007, and `applied_versions: []` on the final verification run. Catalog checks passed: all 18 application data tables (migration metadata excluded) have RLS enabled and forced, 42 policies are present, and both SECURITY DEFINER authentication functions are owned by `retaniq_authenticator`. The temporary restricted-login smoke passed all 13 scenarios for backend, artifact-writer, dashboard-reader and maintenance roles. It explicitly passed the shared-GUC spoofability characterization; it does not establish independently authenticated database tenant identity. Smoke cleanup was reported as `ATTEMPTED`, not independently verified. No STANDARD rows were imported, no durable runtime login credentials or Member 2 access were provisioned, and `service_role` was not used for smoke verification.
+- **Tests / verification:** Focused local live-PostgreSQL migration/configuration/RLS/preflight suite — **PASS**, 58 tests, 0 failures/errors/skips, on a disposable PostgreSQL 17.11 container; `py -3.14 -m compileall -q retaniq tests`, package imports, and `git diff --check` — **PASS**. The corrected remote restricted smoke — **PASS**, 13/13 reported scenarios. No full 191-test suite rerun.
+- **Data / model / ROI evidence:** None imported. STANDARD dataset remains local synthetic artifact `synthetic-saas-v1-2-standard-s2026-970a9d231e68`; no remote dataset or Member 2 read-access evidence.
+- **Known issues / blockers:** The backend's shared transaction-local GUC is spoofable by any holder of its database credential capable of arbitrary SQL. The catalog shows capability roles are NOLOGIN; the deployment credential is privileged `postgres` (`rolbypassrls=true`, `rolcreatedb=true`, `rolcreaterole=true`). Data API/exposed-schema behavior and cleanup of temporary smoke logins were not independently verified. The existing importer binds one global dataset identity, provisions all four dataset tenants, is not tenant-01-only, and uses the regular configured DSN for global provenance/checkpoint and batch operations; no separate maintenance-login routing exists. Therefore the import gate is not satisfied.
+- **Next action / handoff:** Before STANDARD import, owner must decide whether to accept the trusted-backend GUC boundary, securely provision distinct durable backend and maintenance login credentials (without `BYPASSRLS`), verify Supabase Data API exposure and role memberships, independently confirm temporary smoke-login cleanup, and approve the four-tenant import mapping or a tenant-01-only import contract. Then add/verify the minimum importer routing and actual remote restricted read path; do not bypass RLS or use `service_role`.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T19:31:28Z — Member 1 / Data & Backend Engineer — Fix remote smoke transaction boundary
+
+- **Workstream:** Part 1 / Data Foundation, Supabase PostgreSQL deployment
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** Pending remote restricted-smoke retry
+- **Issue / task:** Diagnose the first restricted-role smoke failure after migrations 005–007 were deployed.
+- **Remote state:** Operator-supplied catalog reports migration history `CHECKSUMS_MATCH`, current version 007, 18/18 application data tables RLS-enabled and forced (migration metadata table excluded), 42 policies, both SECURITY DEFINER authentication functions owned by `retaniq_authenticator`, and `catalog_checks_passed:true`. Four temporary restricted logins were attempted. The smoke returned FAIL after six backend scenarios; cleanup was attempted but not independently verified. No STANDARD import occurred.
+- **What changed:** The smoke login factory now uses psycopg `autocommit=True`, ensuring its `connection.transaction()` contexts are top-level transactions even after identity queries. Previously, the initial `SELECT current_user` opened an implicit transaction and caused later contexts to be savepoints, so transaction-local tenant context was not cleared at the supposed commit. Added a unit check for autocommit and updated the remote smoke implementation only; database schema/migrations are unchanged.
+- **Tests / verification:** `py -3.14 -B -m unittest tests.test_postgresql_migrations tests.test_supabase_remote_preflight tests.test_supabase_configuration tests.test_postgresql_rls` against a task-owned disposable PostgreSQL 17.11 container with the disposable-DSN guard enabled — **PASS**, 58 tests, 0 failures/errors/skips. `py -3.14 -m compileall -q retaniq tests`, package imports, and `git diff --check` — **PASS**. Task-owned PostgreSQL container stopped/removed. The updated smoke has not yet been rerun on Supabase.
+- **Known issues / blockers:** Remote RLS deployment is catalog-verified, but actual restricted-role acceptance remains incomplete until the corrected smoke passes. The smoke's previous cleanup status is only `ATTEMPTED`. Shared-GUC spoofability remains a known shared-credential limitation. No dataset import.
+- **Next action / handoff:** Run the secure `--deploy` command again after a fresh catalog preflight. It should find migration checksums already matching and rerun restricted-login smoke; require its final `MIGRATIONS_AND_RESTRICTED_SMOKE_PASS` result and inspect cleanup before import or commit.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T19:24:35Z — Member 1 / Data & Backend Engineer — Grant temporary SET membership for migration 005
+
+- **Workstream:** Part 1 / Data Foundation, Supabase PostgreSQL deployment
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** Pending fresh catalog verification and deployment retry
+- **Issue / task:** Fix the newly confirmed `42501` failure in migration 005 without granting extra ADMIN authority.
+- **Remote state:** Latest attempt failed at migration 005 statement 14 (`ALTER FUNCTION`) with SQLSTATE `42501` because `retaniq_authenticator` membership had `SET FALSE`. The migration runner reports `MAY_HAVE_OCCURRED`; no fresh post-failure catalog read had been performed at that time. Preflight immediately before that attempt showed 001–004 recorded and 005–007 pending.
+- **What changed:** Migration 005 now grants the migration login a distinct temporary membership `WITH SET TRUE, INHERIT FALSE`, omitting ADMIN, then revokes that membership after transferring the authentication-function ownership. Updated the PostgreSQL 17 ownership-transfer test assertion, security documentation, and RLS catalog test setup (`schema = public`) so the live catalog check runs.
+- **Tests / verification:** Focused suite against a task-owned disposable PostgreSQL **17.11** container: **PASS**, 57 tests, 0 failures, 0 errors, 0 skips. This includes live migration 001–007 application and restricted-role/RLS tests. Compileall, package imports, and `git diff --check` passed. The task-owned container was stopped and removed.
+- **Known issues / blockers:** Remote rollback/catalog state was not verified at this timestamp; the corrected SET-option migration later deployed successfully, but restricted-role smoke had not yet passed.
+- **Next action / handoff:** Superseded by the 19:31Z smoke-transaction fix above.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T19:18:02Z — Member 1 / Data & Backend Engineer — Remove failing migration 005 self-grant
+
+- **Workstream:** Part 1 / Data Foundation, Supabase PostgreSQL deployment
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** Pending fresh explicit remote retry
+- **Issue / task:** Correct the precisely diagnosed failure from the operator-confirmed deployment attempt.
+- **Remote state:** The first retry confirmed migration 005 statement 13 (`GRANT RETANIQ`) failed with SQLSTATE `0LP01`, `ADMIN option cannot be granted back to your own grantor`. The subsequent retry passed that statement and failed at statement 14 (`ALTER FUNCTION`) with SQLSTATE `42501`, `must be able to SET ROLE "retaniq_authenticator"`. Before that retry, fresh preflight showed 001–004 applied, 005–007 pending, and 19 total tables including metadata. Both attempts reported `mutations_performed:true`.
+- **What changed:** Removed `ADMIN TRUE` from the membership grant after the `0LP01` failure. The next live attempt established that PostgreSQL 17's creator membership has `SET FALSE`; the earlier assumption that it provided SET ROLE was incorrect. The additional SET-option correction is recorded in the 19:24Z entry above.
+- **Tests / verification:** After the first fix, focused tests passed (57 tests, 36 passed, 21 skipped without local PostgreSQL); compileall, imports and diff check passed. The later SET-option correction was separately tested live as recorded above.
+- **Known issues / blockers:** At the time of this entry migration 005–007 and RLS had not passed remote verification; those later changed states are captured in the newer log entries. No STANDARD data was imported.
+- **Next action / handoff:** Superseded by the 19:24Z and 19:31Z entries above.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T18:29:07Z — Member 1 / Data & Backend Engineer — Record emergency Supabase delivery blockers
+
+- **Workstream:** Part 1 / Data Foundation, Supabase deployment readiness
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `docs(member1): record emergency Supabase delivery blockers`
+- **Issue / task:** Emergency final delivery; attempt deployment/import only if the approved remote project and security gates are verifiable.
+- **Files changed:** `TEAM_LOG.md`
+- **What changed:** Recorded the current remote readiness checks and the safe stop conditions for this task. Confirmed the existing local synthetic STANDARD artifact identity from its manifest; no artifact rows or raw records were imported or changed.
+- **Why it changed:** No approved Supabase target or protected credentials are configured, and the current importer does not yet have safe maintenance-role routing and verified multi-tenant context handling required by the local role/RLS design.
+- **Contract / database / API impact:** None. No remote database was contacted; migrations 001–007 were not deployed, remote roles/RLS were not tested, no dataset was imported, and no Member 2 database access was granted or tested.
+- **Tests / verification:**
+  - Environment-presence check across process/user/machine scopes — **PASS** — all five RetainIQ Supabase settings plus `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD` absent; values were not printed.
+  - Supabase CLI and local config-file availability check — **PASS** — CLI and `.env`/`.env.local`/`.env.supabase` absent; example file only.
+  - `py -3.14 -B -m retaniq.supabase_preflight` — **BLOCKED** — reports `supabase_demo_configuration_missing_or_invalid`; this was the single local preflight, with no remote connection.
+  - Regression tests — **NOT RUN** — no code or database changes were made; prior checkpoint evidence remains 191 passed on the full live dual-backend run, and is not represented as rerun for this emergency task.
+  - `git diff --check` — to be run before commit.
+- **Data / model / ROI evidence:** Synthetic dataset only: `synthetic-saas-v1-2-standard-s2026-970a9d231e68`. The local artifact is not evidence of remote import; no real dataset, PII, or model-performance claim was used.
+- **Known issues / blockers:** No approved project/ref/region, owner authorization for remote mutation, or protected migration/runtime DSNs. Importer currently accepts a local `--db` path rather than environment-based Supabase configuration; global import identity/checkpoints require maintenance access, and multi-tenant provisioning/batching needs a safe, tested context boundary. Remote ownership, role grants, exposed schemas, RLS, and pooler mode remain unverified. Shared-GUC context remains spoofable to a caller with arbitrary SQL access under the shared backend credential.
+- **Next action / handoff:** Owner must designate and authorize a dedicated synthetic demo project (including ref/region and backup/rollback approval), securely provision migration and restricted runtime credentials outside chat, and approve the four synthetic tenant-partition mapping. Before import, locally implement and test the smallest secure maintenance/import role routing and tenant-context changes; then deploy migrations and run actual restricted-credential checks before importing. No push, deployment, or import performed.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T18:19:02Z — Member 1 / Data & Backend Engineer — Checkpoint local PostgreSQL RLS and prepare 07B-2 handoff
+
+- **Workstream:** Part 1 / Data Foundation, PostgreSQL RLS and authorization
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `feat(member1): checkpoint local PostgreSQL RLS foundation`
+- **Issue / task:** Verify and checkpoint the existing 07B-1 implementation; prepare a deployment-readiness handoff without deploying Supabase or importing STANDARD data.
+- **Checkpoint:** Base is `90f745392e32a52d8ac896e302b81221ec617ee0` (`feat(member1): prepare secure supabase configuration and preflight`). The implementation remains **PARTIALLY_VERIFIED**. Repository instructions and canonical requirements were found in the OneDrive checkout and another worktree; both were read-only and left unchanged. The separate Member 2 P0 worktree was not modified.
+- **Files changed:** PostgreSQL migrations `005_rls_and_least_privilege.sql`, `006_artifact_authorization_scope.sql`, and `007_restore_global_maintenance_grants.sql`; `security/postgresql/role_bootstrap.sql`; `retaniq/data_foundation.py`, `retaniq/database.py`; PostgreSQL test support and migration/RLS/integration test files; README and Member 1 PostgreSQL/data-contract docs; `docs/MEMBER1_POSTGRESQL_RLS_AND_AUTHORIZATION.md`, `docs/MEMBER1_RLS_TEST_MATRIX.md`, new `docs/MEMBER1_07B2_SUPABASE_READINESS.md`, and this log.
+- **What changed:** Re-audited the role/grant/RLS implementation and its trust boundary. Confirmed migration 006's source-scoped authorization lookup and 007's forward restoration of global maintenance grants without editing applied migrations 001–004 or changing 005's checksum. Confirmed the PostgreSQL adapter's empty-parameter handling required for migration SQL containing literal percent-format strings. Added a readiness report with gap classifications, owner approvals, prerequisites, and an ordered 07B-2 sequence.
+- **Contract / database / API impact:** No logical application contract or endpoint changed. Sixteen tenant-bearing tables have forced RLS; two global operational tables are maintenance-only; migration metadata has no runtime grant. `retaniq.tenant_id` and related source/principal GUCs remain spoofable by arbitrary SQL under a shared database login. The application has separate app/migration DSNs but does not yet route maintenance or every capability role independently. Supabase ownership, grants, exposed-schema state, and pooler behavior remain unknown. Downstream inference, decision, and dashboard owners need to agree on actual role routing before remote deployment.
+- **Tests / verification:**
+  - `py -3.14 -B -m unittest tests.test_postgresql_rls tests.test_postgresql_migrations -v` — **PASS** — 36 tests, 0 failures/errors/skips; 5.620s.
+  - With explicit disposable loopback DSN and `RETAINIQ_POSTGRES_TEST_DISPOSABLE=1`, `py -3.14 -B -m unittest discover -s tests` — **PASS** — 191 tests, 0 failures/errors/skips; 69.834s. The 57 PostgreSQL-guarded tests ran, including 16 restricted-role RLS methods.
+  - With PostgreSQL guard variables empty, `py -3.14 -B -m unittest discover -s tests` — **PASS** — 191 tests, 0 failures/errors, 57 expected PostgreSQL skips; 13.739s.
+  - `py -3.14 -B -m compileall -q retaniq tests`, package import smoke, and `git diff --check` — **PASS**. No Python warnings; rejected-request audit lines were expected test output.
+  - PostgreSQL version and driver: 16.15 / psycopg 3.3.6. Focused restricted-role tests used actual LOGIN roles; general regression tests are not counted as RLS evidence when run through the setup/admin DSN.
+- **Database cleanup:** Dropped the exact disposable base database after the suite; the RLS test's temporary database was also dropped by its teardown. Confirmed no `retaniq_test_*` databases remained, then stopped the verified task-owned loopback cluster. Its temporary data directory was preserved.
+- **Data / model / ROI evidence:** Synthetic engineering fixtures only. No Supabase or customer data accessed; no dataset/model/ROI claim made; no STANDARD data imported.
+- **Known issues / blockers:** Shared-GUC spoofability is directly reproduced. Positive restricted writes beyond feature snapshots, churn labels, and predictions remain incomplete. Maintenance role routing is absent. Supabase service-role bypass, exposed schemas/default ACLs, migration-owner privileges, and pooler behavior are not remotely verified. 07B-2 remains **BLOCKED** pending project/region designation, owner authorization, secure credential provisioning, and an explicit decision on the GUC threat model.
+- **Next action / handoff:** Follow `docs/MEMBER1_07B2_SUPABASE_READINESS.md` in order. Do not deploy, push, merge, or import STANDARD from this checkpoint.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T18:03:03Z — Member 1 / Data & Backend Engineer — Resume and verify 07B-1 PostgreSQL RLS
+
+- **Workstream:** Part 1 / Data Foundation, PostgreSQL RLS and authorization
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** N/A — 07B-1 changes intentionally remain uncommitted for review
+- **Issue / task:** Resume unfinished Prompt 07B-1 after the separately isolated Member 2 P0 reader handoff; stop before 07B-2.
+- **Checkpoint:** Verified HEAD `90f745392e32a52d8ac896e302b81221ec617ee0` (`feat(member1): prepare secure supabase configuration and preflight`); the existing pending 07B-1 work was preserved. The P0 worktree was only checked for independent existence/clean state and was not modified.
+- **Files changed:** Added `migrations/postgresql/006_artifact_authorization_scope.sql`, `migrations/postgresql/007_restore_global_maintenance_grants.sql`, `docs/MEMBER1_POSTGRESQL_RLS_AND_AUTHORIZATION.md`, `docs/MEMBER1_RLS_TEST_MATRIX.md`, `tests/postgresql_security_support.py`, and `tests/test_postgresql_rls.py`; updated `retaniq/data_foundation.py`, `tests/test_postgresql_migrations.py`, existing PostgreSQL test setup files, `README.md`, `docs/MEMBER1_DATA_CONTRACT_COMPLIANCE.md`, and `docs/MEMBER1_POSTGRESQL_SCHEMA_AND_MIGRATIONS.md`.
+- **What changed:**
+  - Audited the existing 005 RLS and least-privilege implementation. Kept custom RetainIQ bearer tokens as the authoritative identity; the SECURITY DEFINER bootstrap lookup installs a transaction-local tenant context only after digest validation.
+  - Added migration 006 to give the artifact-writer role only source-list-scoped authorization-record reads needed by the existing repository checks. Verified actual feature, churn-label, and prediction writes through a restricted artifact-writer LOGIN without source-event access.
+  - Live testing exposed that migration 005's final broad revoke removed its intended global maintenance grants. Preserved its checksum and added forward migration 007 to restore only maintenance access to global provenance/checkpoint tables.
+  - Added all-table cross-tenant INSERT/ownership-update and DELETE-filter checks for the 16 tenant tables; verified maintenance-only global access, missing/invalid context, connection reuse, privilege denials, GUC spoofability, and auth bootstrap.
+  - Completed the role/schema/table inventory, status/coverage matrix, Supabase deployment limitations, and this log entry. No Supabase migration or STANDARD import was performed.
+- **Role / permission decision:** `retaniq_backend` performs trusted backend reads and writes on tenant-bearing tables but not DELETE/global state/migration metadata; inference is SELECT-only; artifact writer persists only ML artifacts and reads only authorization records for its verified source list; decision and dashboard roles are read-only; maintenance handles restricted provisioning/global operations; authenticator is NOLOGIN and owns only two fixed-search-path SECURITY DEFINER lookups. Runtime credentials and memberships remain operator-provisioned.
+- **Trust boundary / known issues:** The transaction-local `retaniq.tenant_id`, `retaniq.authorized_sources`, and `retaniq.service_principal_id` values are backend assertions, not cryptographic identity; any holder of a shared SQL credential with arbitrary SQL can spoof them. Do not expose those credentials to browsers/untrusted services, and do not claim isolation against credential compromise or arbitrary-SQL injection. The generic runtime configuration does not yet automatically route trusted provisioning and global batch/import/checkpoint operations through a separate maintenance credential. Successful restricted writes for several source/provisioning tables remain a matrix gap. Supabase role privileges, exposed schema/Data API state, pooler behavior, and remote RLS remain unverified.
+- **Tests / verification:** PostgreSQL 16.15, psycopg 3.3.6. Focused RLS + migration suite — **PASS**, 36 tests. Full live dual-backend discovery — **PASS**, 191 passed, 0 failed, 0 errors, 0 skipped, 0 Python warnings, 67.321s; 57 unique live PostgreSQL-guarded tests including 16 restricted-role/RLS methods. SQLite-only full discovery — **PASS**, 134 passed, 0 failed/errors, 57 expected live-PostgreSQL guard skips, 13.518s. `compileall`, package imports, and `git diff --check` — **PASS**; `git diff --cached --name-only` empty. The changed-file credential-pattern audit matched only synthetic DSN test fixtures in `tests/test_postgresql_migrations.py`; no secret/config/database files are staged or added.
+- **Database cleanup:** Reused the task-owned PostgreSQL cluster only after verifying `postgres.exe` command line, executable, owner, data directory `C:\Users\User\AppData\Local\Temp\retaniq_07a_20261011_pg`, and IPv4 loopback port 62534. Dropped only `retaniq_test_07b_20261011`, confirmed no `retaniq_test_*` databases remained, then stopped the cluster with its verified `pg_ctl.exe`. The Temp data directory remains on disk; no database artifact was staged.
+- **Final classification:** **PARTIALLY_VERIFIED** — local RLS and tested restricted-role behavior pass, but the shared-GUC trust limitation, missing separate maintenance runtime selection, incomplete positive write-shape coverage, and absence of Supabase verification remain explicit.
+- **Next action / handoff:** 07B-2 only after approval/designation of the dedicated demo project and secrets, decision on whether the shared-GUC threat model is acceptable, review of role bootstrap/ownership privileges in Supabase, configured distinct app/migration/maintenance credentials, actual Data API/exposed-schema audit, and repeat restricted-role positive/negative tests remotely. STANDARD import stays blocked until 07B-2 acceptance.
+### 2026-10-10T17:50:28Z — Member 1 / Data & Backend Engineer — P0 isolated authenticated STANDARD reader handoff
+
+- **Workstream:** Part 1 / SQLite Data Foundation / Member 2 secure reader
+- **Branch:** `codex/member1-p0-reader-handoff` — cleanly based on 07A `90f745392e32a52d8ac896e302b81221ec617ee0`; checkpoint committed locally after verification; no push or merge.
+- **Commit subject:** `feat(member1): provide secure tenant-scoped synthetic reader`.
+- **Issue / task:** P0-ISOLATED; separate from unfinished 07B-1 RLS work.
+- **Files changed:** `README.md`, `TEAM_LOG.md`, `retaniq/data_foundation.py`, `retaniq/__main__.py`, `retaniq/secret_store.py`, `retaniq/synthetic/__main__.py`, `retaniq/synthetic/canonical_adapter.py`, `migrations/005_service_principal_credential_audit.sql`, `tests/test_member1_p0_reader.py`, `examples/member1_p0_authenticated_reader_smoke.py`, new `examples/member2_p0_bounded_pilot.py`, `docs/MEMBER1_TO_MEMBER2_SYNTHETIC_HANDOFF.md`, and new `docs/MEMBER1_TO_MEMBER2_SECURE_READER_HANDOFF.md`.
+- **What changed:** Added a tenant-01-only `analyst` reader path granting `retention_inference` and the three existing source/category pairs only; credential create/rotate/revoke audit records; atomic digest update coupled to current-user DPAPI secret delivery; safe child-process token injection through `RETAINIQ_MODEL_TOKEN`; fixed-ID rotation/revoke operations; and checks preventing the provisioning CLI from using an arbitrary DB or the immutable original source.
+- **Why it changed:** The existing synthetic `provision-reader` path granted `model_artifact_write`, could add repeated credentials, and printed its token. The approved source DB also contained five prior principal rows, including broader grants. Member 2 needed a separate least-privilege read credential without changing the source or depending on 07B-1.
+- **Contract / database / API impact:** SQLite migration 005 adds a non-secret `service_principal_credential_audit` table. The P0 CLI validates dataset identity, full import counts and exact metadata-derived source/category grants before one fixed principal is inserted/rotated. The original DB stayed read-only. The working copy removed the five inherited service-principal rows, invalidated 12 imported integration digests, and preserves all synthetic rows and identity. Reads use existing authenticated `get_events_as_of`, `get_subscriptions_as_of`, `get_account_snapshot_as_of`, and `get_observation_coverage_as_of`; there is no new HTTP read route.
+- **Tests / verification:** Focused P0 tests — **PASS** — 8 passed. Full SQLite-only unittest discovery using `py -3.14 -B -m unittest discover -s tests -q` with `RETAINIQ_POSTGRES_TEST_DSN` and `RETAINIQ_POSTGRES_TEST_DISPOSABLE` unset — **PASS** — 183 tests run, 41 guarded PostgreSQL skips, 0 failures/errors. The existing shared PostgreSQL cluster was not used, changed, or stopped. Actual authenticated STANDARD smoke — **PASS** — 23 events, 1 subscription, 48 coverage rows at `2026-10-01T00:00:00Z`; tenant-02 denial, source/category checks, valuation redaction, JSON serialization, and unchanged SQLite data_version/mtime. Actual bounded Member 2 pilot — **PASS** — one eligible tenant-01 account at the same cutoff; 22 usage events, 1 subscription event, 27 daily-aggregate sessions, 48 coverage rows; no writes or account identifiers in output. Original manifest hash still `7f85a83a…77db6d`; original DB SHA-256 still `71bc6c18…ee5943`. Working-copy final SHA-256 `68404ded8052dc3199dbe0051819f445247b65b3d16adca5af68406d54443114`; SQLite integrity `ok`; dataset identity and full counts retained. DPAPI file ACL checked; file contains DPAPI envelope only, never plaintext output.
+- **Data / model / ROI evidence:** Synthetic SaaS v1.2 STANDARD only. No labels, model training, FULL generation, real customer data, or model-performance claim.
+- **Known issues / blockers:** DPAPI secret is bound to the current Windows user; a Member 2 process under a different OS identity needs operator re-provisioning or an approved secret manager. The immutable source still contains its pre-existing digest-only principal rows and was intentionally not edited. A legacy similarly named external DPAPI artifact remains untouched and was not used or mapped to those rows. Source freshness has no source-specific SLA or independent lifecycle/billing heartbeat; cancellation labels still require mature, complete outcome coverage. Complete requirements and `AGENT.md`/`AGENTS.md` were absent in this checkout.
+- **Next action / handoff:** **READER_READY** for the bounded tenant-01 synthetic pilot. Member 2 can reproduce the completed bounded read with `python -m retaniq.secret_store run --file $secret -- $python -m examples.member2_p0_bounded_pilot --db $db --as-of 2026-10-01T00:00:00Z`. Do not run the multi-account `examples/member2_synthetic_smoke.py` for this bounded task. Do not use the original DB or 07B-1 RLS worktree.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T17:02:46Z — Member 1 / Data & Backend Engineer — 07A Supabase configuration and security preparation
+
+- **Workstream:** Part 1 / Supabase demo connectivity, secret handling, Phase 07B RLS preparation
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** N/A — 07A changes intentionally uncommitted for review
+- **Issue / task:** Prompt 07A only; stop before Phase 07B/07C/07D and Phase 08.
+- **06E checkpoint:** `89a0293e3b89789b7df43c5b44563459154f055f` — `test(member1): verify sqlite postgres contract conformance`, committed locally after staging/reviewing the exact five 06E paths. No push or merge.
+- **Files changed in 07A:** `.gitignore`, `.env.supabase.example`, `retaniq/database_config.py`, `retaniq/database.py`, `retaniq/postgresql_migrations.py`, new `retaniq/supabase_preflight.py`, new `tests/test_supabase_configuration.py`, new `tests/test_supabase_preflight.py`, new `docs/MEMBER1_SUPABASE_CONNECTION_AND_SECURITY_PREPARATION.md`, and this entry.
+- **What changed:** Added explicit Supabase demo selection to the existing database config/shared psycopg client; verified project-reference and mode-specific DSN identity; separated app/migration roles and required a direct migration DSN; added TLS policy/labels, secret-safe diagnostics, and a SELECT-only preflight; prepared the role/RLS table inventory and deployment safety procedure.
+- **Why it changed:** Establish secure, fail-closed configuration before a shared synthetic demo without applying schema changes or sending data remotely.
+- **Contract / database / API impact:** SQLite and local PostgreSQL behavior retained. Supabase remains opt-in. Transaction-pooler application connections disable psycopg prepared statements (`prepare_threshold=None`); migrations reject transaction mode because the runner holds a session-level advisory lock. Supabase migrations route through the separate direct migration DSN. No API endpoint or migration file changed; no RLS/grants deployed.
+- **Tests / verification:** Focused Supabase/config/preflight/migration suite — **PASS** — 59 tests, 0 failures/errors, 5 expected guarded PostgreSQL skips, 0.133s. Full discovery on isolated local PostgreSQL 16.15 / psycopg 3.3.6 — **PASS** — 175 passed, 0 failures/errors/skips, 66.250s, 41 unique live PostgreSQL tests. SQLite-only full discovery — **PASS** — 134 passed, 41 expected live-PG skips, 14.877s. `compileall`, package imports, and `git diff --check` — **PASS**. No Python warnings; only expected rejected-request logs.
+- **Data / model / ROI evidence:** No Supabase or customer data accessed. Test databases `retaniq_test_07a_20261011` and `retaniq_test_07a_final_20261011` were confined to a loopback-only temporary cluster, then dropped; the cluster was stopped. Its stopped directory remains in Temp because recursive removal was blocked by the shell safeguard. The unrelated Windows PostgreSQL service was untouched.
+- **Known issues / blockers:** No Supabase project reference/URL or app/migration DSN configured; remote connectivity was not attempted. Local preflight returned sanitized `BLOCKED` (exit 2). RLS, grants, identity mapping, schema exposure changes, remote migrations, and remote import remain unimplemented. `AGENT.md`, `AGENTS.md`, and the complete requirements document were absent and not inferred.
+- **Next action / handoff:** **CONFIGURATION_READY_REMOTE_BLOCKED.** User/project owner must designate a dedicated RetainIQ synthetic demo project, confirm identity/region, create reviewed distinct app/migration roles in 07B, obtain DSNs from Dashboard Connect, and place them in a protected secret store. Next coding scope is 07B: reviewed grants/RLS plus live positive/negative tests. Do not run 07C import until RLS/security acceptance.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T16:32:31Z — Member 1 / Data & Backend Engineer — 06E dual-database contract conformance
+
+- **Workstream:** Part 1 / Data Foundation, PostgreSQL parity, security regression
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** N/A — Prompt 06E changes intentionally uncommitted
+- **Issue / task:** Prompt 06E — final dual-database contract conformance and Milestone 06 assessment; stop before Phase 07.
+- **06D-3 checkpoint:** `106cc67e86219d14995529a6c91515c0358130e7` — `feat(member1): complete PostgreSQL persistence replay and API parity`, local commit created at the start of this prompt after auditing and staging the exact 15-file 06D-3 set.
+- **Files changed in 06E:** new `tests/test_dual_database_contracts.py`, new `docs/MEMBER1_DUAL_DATABASE_CONTRACT_MATRIX.md`, new `docs/MEMBER1_POSTGRESQL_MIGRATION_ACCEPTANCE.md`, updated `tests/test_postgresql_import_replay.py`, and this entry.
+- **What changed:**
+  - Added seven shared fixture runners executing the same deterministic authenticated scenario on fresh SQLite and PostgreSQL databases and strictly comparing normalized business outputs.
+  - Covered event digests/idempotency/conflicts, as-of event availability/replay, artifact persistence/auth, MRR/payment/cancellation/coverage/source grants, existing WSGI routes and rejection atomicity, concurrent identical/conflicting ingestion, subscription-owner races, and subtype-trigger rollback.
+  - Added a direct check that the Member 2 synthetic workflow principal intentionally receives only `retention_inference` and `model_artifact_write` by default, with no `billing_valuation` unless explicitly requested.
+  - Added a PASS/GAP contract matrix, principal permission matrix, and formal Milestone 06 acceptance/Phase 07A recommendation.
+- **Why it changed:** Verify cross-backend behavior with identical inputs and make the distinction between storage parity, explicit untested contract variants, operational data readiness, and production security auditable.
+- **Contract / database / API impact:** No application implementation, schema migration, applied migration checksum, endpoint, or shared payload contract changed in 06E. Tests use backend-specific DB triggers only to inject subtype persistence failure; the public event API is invoked on each engine. Timestamp normalization is restricted to UTC representation; API health processing times are validated per backend because they arise from separate real executions.
+- **Tests / verification:**
+  - 06D-3 baseline before 06E edits on fresh guarded PostgreSQL 16.15 — **PASS** — 150 passed, 0 failed/errors/skips, 63.665s; 34 live PostgreSQL tests.
+  - Focused differential suite — **PASS** — 7 shared comparisons, each run on SQLite and live PostgreSQL; final focused run 13.395s.
+  - Final full unittest discovery with PostgreSQL 16.15 / psycopg 3.3.6 — **PASS** — 157 passed, 0 failed, 0 errors, 0 skipped, 75.887s; 41 unique live PostgreSQL tests ran.
+  - SQLite-only full suite — **PASS** — 157 total, 116 passed, 41 expected PostgreSQL-guarded skips, 15.012s.
+  - `compileall`, package import smoke, and `git diff --check` — **PASS**. No Python warnings; expected unauthorized/invalid-request test logs only.
+- **Data / model / ROI evidence:** Synthetic engineering fixtures only. The import fixture is bounded quick profile; no STANDARD-scale, real-customer, model, performance, or ROI claim.
+- **Known issues / blockers:** No critical parity mismatch found. Noncritical coverage-state enumeration and strict MRR cross-output variants remain gaps (see matrix); richer label evidence/status/evaluation metadata and a full uncertainty object are not represented by current storage. RLS, external identity, production hosting, real-data permission/provenance, full-scale import, and Member 2's previously reported maturity/coverage/freshness/heartbeat blockers remain outside this prompt. Member 2's current corrections were not assumed or independently verified.
+- **Next action / handoff:** Milestone 06 is **CONDITIONALLY_ACCEPTED**: core dual-backend conformance is verified, with specified noncritical gaps. The exact task-created database `retaniq_test_06e_20261011` was dropped, the differential child database was dropped by test teardown, and only the task-owned PostgreSQL cluster was stopped; the unrelated Windows service was untouched. Recommended next scope is Phase 07A Supabase tenant-security/RLS foundation after policy review; do not begin it automatically. Leave 06E changes uncommitted; no push, merge, or deployment.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T16:11:05Z — Member 1 / Data & Backend Engineer — 06D-3 PostgreSQL artifacts, import, replay, and WSGI parity
+
+- **Workstream:** Part 1 / Data Foundation & PostgreSQL parity
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** N/A — intentionally uncommitted per task instruction
+- **Issue / task:** Prompt 06D-3 — PostgreSQL artifact persistence, historical replay, import/checkpoint compatibility, and existing WSGI API parity; stop before 06E.
+- **Files changed:** `retaniq/api.py`, `retaniq/data_foundation.py`, `retaniq/importer.py`, `retaniq/postgresql_migrations.py`, `retaniq/synthetic/canonical_adapter.py`, `tests/test_data_foundation.py`, new `tests/test_postgresql_artifact_persistence.py`, new `tests/test_postgresql_import_replay.py`, new `tests/test_postgresql_wsgi_api.py`, `README.md`, `docs/MEMBER1_DATABASE_BACKEND_CONFIGURATION.md`, `docs/MEMBER1_DATA_CONTRACT_COMPLIANCE.md`, new `docs/MEMBER1_POSTGRESQL_PERSISTENCE_AND_REPLAY_PARITY.md`, and `TEAM_LOG.md`.
+- **What changed:**
+  - Ported existing feature snapshot, churn-label, and prediction writers to PostgreSQL with timezone-aware timestamp binding, duplicate/conflict normalization, unchanged payload validation and immutable keys, and least-privilege service-principal authorization.
+  - Enabled PostgreSQL dataset identity/provenance, synthetic identity provisioning, coverage batch checkpointing, bounded quick-profile import, and existing authorized historical replay without SQLite fallback.
+  - Enabled the existing WSGI routes on PostgreSQL. Startup verifies migration history/checksums read-only and refuses an uninitialized schema; it does not auto-migrate or add endpoints.
+  - Fixed a confirmed first-initialization concurrency race by acquiring the advisory lock before PostgreSQL schema creation.
+  - Added shared SQLite/live PostgreSQL artifact-contract tests, PostgreSQL WSGI tests, and bounded dual-backend import/checkpoint/replay tests; documented the capability matrix and contract limitations.
+- **Why it changed:** Complete the scoped 06D-3 repository parity requested for Member 1 without changing Member 2/3 worktrees, inventing new artifact shapes, or implying production readiness.
+- **Contract / database / API impact:** No new migration, endpoint, SQLite schema, or feature/label/prediction payload shape. Artifact service writers require role `analyst` and explicit `model_artifact_write`; source/customer scope is enforced. PostgreSQL startup performs read-only migration verification. Labels still lack a richer status/evidence-reference/evaluation-time schema; predictions retain `uncertainty_status=not_quantified` rather than a full uncertainty object. Application authorization is not RLS.
+- **Tests / verification:**
+  - Baseline before edits — **PASS** — 138 tests, 0 failures/errors/skips.
+  - Focused feature/label/prediction fixtures — **PASS** — shared SQLite and live PostgreSQL contract tests; focused import/replay (1), WSGI (3), and schema-initialization concurrency tests passed.
+  - Full suite with disposable loopback PostgreSQL 16.15 and psycopg 3.3.6 — **PASS** — 150 tests, 150 passed, 0 failures/errors/skips; 34 live PostgreSQL integration tests ran (64.205s). Initial run exposed the schema-creation race; the corrected rerun passed.
+  - Full suite without PostgreSQL test target — **PASS** — 150 total, 116 passed, 34 expected live-PostgreSQL tests skipped (17.112s), confirming SQLite/unit regressions.
+  - `compileall` — **PASS**; `git diff --check` — **PASS** (only expected Windows LF/CRLF notices).
+- **Data / model / ROI evidence:** Deterministic synthetic quick fixture only (12 accounts, 4 tenants, 2025-01-01 through 2025-05-31); no real customer rows, model training, model performance, or ROI evidence.
+- **Known issues / blockers:** Full `STANDARD` PostgreSQL import/load is intentionally untested. Member 2's zero mature 7/14/30-day labels, insufficient verified outcome coverage, 97.21% stale/insufficient snapshots, and missing independent lifecycle/billing heartbeat remain unresolved. RLS, production identity/deployment, encryption-at-rest, scheduled workers, and Supabase remain out of scope. Complete requirements and `AGENT.md`/`AGENTS.md` were unavailable in this checkout.
+- **Next action / handoff:** Stop at 06D-3; do not begin 06E. Keep all task changes uncommitted; no push, merge, or deployment. The exact task-created disposable database `retaniq_test_06d3_20261010` was dropped, and only the task-owned PostgreSQL cluster under the temporary runtime directory was stopped; the separate Windows PostgreSQL service was left untouched.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T15:44:36Z — Member 1 / Data & Backend Engineer — 06D-2 live historical query verification
+
+- **Workstream:** Part 1 / Data Foundation & PostgreSQL parity
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `feat(member1): verify PostgreSQL historical query and coverage parity`
+- **Issue / task:** Prompt 06D-2V; preceding 06D-1 checkpoint: `9f0442b4d52594b65c70bf9486e9375cc24c243d`
+- **Files changed:** `retaniq/data_foundation.py`, `retaniq/database.py`, `tests/test_postgresql_ingestion.py`, `tests/test_postgresql_historical_queries.py`, `docs/MEMBER1_POSTGRESQL_HISTORICAL_QUERY_PARITY.md`, `docs/MEMBER1_DATABASE_BACKEND_CONFIGURATION.md`, `README.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Enabled existing historical event, subscription, account snapshot, and coverage read APIs on PostgreSQL with source/category-aware grants, UTC-aware cutoff binding, and the existing output timestamp shape.
+  - Enabled idempotent PostgreSQL single coverage writes using the existing contract and unique key; reused existing historical subscription fold and valuation policy.
+  - Added shared SQLite/live-PostgreSQL fixtures for cutoff, authorization, lifecycle, MRR, coverage, and read-only behaviors; updated the earlier explicit-unsupported test.
+- **Why it changed:** Prompt 06D-2 requires historical Data Foundation inputs for Member 2/3 without changing their worktrees or inventing service contracts.
+- **Contract / database / API impact:** Existing Python function signatures and result shapes remain. Historical reads now enforce the existing source/category grants against stored rows, including after grant narrowing. Availability remains `source_available_at` with `received_at` fallback; both time predicates are inclusive. Application authorization is not RLS. No schema migration was added.
+- **Tests / verification:**
+  - Task-owned PostgreSQL 16.15 cluster startup initially failed to bind loopback; explicit IPv4-only `-h 127.0.0.1 -p 62534` recovered it. psycopg 3.3.6 smoke — PASS — real `SELECT 1`, server/database identity, commit, rollback, and connection cleanup.
+  - `python -B -m unittest discover -s tests -p 'test_postgresql_migrations.py' -v` — PASS — 20 total including 5 live migration integration tests, 1.912s.
+  - `python -B -m unittest discover -s tests -p 'test_postgresql_ingestion.py' -v` — PASS — 11 live ingestion/concurrency tests, 13.590s.
+  - `python -B -m unittest discover -s tests -p 'test_postgresql_historical_queries.py' -v` — PASS — 22 total, including 11 live PostgreSQL and 11 shared SQLite fixtures, 13.654s.
+  - Full `python -B -m unittest discover -s tests` — PASS — 138 tests, 138 passed, 0 failed, 0 errors, 0 skipped, 42.118s. All 27 unique PostgreSQL integration tests executed live; no Python warnings (expected unauthorized-request log messages only).
+  - `compileall`, package imports, and `git diff --check` — PASS. Test target `retaniq_test_06d2v_20261010` was confirmed absent before creation, then dropped after tests; only the task-owned cluster was stopped. No code defect was confirmed; SQLite historical contracts matched PostgreSQL expectations.
+- **Data / model / ROI evidence:** Synthetic engineering fixtures only; no model or ROI claims.
+- **Known issues / blockers:** Member 2's reported zero mature 7/14/30-day labels, insufficient authorized outcome coverage, 97.21% stale/insufficient snapshots, and missing independent lifecycle/billing heartbeat remain unresolved and outside this task. Complete requirements and `AGENT.md`/`AGENTS.md` remain unavailable (`D:\dunno\dormathon` absent).
+- **Next action / handoff:** 06D-2 historical-query parity is live-verified. 06D-3 remains a separate task for feature/label/prediction persistence and any scoped import/checkpoint/replay work. No push or merge.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T15:14:20Z — Member 1 / Data & Backend Engineer — PostgreSQL ingestion, identity and auth parity
+
+- **Workstream:** Part 1 / Data Foundation, PostgreSQL Ingestion Parity
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `feat(member1): add PostgreSQL ingestion and identity parity` (06D-1 remains uncommitted)
+- **Issue / task:** Prompt 06D-1 — PostgreSQL ingestion, identity, authorization and transaction parity; stop before 06D-2.
+- **Files changed:** `retaniq/database.py`, `retaniq/data_foundation.py`, `tests/test_database_connection.py`, new `tests/test_postgresql_ingestion.py`, new `docs/MEMBER1_POSTGRESQL_INGESTION_PARITY.md`, `docs/MEMBER1_DATABASE_BACKEND_CONFIGURATION.md`, `docs/MEMBER1_POSTGRESQL_SCHEMA_AND_MIGRATIONS.md`, `docs/MEMBER1_DATA_CONTRACT_COMPLIANCE.md`, `README.md`, and `TEAM_LOG.md`.
+- **What changed:**
+  - **06C checkpoint:** Prompt 06C was locally checkpointed at `4eeb2b303701f63b0d246aeca4a357b16ad0c55b` with subject `feat(member1): implement PostgreSQL schema and migration runner`; its staged-path audit included only the 06C files and this log. No push/merge.
+  - Added a quote/comment-aware PostgreSQL placeholder adapter and safe integrity metadata; enabled the existing shared setup/authz/authentication, tenant identity mapping, mapping-version/source health, canonical `ingest_event`, bounded batch/checkpoint, subtype, and CSV importer paths for PostgreSQL.
+  - Added PostgreSQL `ON CONFLICT ... RETURNING` for identity/event writes and database-enforced owner/event conflict handling; `FOR UPDATE` serializes subscription-owner claims/projection rebuilds and the batch dataset checkpoint. Normalization, minimization, event hashing, tenant binding, and grants stay shared with SQLite.
+  - Updated README/backend/compliance/schema notes and added a 30-scenario test coverage map. Historical queries, observation coverage, valuation, feature/label/prediction persistence, complete synthetic provisioning, and WSGI API startup remain explicitly unsupported on PostgreSQL.
+- **Why it changed:** Establish verified PostgreSQL parity for Member 1's core ingestion/auth/identity path without weakening the existing contract or overstating full backend parity.
+- **Contract / database / API impact:** Existing event/principal shapes and error codes are preserved. PostgreSQL `TIMESTAMPTZ` receives aware datetime parameters and health output returns normalized UTC strings. Payment failures do not end subscriptions; known cancellations remain distinct. Application authz is not RLS. No Supabase, production DB, cross-member work, or data copy.
+- **Tests / verification:**
+  - Pre-edit baseline on the disposable target — **PASS** — 104 tests, 0 failed/errors/skipped, 14.110 seconds.
+  - Live PostgreSQL ingestion — **PASS** — 11 tests, 0 failed/errors/skipped, 12.109 seconds. Actual concurrency: 8 identical-ingest workers; 2 conflicting-ingest workers; 8 same-owner identity workers; 2 conflicting-identity workers; 2 subscription-owner contenders.
+  - Existing PostgreSQL schema/migration tests — **PASS** — 20 tests, including all five live PostgreSQL integration tests, 2.189 seconds.
+  - SQLite Data Foundation regression — **PASS** — 48 tests, 6.939 seconds; focused five authorization tests passed in 0.673 seconds; four importer/batch/checkpoint tests passed in 0.401 seconds.
+  - Full suite on Python 3.12.14 + psycopg 3.3.6 against PostgreSQL 16.15 — **PASS** — 116 passed, 0 failed, 0 errors, 0 skipped, 0 Python warnings; unittest duration 28.529 seconds (28.859 seconds wall clock).
+  - `compileall`, package import checks, and `git diff --check` — **PASS**. Four expected safe request-rejection log lines came from negative tests; no credentials/restricted values were exposed. Git showed only LF/CRLF normalization notices.
+- **Data / model / ROI evidence:** Synthetic-only fixtures and task-created disposable PostgreSQL database; no customer dataset, model, or ROI results.
+- **Known issues / blockers:** Complete requirements and `AGENT.md`/`AGENTS.md` were absent; the cited `D:\dunno\dormathon` requirements path was unavailable. Integration/service token expiry is not an existing schema feature. Historical query and coverage parity, other persistence, production TLS/identity, and RLS remain unverified/out of scope.
+- **Next action / handoff:** The disposable `retaniq_test_06d1` database was dropped and its task-created cluster was stopped (`pg_ctl` confirms no server); the existing `postgresql-x64-16` Windows service remains Running and was not targeted. The known temporary cluster and isolated psycopg venv directories remain on disk for safe reuse; recursive deletion was rejected by the environment. Keep 06D-1 changes uncommitted. Next milestone is **06D-2 — Historical Queries and Coverage Parity**; do not begin it automatically.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T14:47:40Z — Member 1 / Data & Backend Engineer — PostgreSQL schema and migrations
+
+- **Workstream:** Part 1 / Data Foundation, PostgreSQL Schema & Migrations
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `feat(member1): implement PostgreSQL schema and migration runner`
+- **Issue / task:** Milestone 06C — implement the PostgreSQL schema and explicit migration runner; stop before 06D.
+- **Files changed:** `migrations/postgresql/001_data_foundation.sql` through `004_dataset_identity_and_observation_coverage.sql`, `retaniq/postgresql_migrations.py`, `retaniq/data_foundation.py`, `retaniq/database.py`, `retaniq/database_config.py`, `retaniq/__main__.py`, `tests/test_postgresql_migrations.py`, `docs/MEMBER1_POSTGRESQL_SCHEMA_AND_MIGRATIONS.md`, `docs/MEMBER1_DATABASE_BACKEND_CONFIGURATION.md`, `docs/MEMBER1_DATA_CONTRACT_COMPLIANCE.md`, `docs/MEMBER1_TO_MEMBER2_DATA_HANDOFF.md`, `README.md`, and `TEAM_LOG.md`.
+- **What changed:**
+  - Added four PostgreSQL migrations for the canonical 18-table Data Foundation schema, tenant-composite keys, constraints, indexes, identity sequence, timestamps, integration grants/owners, and dataset identity/coverage. Serialized payload text stays `TEXT`; PostgreSQL uses `BIGINT`, `DOUBLE PRECISION`, and `TIMESTAMPTZ` where appropriate.
+  - Added ordered/checksummed migration discovery, history validation, session advisory locking, per-migration atomic transactions, schema targeting, and actionable safe errors. `init-db` explicitly applies the PostgreSQL migrations; ordinary repository operations remain SQLite-only pending 06D.
+  - Documented the schema compatibility matrix, runner and disposable test procedure, status/limitations, and Member 2 database handoff. No SQLite data-copy or query-adaptation work was included.
+- **Why it changed:** 06C provides a verifiable PostgreSQL schema and repeatable migration lifecycle after the 06B backend foundation, without implying repository/query parity or production readiness.
+- **Contract / database / API impact:** New PostgreSQL schema matches the logical SQLite table/column contract with native PostgreSQL types, named constraints, tenant-scoped foreign keys, and indexes. PostgreSQL initialization is available only through the explicit migration path. No RLS, Supabase, application query parity, data migration, production service, or remote database changes.
+- **Tests / verification:**
+  - Full suite with temporary PostgreSQL 16.15 cluster and psycopg 3.3.6, guarded by the disposable loopback test target — **PASS** — 104 tests, 0 failures, 0 errors, 0 skips; all five live catalog/constraint/transaction/checksum/concurrency integration tests ran.
+  - Focused PostgreSQL migration tests — **PASS** — 20 tests, including all five live-server integration tests.
+  - `python -B -m compileall -q retaniq tests` using the isolated test runtime — **PASS**.
+  - `git diff --check` — **PASS** — no whitespace errors; Git noted LF-to-CRLF normalization for existing text files.
+  - Bundled-runtime full suite without psycopg/test DSN — **PASS** — 104 tests, 99 passed and the five live-PostgreSQL tests skipped by their safety guard; 0 failures/errors.
+- **Data / model / ROI evidence:** Only synthetic test fixtures and an empty, task-created disposable PostgreSQL database. No real customer data, model, or ROI analysis used.
+- **Known issues / blockers:** Complete requirements and `AGENT.md`/`AGENTS.md` were not present in this checkout; the compliance record points to requirements under inaccessible `D:\dunno\dormathon`. PostgreSQL stores timestamps as `TIMESTAMPTZ`, unlike SQLite text; query/repository compatibility and any data conversion remain unverified until 06D. No production isolation/RLS or deployment claim is made.
+- **Next action / handoff:** Member 1 proceeds to 06D-1 PostgreSQL ingestion/identity/auth parity, then 06D-2 historical query and coverage parity. This checkpoint is local only; no push or merge. The disposable database was dropped and its task-created PostgreSQL cluster stopped. The environment rejected recursive deletion of the two exact temporary directories (`retaniq-06c-postgres-runtime` and `retaniq-06c-psycopg-venv`), so their stopped cluster files and isolated driver environment remain on disk. The pre-existing Windows PostgreSQL service was not targeted.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T14:18:47Z — Member 1 / Data & Backend Engineer — Configurable database backend foundation
+
+- **Workstream:** Part 1 / Data Foundation, Database Configuration & Transactions
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `feat: add configurable database backend foundation`
+- **Issue / task:** Milestone 06B — implement a configurable database connection and transaction foundation.
+- **Files changed:** `retaniq/database_config.py`, `retaniq/database.py`, `retaniq/data_foundation.py`, `retaniq/__main__.py`, `requirements-postgresql.txt`, `tests/test_database_config.py`, `tests/test_database_connection.py`, `docs/MEMBER1_DATABASE_BACKEND_CONFIGURATION.md`, `README.md`, and `TEAM_LOG.md`.
+- **What changed:**
+  - Added typed SQLite/PostgreSQL target parsing with explicit backend selection, environment configuration, TLS policy for remote PostgreSQL, local insecure-test opt-in, and redacted representations/errors.
+  - Added SQLite and optional psycopg 3 connection lifecycle primitives with commit/rollback ownership, explicit nested-transaction rejection, SQLite foreign-key/busy-timeout setup, and migration-operation guards.
+  - Routed the existing SQLite Data Foundation through the shared boundary and made PostgreSQL repository use fail explicitly until 06C/06D schema and parity work; no schema, RLS, Supabase, contract-field, or tenant-auth changes were made.
+- **Why it changed:** 06B requires a backend-aware foundation that preserves current SQLite behavior while making future PostgreSQL migration and repository work explicit, testable, and free of silent SQLite fallback.
+- **Contract / database / API impact:** Existing SQLite behavior and public contracts remain unchanged. PostgreSQL configuration and connection support are available as a foundation only; existing Data Foundation operations reject PostgreSQL with a readiness error. No PostgreSQL migration or production database was changed.
+- **Tests / verification:**
+  - Bundled Python `-B -m unittest discover -s tests -p 'test_database_config.py' -v` — **PASS** — 12 focused configuration tests.
+  - Bundled Python `-B -m unittest discover -s tests -p 'test_database_connection.py' -v` — **PASS** — 8 focused connection/transaction tests.
+  - Bundled Python `-B -m compileall -q retaniq tests` — **PASS**.
+  - Bundled Python `-B -m unittest discover -s tests -v` — **PASS** — 84 tests in 13.257 seconds.
+  - Bundled Python `-B -m compileall -q retaniq tests` — **PASS**; `git diff --check` — **PASS** — no whitespace errors, with only Git line-ending normalization notices.
+- **Data / model / ROI evidence:** No data, model, prediction, or ROI evidence was generated. Existing synthetic-only status is unchanged.
+- **Known issues / blockers:** `POSTGRES_CONNECTION_SMOKE_NOT_RUN` — no safe PostgreSQL instance/DSN was available; psycopg 3 is not installed in the bundled runtime; `psql`, `postgres`, and `pg_ctl` are absent; Docker was not started. PostgreSQL feature parity remains unimplemented.
+- **Next action / handoff:** Member 1 next implements 06C PostgreSQL schema and migrations, then 06D query/repository parity. Keep Supabase deferred to the later infrastructure phase. No commit, push, or merge is part of this handoff.
+- **Reviewer / pairing:** N/A
 
 ### 2026-10-10T13:44:03Z — Member 1 / Data & Backend Engineer — Complete Synthetic SaaS v1.2 remediation
 
