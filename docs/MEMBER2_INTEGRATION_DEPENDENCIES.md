@@ -96,8 +96,13 @@ A static final `Churn = Yes/No` table cannot support validated early-warning lea
 
 ## 6. Current implementation blockers
 
-- The repository contains no Member 1 production backend/database or authorized dataset. Member 2's local typed contracts, tests and model components are present, but they are not a production serving system.
-- No authorized longitudinal dataset or `DATASET_CARD.md` exists.
+- The repository now contains Member 1's authenticated local SQLite Data
+  Foundation and synthetic v1.2 tooling, but no Supabase/PostgreSQL production
+  backend or Member 2 SQLite adapter. Member 2's typed contracts and model
+  components are not a production serving system.
+- `DATASET_CARD.md` exists and explicitly records that no authorized real
+  longitudinal dataset is available; synthetic v1.2 is development evidence
+  only.
 - Member 1’s canonical schema, authentication boundary, replay path, and label policy are not implemented.
 - No team-approved values exist for availability semantics, churn aggregation, split policy, reliability thresholds, or model-release gates.
 - Part 2 cannot claim trained performance, lead time, calibration quality, or genuine replay results until the dataset and contracts are available.

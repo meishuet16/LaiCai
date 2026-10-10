@@ -5,6 +5,9 @@ Member 1 backend, a Member 3 decision engine, or a Member 4 frontend.
 """
 
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -34,6 +37,24 @@ from retainiq_prediction.prediction_pipeline import PipelineReasonCode, Pipeline
 
 UTC = timezone.utc
 BASE = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+def test_synthetic_smoke_cli_is_invocable_as_a_module_without_tenant_argument():
+    repository = Path(__file__).resolve().parents[1]
+
+    result = subprocess.run(
+        [sys.executable, "-m", "examples.member2_synthetic_smoke", "--help"],
+        cwd=repository,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "--dataset" in result.stdout
+    assert "--db" in result.stdout
+    assert "--token-env" in result.stdout
+    assert "--tenant-id" not in result.stdout
 
 
 def prediction(

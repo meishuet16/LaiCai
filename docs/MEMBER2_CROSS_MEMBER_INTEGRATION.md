@@ -71,12 +71,17 @@ schema migration, or backend completion is assumed here.
 
 - `AVAILABLE_IN_MEMBER2_CONTRACT`: typed facts, cutoff, availability policy,
   tenant/account scoping, eligibility states, labels and prediction contracts.
-- `IMPLEMENTED_BY_MEMBER1`: none verified in this repository.
-- `AWAITING_MEMBER1_CONFIRMATION`: canonical field mapping, availability
-  precedence, source watermarks, replay behavior, MRR/currency evidence,
-  corrections and account-level churn semantics.
-- `BLOCKED`: authorized real dataset, production adapter, authentication
-  boundary, durable storage, and genuine historical replay.
+- `IMPLEMENTED_BY_MEMBER1`: local SQLite migrations and storage, authenticated
+  tenant/source/purpose-scoped principals, canonical ingestion, identity
+  mapping, availability-aware as-of reads, lifecycle reconstruction,
+  observation coverage, MRR/currency valuation, synthetic generation,
+  validation/import, dataset identity, and tenant-reader provisioning.
+- `AWAITING_INTEGRATION`: a SQLite-to-Member2 typed adapter, correction mapping,
+  persisted Member 2 evidence fields, and end-to-end feature/label/prediction
+  materialization against the generated local artifact.
+- `BLOCKED_FOR_PRODUCTION`: authorized real data, Supabase/PostgreSQL storage,
+  production authentication/deployment controls, durable governance storage,
+  and agreed real-source multi-subscription semantics.
 
 ## 3. Member 3 prediction and feedback handoff
 
@@ -203,10 +208,12 @@ prediction payloads, explanations, logs or dashboard fixtures.
 
 ## 8. Ownership and acceptance checklist
 
-- [ ] Member 1 supplies an authenticated adapter and a DATASET_CARD with
-      authorized longitudinal coverage.
-- [ ] Member 1 confirms availability precedence, watermarks, corrections and
-      replay semantics.
+- [x] Member 1 supplies local authenticated SQLite reads, a synthetic
+      `DATASET_CARD.md`, availability-aware replay, and observation coverage.
+- [ ] Member 2 implements the typed SQLite adapter and verifies it against the
+      generated artifact without weakening tenant/source grants.
+- [ ] The team supplies an authorized real dataset and confirms real-source
+      availability, watermarks, corrections, and replay semantics.
 - [ ] Member 1 + Member 2 agree account-level multi-subscription churn.
 - [ ] Member 2 verifies real feature/label/prediction replay before claiming
       production readiness.
@@ -235,3 +242,50 @@ The following remain open and are not silently resolved here:
 - durable audit, artifact integrity, serving and active-bundle ownership;
 - Member 3 action and feedback record endpoint/schema;
 - Member 4 dashboard query and refresh contracts.
+
+## 10. Prompt 23 local synthetic workflow
+
+The merged CLI supports `generate`, `validate`, `import`, and
+`provision-reader`. Prompt 23 should run the following from the repository root
+with the project-local Python. These commands are documented here but were not
+executed during the merge task:
+
+```powershell
+$privateRoot = Join-Path $HOME 'RetainIQ-private\synthetic_saas_v1_2'
+$generated = (& .\.venv\Scripts\python.exe -m retaniq.synthetic generate `
+  --profile standard --seed 2026 --output $privateRoot) | ConvertFrom-Json
+$dataset = [string]$generated.dataset_path
+$manifest = Get-Content -Raw -LiteralPath (Join-Path $dataset 'dataset_manifest.json') | ConvertFrom-Json
+$datasetId = [string]$manifest.dataset_id
+$db = Join-Path $privateRoot ("db\{0}.sqlite3" -f $datasetId)
+
+.\.venv\Scripts\python.exe -m retaniq.synthetic validate --dataset $dataset
+.\.venv\Scripts\python.exe -m retaniq.synthetic import --dataset $dataset --db $db
+$reader = (& .\.venv\Scripts\python.exe -m retaniq.synthetic provision-reader `
+  --dataset $dataset --db $db --tenant-id tenant-01) | ConvertFrom-Json
+$env:RETAINIQ_MODEL_TOKEN = [string]$reader.token
+$reader.token = $null
+.\.venv\Scripts\python.exe -m examples.member2_synthetic_smoke `
+  --db $db --dataset $dataset
+Remove-Item Env:\RETAINIQ_MODEL_TOKEN
+```
+
+For the merged v1.2 STANDARD configuration and seed 2026, source inspection
+computes the expected ID
+`synthetic-saas-v1-2-standard-s2026-970a9d231e68`. The generated
+`dataset_manifest.json` is authoritative: validation checks its per-file
+SHA-256 hashes and counts, import binds the database to the manifest SHA-256,
+and provisioning/smoke reject a dataset/database identity mismatch. Do not
+hardcode the expected ID instead of reading the generated manifest.
+
+`provision-reader` emits the one-time credential in its JSON result. Capture
+that output rather than echoing it, do not write it to Git or a transcript, and
+remove `RETAINIQ_MODEL_TOKEN` after the smoke. The token is tenant-bound,
+analyst-role, exact-source scoped, and grants `retention_inference` plus
+`model_artifact_write`; billing valuation is opt-in.
+
+The local SQLite database and generated files remain private, Git-ignored
+development artifacts for synthetic historical integration. They do not
+depend on Supabase and do not establish real-world model performance. Future
+Supabase/PostgreSQL work remains backend-owned and requires separate migrations,
+tenant authentication, prediction/decision persistence, and production tests.

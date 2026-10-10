@@ -5,8 +5,8 @@ external completion or team commitment is assumed.
 
 | ID | Description | Severity | Owner | Required decision/data | Affected functionality | Evidence/status | Acceptance condition |
 |---|---|---:|---|---|---|---|---|
-| M2-P0-001 | No authorized timestamped longitudinal dataset or `DATASET_CARD.md` | P0 | Member 1 / team | Authorized source, license, coverage, schema mapping, provenance | Real features, labels, training, evaluation, metrics, production scoring | No authorized dataset exists in repository; synthetic fixtures only | DATASET_CARD and readiness report pass with authorized real provenance |
-| M2-P0-002 | No canonical authenticated tenant-scoped backend adapter/API | P0 | Member 1 | Auth boundary, canonical IDs, durable storage and read contract | Historical replay, live scoring, feedback persistence, security | Only replaceable in-memory adapters exist | Member 1 adapter passes tenant, availability, correction and replay tests |
+| M2-P0-001 | No authorized real timestamped longitudinal dataset | P0 | Member 1 / team | Authorized source, license, coverage, schema mapping, provenance | Real training, evaluation, metrics and production scoring | `DATASET_CARD.md` exists and the merged generator provides synthetic v1.2 only | Readiness report passes with authorized real provenance |
+| M2-P0-002 | No production backend adapter or Member 2 SQLite mapper | P0 | Member 1 + Member 2 | Supabase/PostgreSQL boundary for production; typed SQLite mapping for Prompt 23 | End-to-end materialization, live scoring, feedback persistence | Tenant-scoped local SQLite reads and synthetic import are merged and tested; the Member 2 mapper is not implemented | Prompt 23 adapter tests pass, then production adapter passes tenant, availability, correction and replay tests |
 | M2-P0-003 | Account-level multi-subscription churn policy unresolved | P0 | Member 1 + Member 2 + team | Define last/all/contract-specific semantics and effective timestamp | Eligibility, labels, feedback maturity, evaluation and training | `IMPROVEMENT-002` remains `NEEDS_TEAM_DECISION` | Versioned policy is documented and applied to real lifecycle history |
 | M2-P0-004 | Source availability/watermark/correction precedence unresolved | P0 | Member 1 + team | Precedence among source availability, received time, watermark and revisions | Point-in-time features, labels, feedback and replay | Local adapter is conservative and configurable; no external policy confirmed | Canonical availability/correction contract with replay evidence |
 | M2-P0-005 | No durable model artifact, approval, active-bundle or rollback backend | P0 | Member 1/backend + Part 4 | Trusted artifact integrity, RBAC, append-only audit, atomic CAS store | Production promotion, serving and rollback | Prompt 19 governance is process-local and explicitly blocks production | Durable interfaces pass authorization, idempotency, CAS and audit acceptance tests |
@@ -19,6 +19,7 @@ external completion or team commitment is assumed.
 ## Current readiness interpretation
 
 Local contracts and tests are implemented. Real production readiness is
-**BLOCKED** by the P0 items above. Passing synthetic unit tests does not prove
+**BLOCKED FOR PRODUCTION** by the P0 items above. Merged synthetic generation,
+SQLite ingestion and unit tests support local integration only and do not prove
 data quality, model performance, secure deployment, retention effectiveness or
 ROI.
