@@ -72,15 +72,39 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T16:59:47Z — Member 2 AI coding assistant — Audit cross-member policy and readiness
+
+- **Workstream:** Part 2 / Part 1 integration / Docs / QA
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `docs(member2): audit cross-member source readiness contracts` (Prompt 26 pending; not committed)
+- **Issue / task:** Member 2 Prompt 26; no ticket
+- **Files changed:** `docs/MEMBER2_TO_MEMBER1_CONTRACT_REQUESTS.md`, `docs/MEMBER2_TRAINING_READINESS_DECISION.md`, `tests/test_cross_member_policy_readiness.py`, and this log.
+- **What changed:**
+  - Checkpointed the verified Prompt 25 reconciliation as `41041f3de6496d4dcd49676b0104d92e57e956b8` (`fix(member2): reconcile churn outcome evidence and coverage`); no other work was staged.
+  - Audited Member 1's latest-state/all-active cancellation rule against Member 2's any-visible-historical-request routing. Documented ended-subscription and reversed-request cases, downstream denominator/route impact, and alternatives for a versioned shared policy. Existing implementations remain unchanged.
+  - Documented current source-health and outcome-coverage APIs separately from proposed heartbeat, coverage-completeness, and late-arrival aggregate contracts. Added tenant/source authorization, as-of timing, and acceptance requirements; no Member 1 production API/schema was changed.
+  - Recovered frozen tenant-01 stage support from v4 manifest/partition evidence; documented numeric and structural gates, row/unique-account deltas, distinct readiness states, synthetic dataset options, and why training/scoring remain blocked. No TEST metric analysis or model training occurred.
+  - Added current-behavior regression tests and test-only types clearly marked `CONTRACT_PROPOSAL`; they do not claim a production heartbeat or diagnostics API exists.
+- **Why it changed:** Prompt 26 requires cross-member contract alignment and evidence-backed readiness before any future training decision, while preserving Prompt 25 artifacts and frozen splits.
+- **Contract / database / API impact:** No runtime contract or database/API was changed. Proposed versioned cancellation and health/diagnostics contracts require Member 1 and named shared policy-owner review. No Member 1/3/4 worktree was modified.
+- **Tests / verification:**
+  - `.\.venv\Scripts\python.exe -B -m pytest -q tests\test_cross_member_policy_readiness.py --basetemp .pytest-tmp-p26-focused` — **PASS** — 16 passed.
+  - Focused Member 1/2 integration command covering policy/readiness, outcome reconciliation, historical preparation tests, label/eligibility, reliability/freshness, SQLite adapter, Data Foundation and cross-member tests — **PASS** — 175 passed.
+  - `.\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p26` — **PASS** — 448 passed, 0 failed/errors/skipped; 24 existing SHAP warnings (9 explainability, 15 prediction pipeline), unsuppressed; 19.63s.
+  - Package imports and AST parsing — **PASS** — 27 Python package files. `git diff --check` — **PASS**. Private v4 preparation manifest SHA and 8/8 artifact SHA/size checks — **PASS**; source SQLite SHA-256 remains `71bc6c18d9266c2b0c8b8e5008f6f6633a55804b1fe90a947f8ea24ca3ee5943`.
+- **Data / model / ROI evidence:** **Synthetic only** — existing tenant-01 STANDARD v1.2 (`synthetic-saas-v1-2-standard-s2026-970a9d231e68`), immutable source manifest SHA `7f85a83a1697efaaeebe1a5534b075ef6c7a99fa5ad3a1e9514b3eb8ae77db6d`; prepared v4 manifest SHA `1169164a8c3b038572a8c19f534bc519e51cbe14bde235227297238d0bb3d94a`. No model trained, no TEST outcomes inspected for optimization, no dataset re-preparation.
+- **Known issues / blockers:** All three horizons fail at least one frozen stage support gate; all are synthetic-only. Sufficient/fresh snapshots are zero; operational scoring remains blocked. Multi-subscription request aggregation/reversal policy and lifecycle/billing heartbeats/completeness remain unresolved. Existing APIs filter unavailable events without excluded-row aggregate diagnostics.
+- **Next action / handoff:** Project lead to name the domain-policy approver and coordinate with Member 1 on cancellation semantics, lifecycle/billing source health, and authorized diagnostics. Only after agreement and explicit authorization, consider a separate tenant-scoped read-only preparation from the existing immutable FULL synthetic dataset. Preserve its split policy; preflight stage support and reliability, and stop if blocked. Do not train or alter TEST policy until separately authorized.
+
 ### 2026-10-10T16:32:00Z — Member 2 AI coding assistant — Reconcile labels and freeze reproducible historical data
 
 - **Workstream:** Part 2 / Part 1 integration
 - **Branch:** `integration/member2-main-sqlite`
-- **Commit subject:** `fix(member2): reconcile lifecycle outcomes and coverage for historical labels` (Prompt 25 pending; not committed)
+- **Commit subject:** `fix(member2): reconcile churn outcome evidence and coverage` — checkpoint `41041f3de6496d4dcd49676b0104d92e57e956b8`
 - **Issue / task:** Member 2 Prompt 25; no ticket
 - **Files changed:** `src/retainiq_prediction/label_builder.py`, `src/retainiq_prediction/sqlite_data_adapter.py`, `src/retainiq_prediction/historical_dataset_preparation.py`, `src/retainiq_prediction/reliability.py`, `tests/test_outcome_coverage_reconciliation.py`, `tests/test_reliability.py`, `docs/MEMBER2_OUTCOME_COVERAGE_BLOCKERS.md`, `docs/MEMBER2_SYNTHETIC_HISTORICAL_DATASET_PREPARATION.md`, and this log.
 - **What changed:**
-  - Prompt 24 checkpoint retained at `7971828b9f1c281340806dae39c56641a57a6633`; Prompt 25 work remains uncommitted.
+  - Prompt 24 checkpoint retained at `7971828b9f1c281340806dae39c56641a57a6633`; the verified Prompt 25 changes were subsequently checkpointed as `41041f3de6496d4dcd49676b0104d92e57e956b8`.
   - Member 1's effective termination `status=ended` is now accepted by Member 2's label semantics. Outcome coverage retains source category/status/completeness/policy metadata; the label builder joins adjacent complete subscription intervals only, requires continuity for all active subscription identities, and keeps gaps/outages/usage-only coverage unknown.
   - Synthetic final-entitlement evaluation now preserves a first churn episode across later reactivation, requires no paid entitlement at the account churn time, records the final subscription-loss time and all terminal evidence refs, and leaves contradictory state unknown. Reliability reason iteration now sorts essential sources to make serialized feature artifacts deterministic.
   - Reused the existing authenticated tenant-01 STANDARD SQLite APIs. Added focused regressions and per-horizon reason/source-coverage summaries to the private preparation manifest. Re-prepared into versioned private directories; the final output is `member2-prep-v4`, with all earlier outputs preserved. No model was trained.
