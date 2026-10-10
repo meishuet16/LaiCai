@@ -513,6 +513,21 @@ class ChurnLabelBuilder:
                 LabelReasonCode.OUTCOME_NOT_AVAILABLE_BY_EVALUATION_CUTOFF,
             )
 
+        # A negative is not mature until the entire prediction horizon has
+        # elapsed, even if a source exposes a future-dated coverage interval.
+        if evaluation_as_of < horizon_end:
+            return self._unknown_label(
+                tenant_id,
+                customer_id,
+                as_of,
+                evaluation_as_of,
+                horizon,
+                generated_at,
+                base_refs,
+                base_limitations,
+                LabelReasonCode.OUTCOME_NOT_AVAILABLE_BY_EVALUATION_CUTOFF,
+            )
+
         if self._coverage_through(
             outcome_snapshot.observations,
             as_of,
@@ -592,7 +607,10 @@ class ChurnLabelBuilder:
         policy = self.eligibility_policy.account_churn_policy
         if policy == "any_subscription_end":
             return min(candidates, key=lambda item: item.fact.effective_at or item.fact.point_in_time()) if candidates else None
-        if policy == "all_subscriptions_end":
+        if policy in {
+            "all_subscriptions_end",
+            "effective-account-churn-v1.2-synthetic-only",
+        }:
             if set(by_subscription) == active_ids and all(by_subscription.values()):
                 selected = min(
                     (values[0] for values in by_subscription.values()),

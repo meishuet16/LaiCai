@@ -325,14 +325,28 @@ class SQLiteDataAdapter:
             quantity_event_types=frozenset({"usage_aggregate_updated"}),
         )
 
-    def eligibility_for(self, tenant_id: str, customer_id: str, as_of: datetime, *, policy: EligibilityPolicy | None = None) -> EligibilityResult:
-        selected = policy or EligibilityPolicy(
+    @staticmethod
+    def synthetic_eligibility_policy() -> EligibilityPolicy:
+        """Return the explicit Synthetic SaaS v1.2 lifecycle policy only."""
+
+        return EligibilityPolicy(
             active_statuses=frozenset({"active", "past_due", "pending_cancel"}),
             terminal_statuses=frozenset({"ended", "cancelled", "terminated", "expired"}),
             account_churn_policy="effective-account-churn-v1.2-synthetic-only",
         )
+
+    def eligibility_from_snapshot(
+        self, snapshot: PointInTimeSnapshot, *, policy: EligibilityPolicy | None = None
+    ) -> EligibilityResult:
+        self._scope(snapshot.tenant_id, snapshot.customer_id, snapshot.as_of)
+        selected = policy or self.synthetic_eligibility_policy()
         return evaluate_prediction_eligibility(
-            self.snapshot_for(tenant_id, customer_id, as_of), policy=selected
+            snapshot, policy=selected
+        )
+
+    def eligibility_for(self, tenant_id: str, customer_id: str, as_of: datetime, *, policy: EligibilityPolicy | None = None) -> EligibilityResult:
+        return self.eligibility_from_snapshot(
+            self.snapshot_for(tenant_id, customer_id, as_of), policy=policy
         )
 
     def prediction_snapshot_for(self, tenant_id: str, customer_id: str, as_of: datetime) -> PointInTimeSnapshot:
@@ -373,6 +387,22 @@ class SQLiteDataAdapter:
     def freshness_evidence_for(self, tenant_id: str, customer_id: str, as_of: datetime) -> tuple[SourceFreshnessEvidence, ...]:
         snapshot = self.snapshot_for(tenant_id, customer_id, as_of)
         coverage = self.coverage_records_for(tenant_id, customer_id, as_of)
+        return self.freshness_evidence_from(snapshot, coverage)
+
+    def freshness_evidence_from(
+        self,
+        snapshot: PointInTimeSnapshot,
+        coverage: Sequence[UsageCoverage],
+    ) -> tuple[SourceFreshnessEvidence, ...]:
+        """Map already-read, scoped evidence into the canonical freshness input."""
+
+        tenant_id, customer_id, as_of = snapshot.tenant_id, snapshot.customer_id, snapshot.as_of
+        self._scope(tenant_id, customer_id, as_of)
+        if any(
+            item.available_at > as_of
+            for item in coverage
+        ):
+            raise ValueError("future coverage cannot be used for cutoff freshness")
         result = []
         for source, facts in (
             (FreshnessSource.SUBSCRIPTION_LIFECYCLE.value, snapshot.subscriptions),

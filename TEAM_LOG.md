@@ -72,6 +72,30 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T15:17:20Z — Member 2 AI coding assistant — Prepare synthetic historical dataset
+
+- **Workstream:** Part 2 / Part 1 integration
+- **Branch:** integration/member2-main-sqlite
+- **Commit subject:** feat(member2): prepare leakage-safe synthetic historical dataset
+- **Issue / task:** Member 2 Prompt 24; no ticket
+- **Files changed:** src/retainiq_prediction/historical_dataset_preparation.py, src/retainiq_prediction/feature_builder.py, src/retainiq_prediction/sqlite_data_adapter.py, src/retainiq_prediction/label_builder.py, tests/test_historical_dataset_preparation.py, docs/MEMBER2_SYNTHETIC_HISTORICAL_DATASET_PREPARATION.md, and this log.
+- **What changed:**
+  - Added historical preparation orchestration over the existing authenticated Member 1 reader, point-in-time features, synthetic-only final-entitlement churn policy, label maturity, existing temporal splits, and reliability/freshness assessments. Historical customer-level artifacts and manifest remain outside Git.
+  - Corrected negative label maturity: a negative cannot be emitted before its full prediction horizon elapsed, even if future-dated coverage is supplied. Applied the existing dataset-specific all-active-entitlements policy without changing shared requirements.
+  - Ran the existing STANDARD v1.2 dataset for tenant-01 only. Produced 26,267 lifecycle-backed snapshots, 23,415 eligible feature snapshots, and 70,245 horizon labels; all eligible labels were unknown due to missing outcome coverage. Added the audited split, metrics, and manifest findings to the new documentation.
+  - Prompt 23 checkpoint: 28353fb1d0903258afdf1145ef5b6f3c9e7d2774 (feat(member2): integrate authenticated sqlite historical data adapter).
+- **Why it changed:** Prompt 24 requires a reproducible point-in-time-safe dataset preparation path and honest split/label/readiness evidence before any model training.
+- **Contract / database / API impact:** No database schema or shared PredictionOutput contract changed. The preparation consumes existing Member 1 authenticated APIs; feature and label behavior is additive/fixed for correct historical maturity. Synthetic account-churn semantics remain dataset-specific and are not declared as real-customer policy.
+- **Tests / verification:**
+  - .\.venv\Scripts\python.exe -B -m pytest -q tests\test_historical_dataset_preparation.py tests\test_sqlite_data_adapter.py tests\test_feature_builder.py tests\test_label_builder.py tests\test_temporal_splits.py tests\test_reliability.py tests\test_data_freshness.py tests\test_data_foundation.py tests\test_cross_member_integration.py --basetemp .pytest-tmp-p24-integration — PASS — 163 passed.
+  - .\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p24 — PASS — 420 passed, 0 failures/errors/skips, 24 known SHAP warnings.
+  - Actual authenticated STANDARD tenant-01 preparation — PASS as a reproducible structural run — 54,750 candidate pairs, 26,267 lifecycle-backed, 23,415 eligible, 70,245 unknown horizon labels; 920.336 seconds; source DB SHA-256 unchanged.
+  - Package import and AST syntax checks — PASS. All eight private artifact SHA-256 checks and preparation manifest SHA-256 sidecar — PASS. git diff --check — PASS.
+- **Data / model / ROI evidence:** Synthetic v1.2 only; immutable dataset manifest SHA-256 7f85a83a1697efaaeebe1a5534b075ef6c7a99fa5ad3a1e9514b3eb8ae77db6d. Tenant-01 only. Zero mature positives and negatives were surfaced; no class prevalence, model metric, real-world validation, retention effect, or ROI claim. No model trained.
+- **Known issues / blockers:** All horizons are BLOCKED for synthetic training: authorized outcome reads produced no qualifying positive evidence and no complete subscription outcome coverage, despite the four-tenant dataset manifest's 621 episode count. Freshness/reliability were stale/insufficient for 97.21% of eligible snapshots; lifecycle/billing lack independent heartbeats and usage coverage is mostly incomplete. Member 1/Member 2 must reconcile outcome event/coverage fields and watermark contract. The source database, artifacts and private records remain outside Git.
+- **Next action / handoff:** Member 1 and Member 2 to investigate authorized outcome/coverage API evidence and lifecycle/billing heartbeat semantics. Do not begin model training until every horizon has adequate mature class coverage and split-level readiness.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T14:35:16Z — Member 2 AI coding assistant — Add authenticated SQLite prediction adapter
 
 - **Workstream:** Part 2 / Part 1 integration

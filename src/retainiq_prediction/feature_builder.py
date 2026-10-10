@@ -236,7 +236,7 @@ class FeatureBuilder:
                 else ()
             )
         )
-        return self._build_from_snapshot(snapshot, coverage)
+        return self.build_from_point_in_time(snapshot, usage_coverage=coverage)
 
     def build_snapshot(
         self,
@@ -254,6 +254,31 @@ class FeatureBuilder:
             as_of,
             usage_coverage=usage_coverage,
         )
+
+    def build_from_point_in_time(
+        self,
+        snapshot: PointInTimeSnapshot,
+        *,
+        usage_coverage: Sequence[UsageCoverage] | None = None,
+    ) -> FeatureSnapshot:
+        """Build features from an already-scoped snapshot without rereading it.
+
+        This lets a preparation/replay caller share the exact same immutable
+        point-in-time facts with eligibility and provenance checks.
+        """
+
+        coverage = tuple(
+            usage_coverage
+            if usage_coverage is not None
+            else (
+                self.coverage_provider.coverage_for(
+                    snapshot.tenant_id, snapshot.customer_id, snapshot.as_of
+                )
+                if self.coverage_provider is not None
+                else ()
+            )
+        )
+        return self._build_from_snapshot(snapshot, coverage)
 
     def _build_from_snapshot(
         self, snapshot: PointInTimeSnapshot, coverage: Sequence[UsageCoverage]
