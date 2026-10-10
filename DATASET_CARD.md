@@ -1,34 +1,74 @@
 # RetainIQ v2 dataset card
 
-**Gate status: `NOT_READY`**
+**Dataset readiness: `NOT_READY`**
+**Assessment date:** 2026-10-10
+**Selected real dataset:** None
+**Real records imported:** 0
 
-## Source and provenance
+## Decision
 
-- **Dataset/source name:** No historical customer dataset is present in this checkout.
-- **Provenance:** UNKNOWN / NOT YET VERIFIED.
-- **License or permission to use:** UNKNOWN / NOT YET VERIFIED. No records were imported.
-- **Source documentation or configured dataset path:** None found in the repository.
+No dataset currently available to this project is both authorized for this use and verified to support the canonical subscription-churn target. No source file was imported. Actual account/event counts, event date ranges, subscription coverage, observation completeness, and 7/14/30-day label counts are **not measured**. Synthetic examples and unit tests are engineering checks only.
 
-## Coverage observed in the repository
+The closest technical candidate was KKBox's WSDM churn competition. Its public challenge describes dated membership transactions and usage logs and asks for a churn outcome around subscription expiration. Its rules limit use to competition participation, forum participation, academic research, and education; access is under the competition terms and redistribution to nonparticipants is barred. We did not accept terms, obtain a participant-authorized download, or verify that this Dormathon project and downstream handoff fit the permitted purpose. It is therefore **not selected or authorized for import**. See the [official challenge](https://www.kaggle.com/c/kkbox-churn-prediction-challenge), [competition rules](https://www.kaggle.com/c/kkbox-churn-prediction-challenge/rules), and [WSDM task description](https://www.wsdm-conference.org/2018/call-for-participants.html).
 
-There are no CSV, Parquet, database, fixture, or other customer-data files in the checkout. Therefore the following are **UNKNOWN / NOT YET VERIFIED**:
+## Candidate review
 
-- Available event, source-availability, and observation-window timestamps.
-- Paying-account and subscription identifier coverage.
-- Dated usage and billing history.
-- Subscription start, cancellation request, entitlement end, and churn-effective outcome coverage.
-- Source availability timestamps and late-arrival coverage.
-- Duplicate, missing, or censored follow-up rates.
+| Candidate | Provenance / permission evidence | Longitudinal and target fit | Decision |
+|---|---|---|---|
+| KKBox WSDM churn competition | Official Kaggle competition and rules; participant access and restricted use terms. No terms accepted or files acquired. | Closest fit: member IDs, dated transactions and usage logs, subscription expiration context, and a competition churn target tied to renewal within 30 days. Per-row original availability, stable subscription IDs, effective entitlement termination, fully observed 7/14/30-day outcomes, and repeated-cutoff coverage have not been verified from acquired files. | Technically promising, but not project-authorized or measured; not imported. |
+| UCI Iranian Churn | [UCI record](https://archive.ics.uci.edu/dataset/563/iranian%2Bchurn%2Bdataset) describes a static churn dataset and CC BY 4.0. | Customer-level features and a later churn state; no dated event ledger or effective termination timestamp suitable for repeated as-of snapshots. | Disqualified for early-warning replay. |
+| IBM Telco Customer Churn | [IBM sample repository](https://github.com/IBM/telco-customer-churn-on-icp4d) was reviewed. | Static customer attributes with a churn class; no dated event history or source availability timeline. | Disqualified for early-warning replay. |
+| UCI Online Retail II | [UCI record](https://archive.ics.uci.edu/dataset/502/online%2Bretail%2Bii) identifies dated retail transactions and CC BY 4.0. | Invoice dates and customer identifiers do not establish a paid subscription, entitlement lifecycle, or churn-effective date. Retail inactivity is not subscription churn. | Disqualified for target semantics. |
+| COFINFAD | [Mendeley record](https://data.mendeley.com/datasets/mhb4zn3258/1) describes banking transactions and lists CC BY 4.0. | Financial transactions are not subscription or paid-entitlement records; no verified subscription end or churn-effective outcome for this contract. | Disqualified for target semantics and domain. |
+| SaaS practice datasets | [SQLShed](https://sqlshed.com/practice-datasets/saas-subscriptions/) labels its generated data synthetic; other educational datasets reviewed are also generated/static. | May contain generated subscriptions/events, but are not genuine customer histories or real outcome evidence. | Fixture-only; cannot clear the real-data gate. |
 
-## Prediction feasibility
+## Per-candidate feasibility checks
 
-Genuine 7-, 14-, and 30-day labels and early-warning evaluation are **not feasible to verify** without authorized longitudinal events, effective churn times, and complete per-horizon observation coverage. The dataset gate remains `NOT_READY`; no training or model evaluation was run.
+Counts below are deliberately recorded as **not measured**: no candidate files were authorized and inspected locally. Published schema descriptions are source-document evidence, not measurements from acquired files.
 
-The unit tests create synthetic temporary SQLite records to check ingestion, tenant scoping, idempotency, history reconstruction, valuation, and availability filters. These fixtures are engineering evidence only. They are not real customer data, churn outcomes, model predictions, or performance evidence.
+| Candidate | Verified account/event counts and date ranges | Stable account/subscription identity | Lifecycle, outcomes and known cancellations | Usage/billing coverage and availability | 7/14/30, censoring, chronology and repeated cutoffs |
+|---|---|---|---|---|---|
+| KKBox WSDM | Not measured. Official challenge describes dated transaction and user-log data; local row counts/ranges unavailable. | A member identifier is described; a canonical stable subscription ID and account-to-subscription mapping were not verified. | The target concerns renewal within 30 days of subscription expiry. Source-backed effective entitlement-loss time, pending-cancellation exclusion, and per-row observation coverage were not verified. | Transaction and usage sources are described; local completeness and original first-available times were not verified. | The 30-day challenge target does not establish genuine 7/14/30 labels or exact churn-effective time. Mature follow-up, censoring, repeated cutoffs, and separate train/development/calibration/untouched-test windows were not verified from files. |
+| UCI Iranian Churn | Not measured from files. The published record describes customer rows, not an event stream. | Customer-row identity only; no subscription identity. | Static later churn state; no effective cancellation/end timestamp or known-cancellation-at-cutoff field. | Aggregated customer features; no dated usage/billing event coverage or per-event availability. | Cannot form verified event-based 7/14/30 outcomes, censoring checks, or repeated temporal cutoffs from the published static schema. |
+| IBM Telco Customer Churn | Not measured from files. The reviewed source is a static customer table. | Customer-row identity only; no subscription identity. | Static churn class; no effective end time or known-cancellation-at-cutoff state. | Snapshot attributes; no dated usage/billing history or source-availability timeline. | No genuine 7/14/30 label timing, censoring, chronological replay, or repeated cutoffs. |
+| UCI Online Retail II | Not measured from files. The source describes dated invoices; local event counts/ranges were not computed. | Invoice customer identifier where populated; no subscription identity or paid-entitlement mapping. | Retail purchase/cancellation invoices do not establish a subscription lifecycle or effective churn. | Dated retail purchases/refunds are not subscription usage/billing coverage; original source availability was not verified. | No valid subscription churn horizons or entitlement observation/censoring policy; repeated invoice dates do not establish valid subscription cutoffs. |
+| COFINFAD | Not measured from files. The Mendeley record describes banking transactions; record metadata is not a local coverage check. | Banking customer identifier is described; subscription identity is not established. | No verified subscription lifecycle or churn-effective outcome for this target. | Banking transaction dates are outside subscription billing/usage semantics; original availability was not verified. | No verified 7/14/30 subscription outcomes, censoring policy, or subscription-based temporal splits. |
+| Synthetic SaaS practice data | Not a real-data candidate; no files imported or measured here. | Generated IDs may be internally stable but do not establish genuine customer identity. | Generated lifecycle labels/events are synthetic. | Generated usage and invoice streams are synthetic; no real-source availability semantics. | May exercise mechanics only; cannot establish real horizons, mature outcomes, or predictive evaluation. |
 
-## Known data gaps
+## Acquisition attempt and access boundary
 
-- No source mapping or dataset license has been verified.
-- No support-ticket, entitlement, or historical intervention data is present.
-- If an imported source lacks its original availability timestamp, the importer uses actual import `received_at` as the availability fallback. Such rows cannot establish that the source fact was known at an earlier historical cutoff, and replay will exclude them from those earlier cutoffs.
-- No dated foreign-exchange source or policy exists; mixed currencies remain unaggregated.
+- Reviewed the official KKBox challenge, rules, and WSDM task description in browser research.
+- Checked local availability with `Get-Command kaggle -ErrorAction SilentlyContinue` and `python -c "import importlib.util; print(bool(importlib.util.find_spec('kaggle')))"`; neither a Kaggle executable nor Python package is installed.
+- No raw download was attempted: there is no local participant-authorized Kaggle client, the rules require access under accepted competition terms, and we cannot accept those terms or infer that this project's use is permitted. No third-party mirror was used to bypass the restriction.
+- Repository scan found no historical customer-data export. Real records imported: **0**. Candidate file counts and measured coverage: **not available**.
+
+If the project owner later confirms eligibility and a participant independently accepts the official terms, the official client acquisition command is:
+
+```powershell
+kaggle competitions download -c kkbox-churn-prediction-challenge -p .\data\source\kkbox
+```
+
+This is a gated future instruction; it was **not run**, and it does not establish permission. Keep authorized source files within the terms and outside Git. The challenge's multi-file source has no reviewed adapter in this repository; do not ingest a target column as an event or silently interpret cancellation flags as effective churn.
+
+## Predictive-data feasibility
+
+| Required check | Evidence/status |
+|---|---|
+| Verified account count, event count and source date ranges | Not measured: no authorized source files acquired. Real imported accounts/events: 0. |
+| Stable account-to-subscription mapping | Not verified for any acquired candidate. The canonical store requires explicit tenant/source/account mapping and subscription identifiers. |
+| Subscription/churn-effective dates | No local source evidence. A prediction target or cancellation request is not itself an effective paid-entitlement termination. |
+| Usage and billing coverage | Not measured for real records. Synthetic fixtures exercise these event pathways only. |
+| Known-cancellation exclusion | Implemented at account snapshot level; no real population coverage measured. |
+| Right censoring and complete observation | Not measured. No real observation-through date is available. |
+| 7/14/30-day labels | **Unsupported as genuine labels.** Storage accepts all three horizons, but there is no label builder and no verified outcomes/observation windows. |
+| Chronological train/development/calibration/test windows | Not assessable without dates, enough mature outcomes, and a frozen source policy. No split counts computed. |
+| Repeated account cutoffs | Not measured for an authorized source. The as-of API can query repeated cutoffs if events and original availability are present. |
+| Original per-record availability timestamps | Not verified for an acquired source. Import defaults to actual `received_at`; this does not prove earlier historical availability. |
+
+## Local evidence and limitations
+
+`python -m examples.member2_as_of_history` exercises existing SQLite ingestion and point-in-time queries with explicitly synthetic records. It demonstrates a pre-cutoff usage event and exclusion of a synthetic future event. It creates no labels or probabilities. This confirms API usability only; it is not real-data integration, training, evaluation, or model-readiness evidence.
+
+The implementation stores event occurrence, receipt, and optional verified source-availability times; as-of visibility requires both occurrence and availability to be no later than the cutoff. It reconstructs subscription state from append-only events. The database is SQLite, not the PostgreSQL storage required by the integrated production requirements. There is no acquired historical dataset, source-specific mapping, or training pipeline.
+
+**Next gate:** obtain explicit project authorization for a legitimate historical source; acquire it through the source's permitted method; inspect schema and terms; then measure account, subscription, event, availability, and observation coverage before writing an adapter or declaring any horizon feasible.
