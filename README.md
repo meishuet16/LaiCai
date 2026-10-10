@@ -1,5 +1,15 @@
 # RetainIQ v2 — Part 1 data foundation
 
+## Synthetic SaaS dataset
+
+RetainIQ includes a deterministic, streamed synthetic SaaS lifecycle generator for tenant-safe end-to-end demonstration. See [the dataset guide](docs/SYNTHETIC_SAAS_DATASET.md), [hybrid isolation policy](docs/HYBRID_DATASET_STRATEGY.md), and [Member 2 synthetic handoff](docs/MEMBER1_TO_MEMBER2_SYNTHETIC_HANDOFF.md).
+
+```powershell
+python -m retaniq.synthetic generate --profile quick --seed 2026
+python -m retaniq.synthetic validate --profile quick
+python -m retaniq.synthetic import --profile quick --db "$HOME\RetainIQ-private\synthetic_saas_v1\quick.sqlite3" --verify-idempotency
+```
+
 This checkout had no application framework, database layer, migrations, tests, or source dataset. Part 1 is implemented with Python's standard library, WSGI, and SQLite so the data contracts can be exercised without adding dependencies. The SQL file is a SQLite migration for this local MVP; it is not a production PostgreSQL migration.
 
 The implementation provides authenticated, tenant-scoped event ingestion; explicit account identity mapping; allowlisted usage, billing, and subscription normalization; append-only subscription history; point-in-time, source-scoped queries; account MRR; CSV import/replay; source-scoped integration health; separately authorized tenant health; and shared feature, label, and prediction storage contracts. It does not implement Member 2's feature engineering, label builder, or model, or Member 3's routing and ROI logic.

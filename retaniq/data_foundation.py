@@ -1365,7 +1365,10 @@ def store_feature_snapshot(
         features,
         allow_billing="billing_valuation" in principal.authorized_purposes,
     )
-    feature_snapshot_id = secrets.token_urlsafe(18)
+    # This identifier is passed back through the canonical ID validator when a
+    # prediction links to its feature snapshot. token_urlsafe may contain an
+    # underscore, which the canonical ID alphabet intentionally excludes.
+    feature_snapshot_id = secrets.token_hex(18)
     encoded = json.dumps(features, sort_keys=True, separators=(",", ":"), allow_nan=False)
     with _db(path) as connection:
         _assert_customer(connection, principal, customer_id)

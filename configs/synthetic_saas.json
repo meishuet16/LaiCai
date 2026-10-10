@@ -1,0 +1,19 @@
+{
+  "dataset_family": "retainiq_synthetic_saas",
+  "dataset_version": "1.0.0",
+  "default_seed": 2026,
+  "default_period": {
+    "start_date": "2024-10-01",
+    "end_date": "2026-09-30"
+  },
+  "profiles": {
+    "quick": {"account_count": 200, "tenant_count": 4},
+    "standard": {"account_count": 3000, "tenant_count": 4},
+    "full": {"account_count": 20000, "tenant_count": 4},
+    "stress": {"account_count": 50000, "tenant_count": 8, "optional": true}
+  },
+  "sources": ["usage", "billing", "subscription"],
+  "currencies": ["MYR", "USD", "SGD"],
+  "target_policy_version": "effective-account-churn-v1",
+  "disclosure": "SYNTHETIC SAAS DEMO"
+}
