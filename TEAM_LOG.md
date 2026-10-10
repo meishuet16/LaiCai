@@ -72,6 +72,61 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T06:42:00Z — Member 3 — Phase 1: Routing engine, ranker, DB migration, API, tests
+
+- **Workstream:** Part 3 — Decision Engine
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `feat: Phase 1 — routing engine, top-K ranker, decision_cases migration, FastAPI`
+- **Issue / task:** Phase 1 — Routing + Ranking (rolemember.md §开发优先顺序)
+- **Files changed:**
+  - `backend/requirements.txt` *(new)*
+  - `backend/decision/__init__.py` *(new)*
+  - `backend/decision/enums.py` *(new)* — all canonical route/status/action enums
+  - `backend/decision/models.py` *(new)* — Pydantic schemas for prediction, MRR, routing, cases, ROI, approvals
+  - `backend/decision/config.py` *(new)* — env-var settings
+  - `backend/decision/database.py` *(new)* — psycopg2 connection pool
+  - `backend/decision/router_engine.py` *(new)* — 5-gate routing logic (§7.2)
+  - `backend/decision/ranker.py` *(new)* — exposure proxy + Top-K sort (§7.3)
+  - `backend/decision/api.py` *(new)* — FastAPI handlers (Phase 1 live + Phase 2/3 stubs)
+  - `backend/decision/main.py` *(new)* — app entry point (uvicorn port 8003)
+  - `backend/decision/migrations/001_decision_cases.sql` *(new)* — decision_cases table + RLS + indexes
+  - `tests/__init__.py`, `tests/decision/__init__.py` *(new)*
+  - `tests/decision/test_router_engine.py` *(new)* — 23 routing unit tests
+  - `tests/decision/test_ranker.py` *(new)* — 15 ranking unit tests
+  - `TEAM_LOG.md` *(this entry)*
+- **What changed:**
+  - `router_engine.py`: Implements the 5-step gate in strict order (NOT_ELIGIBLE → KNOWN_CANCELLATION → HUMAN_REVIEW × 8 triggers → threshold → cooldown → PRIORITY_REVIEW). Pure function — no DB side effects, fully testable.
+  - `ranker.py`: Deterministic 4-level sort (exposure DESC, p7 DESC, oldest ASC, customer_id ASC). Currency-safe: filters by single currency before ranking.
+  - `models.py`: Pydantic v2 with validators — monotonicity check p7≤p14≤p30, mrr_missing→null guard.
+  - `api.py`: Phase 1 endpoints `POST /route`, `POST /cases/batch`, `GET /cases` are live. Phase 2/3 endpoints are working stubs returning `decision_mock.json` fixture.
+  - `001_decision_cases.sql`: Tenant-scoped table with `UNIQUE(tenant_id, customer_id, prediction_id)`, RLS policy, auto-updated_at trigger, 4 performance indexes.
+- **Why it changed:** Phase 1 priority per rolemember.md — routing and ranking core logic must be live before Phase 2 action catalog.
+- **Contract / database / API impact:**
+  - New table: `decision_cases`. FK: `prediction_id` references Member 2's `predictions` table. MRR data from Member 1's `account_mrr_as_of` view.
+  - New endpoints: `POST /v1/decisions/route`, `POST /v1/decisions/cases/batch`, `GET /v1/decisions/cases`.
+  - **Notify Member 4:** Phase 2/3 stubs are live — all 8 endpoints callable, returning `decision_mock.json`.
+  - **Notify Member 1:** Need `account_mrr_as_of` view available with fields from `mrr_contract.md`.
+  - **Notify Member 2:** `decision_cases.prediction_id` FK — must be a stable immutable `prediction_id` per account/cutoff.
+- **Tests / verification:**
+  - `pytest tests/decision/ -v --tb=short` — **38 passed, 0 failed** — `PASS`
+  - Exposure proxy arithmetic (Bob §7.3 example): `0.65 × 120000 = 78000` — `PASS`
+  - High risk never overrides limited_evidence gate — `PASS`
+  - Monotonicity validator p7>p14 raises — `PASS`
+  - mrr_missing + non-null mrr_minor raises — `PASS`
+  - Currency mixing prevention (MYR vs USD not ranked together) — `PASS`
+  - `psycopg2` DB not started (no local PostgreSQL) — DB-dependent endpoints NOT RUN in unit tests
+- **Data / model / ROI evidence:** Synthetic fixture only. No real prediction data consumed yet.
+- **Known issues / blockers:**
+  - `database.py` requires PostgreSQL at `DATABASE_URL`. Run migration `001_decision_cases.sql` before starting API.
+  - Phase 2/3 endpoints return mock fixture — real action catalog, ROI calculation, and human approval to be implemented in Phase 2 and 3.
+  - `reliability_status` and `data_freshness_status` stored as route_reason placeholder in `_store_decision_cases` — refine to store proper enum values in Phase 2.
+  - Member 1 `account_mrr_as_of` view not yet available — using inline MRR from request body for now.
+- **Next action / handoff:**
+  - Member 3: Phase 2 — action catalog + ROI card calculation
+  - Member 4: Stub endpoints are live — `GET /v1/decisions/cases` returns real sorted data when DB is up; other endpoints return fixture
+  - Member 1: Please confirm `account_mrr_as_of` view schema matches `mrr_contract.md`
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T06:30:00Z — Member 3 — Day 0 contract freeze: prediction + decision mock fixture
 
 - **Workstream:** Part 3 — Decision Engine / Integration
