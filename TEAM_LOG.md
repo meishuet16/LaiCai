@@ -72,6 +72,34 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T14:35:16Z — Member 2 AI coding assistant — Add authenticated SQLite prediction adapter
+
+- **Workstream:** Part 2 / Part 1 integration
+- **Branch:** integration/member2-main-sqlite
+- **Commit subject:** feat(member2): add read-only authenticated SQLite data adapter
+- **Issue / task:** Member 2 Prompt 23; no ticket
+- **Files changed:** src/retainiq_prediction/sqlite_data_adapter.py, src/retainiq_prediction/feature_builder.py, tests/test_sqlite_data_adapter.py, docs/MEMBER2_LOCAL_SQLITE_ADAPTER.md, and this log.
+- **What changed:**
+  - Added a typed, tenant-bound adapter over Member 1's authenticated reader APIs. It binds the database identity to the STANDARD v1.2 manifest, preserves synthetic provenance and source timestamps, reconstructs subscription facts from dated events, maps usage/billing/lifecycle and coverage evidence, and rechecks the cutoff on all returned rows.
+  - Extended existing feature/coverage inputs additively for daily usage quantities, distinct active days and coverage metadata. A daily aggregate remains one fact; quantity is not expanded into duplicate sessions. Missing or invalid quantity is not counted as one session.
+  - Added 13 adapter-focused tests covering authorized/unauthorized use, identity mismatch, tenant scoping, historical eligibility/cancellation, payment-failure semantics, future/late/unknown availability, aggregate quantities, zero-versus-unknown coverage, freshness limitations, outcome separation and SQLite read-only behavior.
+  - Generated and validated STANDARD synthetic v1.2 seed-2026 data outside the repository, imported it into private SQLite with idempotency verification, provisioned a tenant-01 reader without billing-valuation permission, and ran both the official cross-member smoke and the new adapter against the actual database.
+- **Why it changed:** Prompt 23 required a verified local synthetic integration path and a Member 2-owned adapter without duplicating Member 1 storage/authentication or asserting real-data readiness.
+- **Contract / database / API impact:** No database schema, PredictionOutput, label policy, or Member 1 API was changed. Existing FeatureValues and UsageCoverage gained additive fields for active-day and coverage-quality semantics. The adapter rejects unsupported availability-policy changes because Member 1's read API currently applies source_available_at then received_at. Member 1 and the team should review the additional feature fields and source-availability limitations before production integration.
+- **Tests / verification:**
+  - Local generator generate --profile standard --seed 2026 — PASS — dataset ID synthetic-saas-v1-2-standard-s2026-970a9d231e68.
+  - Local synthetic validator — PASS — manifest SHA-256 7f85a83a1697efaaeebe1a5534b075ef6c7a99fa5ad3a1e9514b3eb8ae77db6d; no warnings.
+  - Local importer with --verify-idempotency — PASS — 239,721 events and 491,223 coverage records; replay accepted zero and identified 239,721 duplicates; import duration 104.768 seconds.
+  - .\.venv\Scripts\python.exe -B -m examples.member2_synthetic_smoke --db [private-db] --dataset [private-dataset] — PASS — dataset identity and cross-tenant denial verified; training not performed.
+  - Direct authenticated adapter smoke against private SQLite — PASS — tenant-bound historical snapshot and feature assembly; 629 eligible tenant-01 accounts at the selected cutoff; one NOT_ELIGIBLE account was also verified without printing its identifier; freshness for the inspected feature example was stale.
+  - .\.venv\Scripts\python.exe -B -m pytest -q tests/test_sqlite_data_adapter.py tests/test_feature_builder.py — PASS — 26 tests.
+  - .\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p23 — PASS — 413 passed, 0 failed/errors/skipped, 24 existing SHAP/LightGBM warnings, 20.16 seconds.
+  - Package import check and git diff --check — PASS.
+- **Data / model / ROI evidence:** Synthetic v1.2 only; 3,000 accounts, 4 tenants, 239,721 canonical events, 491,223 coverage intervals, 3,262 subscriptions and 621 effective account-churn episodes. No real-data validation, model training, performance, retention effect, or ROI claim.
+- **Known issues / blockers:** The Member 1 reader provisioner grants model_artifact_write in addition to retention_inference; a least-privilege read-only provisioner change belongs to Member 1. Member 1's event API filters unknown/late records before returning them and does not expose exclusion counts, and its current API has no independent lifecycle/billing freshness heartbeat. The synthetic final-paid-entitlement policy must not be silently reused for real multi-subscription accounts. No corrections/supersession or production backend integration was tested.
+- **Next action / handoff:** Keep Prompt 23 changes uncommitted for review. Member 1 should consider least-privilege read grants and explicit excluded-event/source-watermark evidence. Prompt 24 may prepare a frozen synthetic historical training/evaluation dataset path and split readiness checks; do not claim real-world effectiveness or production readiness.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T14:05:36Z — Member 2 AI coding assistant — Integrate Main Data Foundation and synthetic CLI
 
 - **Workstream:** Part 1 / Part 2 integration and QA

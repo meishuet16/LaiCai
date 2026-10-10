@@ -9,7 +9,7 @@ silently interpreted as zero customer activity.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 import math
 from typing import Iterable, Mapping, Protocol, Sequence
@@ -58,6 +58,10 @@ class UsageCoverage(_FeatureModel):
     observed_to: AwareDatetime
     available_at: AwareDatetime
     complete: bool = True
+    status: str = "complete"
+    completeness: float = Field(default=1.0, ge=0.0, le=1.0)
+    source_category: str = "usage"
+    observation_policy_version: str | None = None
 
 
 class FeatureValues(_FeatureModel):
@@ -65,6 +69,8 @@ class FeatureValues(_FeatureModel):
 
     sessions_prev_7d: int | None = Field(default=None, ge=0)
     sessions_prev_30d: int | None = Field(default=None, ge=0)
+    active_days_prev_7d: int | None = Field(default=None, ge=0)
+    active_days_prev_30d: int | None = Field(default=None, ge=0)
     days_since_last_observed_session: int | None = Field(default=None, ge=0)
     recent_usage_trend: float | None = None
     observed_weeks: int = Field(default=0, ge=0)
@@ -130,6 +136,7 @@ class FeatureBuilderConfig:
     session_event_types: frozenset[str] = field(
         default_factory=lambda: frozenset({"session_started"})
     )
+    quantity_event_types: frozenset[str] = field(default_factory=frozenset)
 
     def __post_init__(self) -> None:
         if not self.feature_version.strip():
@@ -366,6 +373,12 @@ class FeatureBuilder:
         missingness = {
             "sessions_prev_7d": sessions_prev_7d is None,
             "sessions_prev_30d": sessions_prev_30d_value is None,
+            "active_days_prev_7d": self._active_days(
+                snapshot.usage_events, recent_start, as_of, usable_coverage
+            ) is None,
+            "active_days_prev_30d": self._active_days(
+                snapshot.usage_events, thirty_day_start, as_of, usable_coverage
+            ) is None,
             "days_since_last_observed_session": not bool(session_times),
             "personal_baseline": baseline_status
             in {
@@ -377,6 +390,12 @@ class FeatureBuilder:
         features = FeatureValues(
             sessions_prev_7d=sessions_prev_7d,
             sessions_prev_30d=sessions_prev_30d_value,
+            active_days_prev_7d=self._active_days(
+                snapshot.usage_events, recent_start, as_of, usable_coverage
+            ),
+            active_days_prev_30d=self._active_days(
+                snapshot.usage_events, thirty_day_start, as_of, usable_coverage
+            ),
             days_since_last_observed_session=(
                 (as_of - session_times[-1]).days if session_times else None
             ),
@@ -435,16 +454,60 @@ class FeatureBuilder:
         *,
         upper_inclusive: bool,
     ) -> int:
-        return sum(
-            1
-            for fact in facts
-            if self._is_session(fact)
-            and (
-                _in_closed_window(_event_time(fact), start, end)
+        total = 0
+        quantity_types = {value.strip().lower() for value in self.config.quantity_event_types}
+        for fact in facts:
+            if not self._is_session(fact):
+                continue
+            event_time = _event_time(fact)
+            in_window = (
+                _in_closed_window(event_time, start, end)
                 if upper_inclusive
-                else _in_half_open_window(_event_time(fact), start, end)
+                else _in_half_open_window(event_time, start, end)
             )
-        )
+            if not in_window:
+                continue
+            if fact.event_type.strip().lower() in quantity_types:
+                quantity = fact.attributes.get("quantity")
+                if isinstance(quantity, bool) or not isinstance(quantity, int) or quantity < 0:
+                    continue
+                total += quantity
+            else:
+                total += 1
+        return total
+
+    def _active_days(
+        self,
+        facts: Sequence[UsageFact],
+        start: datetime,
+        end: datetime,
+        coverage: Sequence[UsageCoverage],
+    ) -> int | None:
+        """Count distinct UTC usage dates; aggregates contribute one date, not N rows."""
+        quantity_types = {value.strip().lower() for value in self.config.quantity_event_types}
+        matching = [
+            fact for fact in facts
+            if self._is_session(fact)
+            and start <= _event_time(fact) <= end
+            and (
+                fact.event_type.strip().lower() not in quantity_types
+                or (
+                    isinstance(fact.attributes.get("quantity"), int)
+                    and not isinstance(fact.attributes.get("quantity"), bool)
+                    and fact.attributes.get("quantity", 0) > 0
+                )
+            )
+        ]
+        if not matching:
+            return 0 if _interval_covered(coverage, start, end) else None
+        # v1.2 aggregate timestamps mark the end of [t-24h, t); assign to its
+        # represented UTC day while raw event timestamps retain their own date.
+        return len({
+            (_event_time(fact) - timedelta(microseconds=1)).astimezone(timezone.utc).date()
+            if fact.event_type.strip().lower() in quantity_types
+            else _event_time(fact).astimezone(timezone.utc).date()
+            for fact in matching
+        })
 
     @staticmethod
     def _observed_count(
