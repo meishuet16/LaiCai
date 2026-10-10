@@ -1,8 +1,8 @@
 # Member 1 database backend configuration
 
-This document records the 06B database foundation and the bounded 06D-1
-PostgreSQL ingestion/identity/authentication support. It does not claim full
-PostgreSQL feature parity.
+This document records the 06B database foundation, bounded 06D-1
+PostgreSQL ingestion/identity/authentication support, and 06D-2 historical
+query/coverage support. It does not claim full PostgreSQL feature parity.
 
 ## Supported configuration
 
@@ -80,19 +80,20 @@ an approved secret store or runtime environment, and avoid printing it.
   PostgreSQL-specific schema and explicit migration runner were added in 06C;
   RLS and Supabase integration remain outside this milestone.
 
-The explicit `init-db` command applies PostgreSQL schema migrations. As of
-06D-1, tenant/integration/customer setup, source/category grants, integration
-and service-principal authentication, identity mapping, mapping-version and
-health updates, canonical single/batch ingestion, usage/billing/subscription
-subtypes, subscription ownership, and import checkpoints run on both
-backends. Other operations still reject PostgreSQL explicitly; they do not
-send unsupported SQLite queries or silently fall back.
+The explicit `init-db` command applies PostgreSQL schema migrations. In
+addition to 06D-1 setup, authentication, identity, ingestion, and integration
+health operations, 06D-2 supports historical event/subscription/account reads,
+observation-coverage reads, and single observation-coverage writes on both
+backends. Unsupported operations still reject PostgreSQL explicitly; they do
+not send unsupported SQLite queries or silently fall back.
 
 `POSTGRESQL_CONNECTION_READY`, `POSTGRESQL_SCHEMA_VERIFIED`, and the bounded
-06D-1 ingestion parity do not mean `POSTGRESQL_FEATURE_PARITY`. Historical
-queries, observation coverage, account valuation, feature/label/prediction
-storage, and the WSGI API remain SQLite-only. Application-level principal
-checks are not database RLS; RLS and production authentication remain deferred.
+06D-1 ingestion parity and the 06D-2 historical-query implementation (live
+verified against disposable PostgreSQL 16.15) do not mean
+`POSTGRESQL_FEATURE_PARITY`. Feature/label/prediction storage, coverage batch
+import/replay, dataset provisioning parity, and WSGI API startup remain
+unsupported. Application-level principal checks are not database RLS; RLS
+and production authentication remain deferred.
 
 ## Verification and limitations
 
@@ -109,5 +110,7 @@ missing-driver tests. 06C schema results are in
 [`MEMBER1_POSTGRESQL_SCHEMA_AND_MIGRATIONS.md`](MEMBER1_POSTGRESQL_SCHEMA_AND_MIGRATIONS.md).
 06D-1 behavior and limitations are in
 [`MEMBER1_POSTGRESQL_INGESTION_PARITY.md`](MEMBER1_POSTGRESQL_INGESTION_PARITY.md).
-Next work is 06D-2 historical queries and coverage. Supabase remains deferred
-to the later infrastructure phase and is not configured here.
+06D-2 behavior, scenario coverage, and live verification status are in
+[`MEMBER1_POSTGRESQL_HISTORICAL_QUERY_PARITY.md`](MEMBER1_POSTGRESQL_HISTORICAL_QUERY_PARITY.md).
+Supabase remains deferred to the later infrastructure phase and is not
+configured here.

@@ -32,7 +32,7 @@ from retaniq.data_foundation import (
     initialize_database,
     map_customer_identity,
 )
-from retaniq.database import PostgreSQLSchemaNotReady, connect_database
+from retaniq.database import connect_database
 from retaniq.database_config import DatabaseConfig
 from retaniq.importer import import_csv
 
@@ -531,11 +531,21 @@ class PostgreSQLIngestionParityTests(unittest.TestCase):
             self.database, dataset_id=DATASET_ID, stream_name=stream,
         )["accepted_count"], 2)
 
-    def test_out_of_scope_historical_reads_remain_explicitly_unsupported(self):
-        from retaniq.data_foundation import get_events_as_of
+    def test_historical_reads_use_postgresql_without_fallback(self):
+        from retaniq.data_foundation import (
+            get_account_snapshot_as_of,
+            get_events_as_of,
+            get_observation_coverage_as_of,
+            get_subscriptions_as_of,
+        )
 
-        with self.assertRaises(PostgreSQLSchemaNotReady):
-            get_events_as_of(self.database, self.principal, self.customer_a, T2)
+        self.assertEqual(get_events_as_of(self.database, self.principal, self.customer_a, T2), [])
+        self.assertEqual(get_subscriptions_as_of(self.database, self.principal, self.customer_a, T2), [])
+        self.assertEqual(get_observation_coverage_as_of(self.database, self.principal, self.customer_a, T2), [])
+        self.assertEqual(
+            get_account_snapshot_as_of(self.database, self.principal, self.customer_a, T2)["status"],
+            "not_eligible",
+        )
 
 
 if __name__ == "__main__":

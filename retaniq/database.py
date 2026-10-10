@@ -3,8 +3,9 @@
 The generic connection layer can open SQLite and, when the optional psycopg 3
 dependency is installed, PostgreSQL. PostgreSQL schema migrations are
 implemented separately. A deliberately limited set of Member 1 ingestion,
-identity and authorization operations supports both backends; other Data
-Foundation repository operations reject PostgreSQL until their parity work.
+identity, authorization, historical-query, valuation, and coverage operations
+supports both backends; other Data Foundation repository operations reject
+PostgreSQL until their parity work.
 """
 
 from __future__ import annotations

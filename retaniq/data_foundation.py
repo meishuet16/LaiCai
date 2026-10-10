@@ -799,6 +799,47 @@ def _assert_read_principal(connection: DatabaseConnection, principal: ReadPrinci
     return tuple(json.loads(row["authorized_sources_json"]))
 
 
+def _authorized_category_filter(
+    connection: DatabaseConnection,
+    principal: ReadPrincipal,
+    sources: tuple[str, ...],
+    *,
+    table_alias: str,
+    category_column: str = "category",
+) -> tuple[str, list[str]]:
+    """Build a parameterized source/category predicate from stored read grants."""
+    if isinstance(principal, IntegrationPrincipal):
+        categories_by_source = {principal.source: principal.authorized_categories}
+    elif sources:
+        placeholders = ",".join("?" for _ in sources)
+        rows = connection.execute(
+            "SELECT source, category FROM integration_event_categories "
+            f"WHERE tenant_id=? AND source IN ({placeholders}) ORDER BY source, category",
+            (principal.tenant_id, *sources),
+        ).fetchall()
+        grouped: dict[str, list[str]] = {}
+        for row in rows:
+            grouped.setdefault(row["source"], []).append(row["category"])
+        categories_by_source = grouped
+    else:
+        categories_by_source = {}
+
+    clauses: list[str] = []
+    parameters: list[str] = []
+    for source in sorted(set(sources)):
+        categories = tuple(sorted(set(categories_by_source.get(source, ()))))
+        if not categories:
+            continue
+        category_placeholders = ",".join("?" for _ in categories)
+        clauses.append(
+            f"({table_alias}.source=? AND {table_alias}.{category_column} IN ({category_placeholders}))",
+        )
+        parameters.extend((source, *categories))
+    if not clauses:
+        return "1=0", []
+    return "(" + " OR ".join(clauses) + ")", parameters
+
+
 def update_mapping_version(
     path: str | Path,
     principal: IntegrationPrincipal,
@@ -1447,8 +1488,11 @@ def get_events_as_of(
         raise DataFoundationError("invalid_contract")
     _require_purposes(principal, "retention_inference")
     include_billing = "billing_valuation" in principal.authorized_purposes
-    with _db(path) as connection:
+    with _db(path, postgresql=True) as connection:
         authorized_sources = _assert_read_principal(connection, principal)
+        category_filter, category_params = _authorized_category_filter(
+            connection, principal, authorized_sources, table_alias="ce",
+        )
         source_placeholders = ",".join("?" for _ in authorized_sources)
         sql = (
             "SELECT ce.*, COALESCE(ce.source_available_at, ce.received_at) AS available_at, "
@@ -1463,9 +1507,13 @@ def get_events_as_of(
             "LEFT JOIN billing_events b ON b.tenant_id=ce.tenant_id AND b.event_id=ce.event_id "
             "LEFT JOIN subscription_events se ON se.tenant_id=ce.tenant_id AND se.event_id=ce.event_id "
             f"WHERE ce.tenant_id = ? AND ce.customer_id = ? AND ce.source IN ({source_placeholders}) "
-            f"AND {_as_of_query()}"
+            f"AND {_as_of_query()} AND {category_filter}"
         )
-        params: list[Any] = [principal.tenant_id, customer_id, *authorized_sources, cutoff, cutoff]
+        params: list[Any] = [
+            principal.tenant_id, customer_id, *authorized_sources,
+            _database_timestamp(connection, cutoff), _database_timestamp(connection, cutoff),
+            *category_params,
+        ]
         if category:
             sql += " AND ce.category = ?"
             params.append(category)
@@ -1477,8 +1525,10 @@ def get_events_as_of(
             "event_id": row["event_id"], "source": row["source"],
             "source_event_id": row["source_event_id"], "customer_id": row["customer_id"],
             "category": row["category"], "event_type": row["event_type"],
-            "occurred_at": row["occurred_at"], "received_at": row["received_at"],
-            "source_available_at": row["source_available_at"], "available_at": row["available_at"],
+            "occurred_at": _public_timestamp(row["occurred_at"]),
+            "received_at": _public_timestamp(row["received_at"]),
+            "source_available_at": _public_timestamp(row["source_available_at"]),
+            "available_at": _public_timestamp(row["available_at"]),
             "schema_version": row["schema_version"], "mapping_version": row["mapping_version"],
         }
         if row["category"] == "usage":
@@ -1495,7 +1545,9 @@ def get_events_as_of(
             item["attributes"] = {
                 "subscription_id": row["changed_subscription_id"],
                 "changes": {
-                    field: row[column] for field, column in zip(
+                    field: _public_timestamp(row[column]) if field in {
+                        "started_at", "current_period_end", "ended_at", "cancellation_requested_at",
+                    } else row[column] for field, column in zip(
                         SUBSCRIPTION_FIELDS,
                         ("changed_status", "plan_id", "started_at", "current_period_end", "ended_at",
                          "cancellation_requested_at", "billing_interval", "billing_interval_count",
@@ -1570,7 +1622,7 @@ def record_observation_coverage(
         json.dumps(normalized, sort_keys=True, separators=(",", ":")).encode("utf-8"),
     ).hexdigest()
     _require_purposes(principal, "identity_mapping")
-    with _db(path) as connection:
+    with _db(path, postgresql=True) as connection:
         _assert_principal(connection, principal)
         if connection.execute("SELECT 1 FROM dataset_identity WHERE singleton_id = 1").fetchone() is None:
             raise DataFoundationError("invalid_contract")
@@ -1589,12 +1641,35 @@ def record_observation_coverage(
             if existing["normalized_payload_sha256"] != digest:
                 raise DataFoundationError("idempotency_conflict")
             return {"coverage_id": coverage_id, "duplicate": True, "status": "duplicate"}
-        connection.execute(
-            "INSERT INTO observation_coverage(tenant_id, source, coverage_id, customer_id, source_category, "
-            "covered_from, covered_through, coverage_status, coverage_completeness, coverage_available_at, "
-            "observation_policy_version, normalized_payload_sha256) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (*normalized.values(), digest),
-        )
+        values = list(normalized.values())
+        for timestamp_field in ("covered_from", "covered_through", "coverage_available_at"):
+            index = tuple(normalized).index(timestamp_field)
+            values[index] = _database_timestamp(connection, values[index])
+        if connection.backend == "postgresql":
+            inserted = connection.execute(
+                "INSERT INTO observation_coverage(tenant_id, source, coverage_id, customer_id, source_category, "
+                "covered_from, covered_through, coverage_status, coverage_completeness, coverage_available_at, "
+                "observation_policy_version, normalized_payload_sha256) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(tenant_id, source, coverage_id) DO NOTHING RETURNING coverage_id",
+                (*values, digest),
+            ).fetchone()
+            if inserted is None:
+                existing = connection.execute(
+                    "SELECT normalized_payload_sha256 FROM observation_coverage "
+                    "WHERE tenant_id=? AND source=? AND coverage_id=?",
+                    (principal.tenant_id, principal.source, coverage_id),
+                ).fetchone()
+                if existing is None or existing["normalized_payload_sha256"] != digest:
+                    raise DataFoundationError("idempotency_conflict")
+                return {"coverage_id": coverage_id, "duplicate": True, "status": "duplicate"}
+        else:
+            connection.execute(
+                "INSERT INTO observation_coverage(tenant_id, source, coverage_id, customer_id, source_category, "
+                "covered_from, covered_through, coverage_status, coverage_completeness, coverage_available_at, "
+                "observation_policy_version, normalized_payload_sha256) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (*values, digest),
+            )
     return {"coverage_id": coverage_id, "duplicate": False, "status": "accepted"}
 
 
@@ -1794,22 +1869,32 @@ def get_observation_coverage_as_of(
     if source_category is not None and source_category not in EVENT_CATEGORIES:
         raise DataFoundationError("invalid_contract")
     _require_purposes(principal, "retention_inference")
-    with _db(path) as connection:
+    with _db(path, postgresql=True) as connection:
         sources = _assert_read_principal(connection, principal)
+        category_filter, category_params = _authorized_category_filter(
+            connection, principal, sources, table_alias="observation_coverage", category_column="source_category",
+        )
         placeholders = ",".join("?" for _ in sources)
         sql = (
             "SELECT tenant_id, source, coverage_id, customer_id, source_category, covered_from, covered_through, "
             "coverage_status, coverage_completeness, coverage_available_at, observation_policy_version "
             "FROM observation_coverage WHERE tenant_id = ? AND customer_id = ? "
-            f"AND source IN ({placeholders}) AND coverage_available_at <= ?"
+            f"AND source IN ({placeholders}) AND coverage_available_at <= ? AND {category_filter}"
         )
-        params: list[Any] = [principal.tenant_id, customer_id, *sources, cutoff]
+        params: list[Any] = [
+            principal.tenant_id, customer_id, *sources, _database_timestamp(connection, cutoff),
+            *category_params,
+        ]
         if source_category is not None:
             sql += " AND source_category = ?"
             params.append(source_category)
         sql += " ORDER BY covered_from, covered_through, source"
         rows = connection.execute(sql, params).fetchall()
-    return [dict(row) for row in rows]
+    timestamp_fields = {"covered_from", "covered_through", "coverage_available_at"}
+    return [
+        {key: _public_timestamp(value) if key in timestamp_fields else value for key, value in dict(row).items()}
+        for row in rows
+    ]
 
 
 def _subscription_mrr_minor(state: dict[str, Any]) -> int | None:
@@ -1839,8 +1924,11 @@ def get_subscriptions_as_of(
 ) -> list[dict[str, Any]]:
     customer_id = _validate_id(customer_id)
     cutoff = normalize_timestamp(as_of)
-    with _db(path) as connection:
+    with _db(path, postgresql=True) as connection:
         authorized_sources = _assert_read_principal(connection, principal)
+        category_filter, category_params = _authorized_category_filter(
+            connection, principal, authorized_sources, table_alias="ce",
+        )
         _require_purposes(principal, "retention_inference")
         source_placeholders = ",".join("?" for _ in authorized_sources)
         rows = connection.execute(
@@ -1849,11 +1937,13 @@ def get_subscriptions_as_of(
             "FROM subscription_events se JOIN canonical_events ce "
             "ON ce.tenant_id=se.tenant_id AND ce.event_id=se.event_id "
             f"WHERE se.tenant_id = ? AND se.customer_id = ? AND ce.source IN ({source_placeholders}) "
-            f"AND {_as_of_query()} "
+            f"AND {_as_of_query()} AND {category_filter} "
             "ORDER BY ce.occurred_at, COALESCE(ce.source_available_at, ce.received_at), ce.event_id",
-            (principal.tenant_id, customer_id, *authorized_sources, cutoff, cutoff),
+            (principal.tenant_id, customer_id, *authorized_sources,
+             _database_timestamp(connection, cutoff), _database_timestamp(connection, cutoff),
+             *category_params),
         ).fetchall()
-    grouped: dict[str, list[sqlite3.Row]] = {}
+    grouped: dict[str, list[Mapping[str, Any]]] = {}
     for row in rows:
         grouped.setdefault(row["subscription_id"], []).append(row)
     subscriptions: list[dict[str, Any]] = []
@@ -1861,14 +1951,16 @@ def get_subscriptions_as_of(
         state = _fold_subscription_rows(history, subscription_id, customer_id)
         for field in SUBSCRIPTION_FIELDS:
             state.setdefault(field, None)
+        for field in ("started_at", "current_period_end", "ended_at", "cancellation_requested_at"):
+            state[field] = _public_timestamp(state[field])
         started_at = state.get("started_at")
         if started_at and started_at > cutoff:
             continue
         state["mrr_minor"] = _subscription_mrr_minor(state)
         state["valuation_policy_version"] = MRR_POLICY_VERSION
-        state["last_event_available_at"] = max(
+        state["last_event_available_at"] = _public_timestamp(max(
             row["parent_source_available_at"] or row["parent_received_at"] for row in history
-        )
+        ))
         if "billing_valuation" not in principal.authorized_purposes:
             for field in (
                 "billing_interval", "billing_interval_count", "amount_minor", "discount_minor", "currency",
@@ -1918,7 +2010,7 @@ def get_account_snapshot_as_of(
 ) -> dict[str, Any]:
     customer_id = _validate_id(customer_id)
     cutoff = normalize_timestamp(as_of)
-    with _db(path) as connection:
+    with _db(path, postgresql=True) as connection:
         authorized_sources = _assert_read_principal(connection, principal)
         _require_purposes(principal, "retention_inference")
         source_placeholders = ",".join("?" for _ in authorized_sources)

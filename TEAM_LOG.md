@@ -72,6 +72,31 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T15:44:36Z — Member 1 / Data & Backend Engineer — 06D-2 live historical query verification
+
+- **Workstream:** Part 1 / Data Foundation & PostgreSQL parity
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `feat(member1): verify PostgreSQL historical query and coverage parity`
+- **Issue / task:** Prompt 06D-2V; preceding 06D-1 checkpoint: `9f0442b4d52594b65c70bf9486e9375cc24c243d`
+- **Files changed:** `retaniq/data_foundation.py`, `retaniq/database.py`, `tests/test_postgresql_ingestion.py`, `tests/test_postgresql_historical_queries.py`, `docs/MEMBER1_POSTGRESQL_HISTORICAL_QUERY_PARITY.md`, `docs/MEMBER1_DATABASE_BACKEND_CONFIGURATION.md`, `README.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Enabled existing historical event, subscription, account snapshot, and coverage read APIs on PostgreSQL with source/category-aware grants, UTC-aware cutoff binding, and the existing output timestamp shape.
+  - Enabled idempotent PostgreSQL single coverage writes using the existing contract and unique key; reused existing historical subscription fold and valuation policy.
+  - Added shared SQLite/live-PostgreSQL fixtures for cutoff, authorization, lifecycle, MRR, coverage, and read-only behaviors; updated the earlier explicit-unsupported test.
+- **Why it changed:** Prompt 06D-2 requires historical Data Foundation inputs for Member 2/3 without changing their worktrees or inventing service contracts.
+- **Contract / database / API impact:** Existing Python function signatures and result shapes remain. Historical reads now enforce the existing source/category grants against stored rows, including after grant narrowing. Availability remains `source_available_at` with `received_at` fallback; both time predicates are inclusive. Application authorization is not RLS. No schema migration was added.
+- **Tests / verification:**
+  - Task-owned PostgreSQL 16.15 cluster startup initially failed to bind loopback; explicit IPv4-only `-h 127.0.0.1 -p 62534` recovered it. psycopg 3.3.6 smoke — PASS — real `SELECT 1`, server/database identity, commit, rollback, and connection cleanup.
+  - `python -B -m unittest discover -s tests -p 'test_postgresql_migrations.py' -v` — PASS — 20 total including 5 live migration integration tests, 1.912s.
+  - `python -B -m unittest discover -s tests -p 'test_postgresql_ingestion.py' -v` — PASS — 11 live ingestion/concurrency tests, 13.590s.
+  - `python -B -m unittest discover -s tests -p 'test_postgresql_historical_queries.py' -v` — PASS — 22 total, including 11 live PostgreSQL and 11 shared SQLite fixtures, 13.654s.
+  - Full `python -B -m unittest discover -s tests` — PASS — 138 tests, 138 passed, 0 failed, 0 errors, 0 skipped, 42.118s. All 27 unique PostgreSQL integration tests executed live; no Python warnings (expected unauthorized-request log messages only).
+  - `compileall`, package imports, and `git diff --check` — PASS. Test target `retaniq_test_06d2v_20261010` was confirmed absent before creation, then dropped after tests; only the task-owned cluster was stopped. No code defect was confirmed; SQLite historical contracts matched PostgreSQL expectations.
+- **Data / model / ROI evidence:** Synthetic engineering fixtures only; no model or ROI claims.
+- **Known issues / blockers:** Member 2's reported zero mature 7/14/30-day labels, insufficient authorized outcome coverage, 97.21% stale/insufficient snapshots, and missing independent lifecycle/billing heartbeat remain unresolved and outside this task. Complete requirements and `AGENT.md`/`AGENTS.md` remain unavailable (`D:\dunno\dormathon` absent).
+- **Next action / handoff:** 06D-2 historical-query parity is live-verified. 06D-3 remains a separate task for feature/label/prediction persistence and any scoped import/checkpoint/replay work. No push or merge.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T15:14:20Z — Member 1 / Data & Backend Engineer — PostgreSQL ingestion, identity and auth parity
 
 - **Workstream:** Part 1 / Data Foundation, PostgreSQL Ingestion Parity
