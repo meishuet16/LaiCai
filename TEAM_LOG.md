@@ -72,6 +72,26 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T17:23:15Z — Codex — Keep the Retention Actions workload strip to five cards
+
+- **Workstream:** Frontend / QA
+- **Branch:** `member4`
+- **Commit subject:** `fix: show five retention workload cards`
+- **Issue / task:** Remove the lone sixth workload card from the Retention Actions Work Queue.
+- **Files changed:** `src/features/DecisionCasesPage.tsx` and this log.
+- **What changed:** Removed the standalone Investigation queue card and retained its count in the Awaiting review card subtitle. The strip now has five cards at all viewport sizes.
+- **Why it changed:** The sixth card wrapped onto its own row on the reference desktop layout.
+- **Contract / database / API impact:** None; all counts still come from the existing demo capacity record.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - Safari local Vite check (`/cases` on port 5180) — PASS — five capacity/workload cards rendered, with the investigation count inside Awaiting review.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** Demo fixture values only; no backend integration or business metric was changed.
+- **Known issues / blockers:** Connected decision APIs remain unavailable as previously logged.
+- **Next action / handoff:** Continue layout review on `member4`; do not push or merge without approval.
+- **Reviewer / pairing:** `N/A`
+
 ### 2026-10-10T17:19:22Z — Codex — Soften Retention Actions case-button hover
 
 - **Workstream:** Frontend / QA
