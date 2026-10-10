@@ -16,6 +16,7 @@ test = [
     "pytest>=8,<9",
 ]
 ml = [
+    "lightgbm>=4.6,<5",
     "scikit-learn>=1.7,<2",
 ]
 

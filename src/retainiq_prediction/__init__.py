@@ -78,6 +78,14 @@ from .baselines import (
     SKLEARN_AVAILABLE,
     SKLEARN_VERSION,
 )
+from .lightgbm_model import (
+    LIGHTGBM_AVAILABLE,
+    LIGHTGBM_VERSION,
+    LightGBMConfig,
+    LightGBMFitResult,
+    LightGBMModel,
+    LightGBMModelMetadata,
+)
 from .point_in_time import (
     AvailabilityPolicy,
     BillingFact,
@@ -164,4 +172,10 @@ __all__ = [
     "RuleBaselineConfig",
     "SKLEARN_AVAILABLE",
     "SKLEARN_VERSION",
+    "LIGHTGBM_AVAILABLE",
+    "LIGHTGBM_VERSION",
+    "LightGBMConfig",
+    "LightGBMFitResult",
+    "LightGBMModel",
+    "LightGBMModelMetadata",
 ]
