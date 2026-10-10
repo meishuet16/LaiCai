@@ -51,6 +51,11 @@ def _load_manifest(dataset_path: Path) -> dict[str, Any]:
     return manifest
 
 
+def _verify_import_schema(database_config: DatabaseConfig) -> None:
+    if database_config.is_postgresql and not database_config.is_supabase:
+        verify_postgresql_schema(database_config)
+
+
 def provision_member2_reader(
     dataset_path: Path | str,
     database_path: DatabaseConfig | Path | str,
@@ -156,10 +161,18 @@ def import_dataset(
         or (maintenance_database_path is None and not database_config.maintenance_dsn)
     ):
         raise ValueError("Supabase import requires explicit tenant-01 scope and a separate maintenance login")
-    if database_config.is_postgresql:
-        verify_postgresql_schema(database_config)
+    if database_config.is_supabase:
+        # Runtime roles are deliberately denied SELECT on migration metadata.
+        # The operator-only first-bind preflight verifies all seven migration
+        # checksums with the privileged, session-capable connection. Here the
+        # importer verifies the approved identity through the separate
+        # maintenance login below; it never routes routine tenant writes via
+        # the migration credential.
+        pass
     else:
-        initialize_database(database_config)
+        _verify_import_schema(database_config)
+        if database_config.is_sqlite:
+            initialize_database(database_config)
     maintenance_database = (
         _database_target(maintenance_database_path)
         if maintenance_database_path is not None
