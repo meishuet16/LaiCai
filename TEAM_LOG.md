@@ -1,7 +1,8 @@
 # RetainIQ v2 — Team Development & Commit Log
 
 **Project:** Dormathon 2026 — RetainIQ v2  
-**Purpose:** Give every team member a shared, truthful record of what changed in **every Git commit**.  
+**Project:** Dormathon 2026 — RetainIQ v2  
+**Purpose:** Give every team member a shared, truthful record of what changed in **every Git commit**.
 **Related documents:** `RetainIQ_v2_Complete_Requirements.md`, `AGENT.md`.
 
 > **Team rule — mandatory:** **Every commit that changes project files must include an update to `TEAM_LOG.md` in that same commit.** This includes code, documentation, database migrations, model artifacts/configuration, dashboard work and agent-generated changes. A commit with only a log correction must still explain that correction.
@@ -462,6 +463,26 @@ itself also requires a filled-in commit entry.
 - **Reviewer / pairing:** N/A
 
 ### 2026-10-10T18:29:07Z — Member 1 / Data & Backend Engineer — Record emergency Supabase delivery blockers
+### 2026-10-10T18:03:37Z — Codex / AI coding agent — Update latest LaiCai presentation
+
+- **Workstream:** Documentation / Pitch
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `docs(pitch): update latest LaiCai presentation`
+- **Issue / task:** User-authorized request to publish only the latest HTML pitch presentation.
+- **Files changed:** `pitch/retainiq-3min-pitch.html`, `TEAM_LOG.md`.
+- **What changed:**
+  - Added the current seven-slide LaiCai presentation, including the latest typography update.
+  - Recorded this presentation-only commit and its verification.
+- **Why it changed:** Publish the latest approved presentation on the existing feature branch without including screenshots, reports, or other generated files.
+- **Contract / database / API impact:** None; presentation artifact only.
+- **Tests / verification:**
+  - `py -3.14 -` with Python `html.parser` — **PASS** — parsed the HTML, confirmed seven slide sections, one title, navigation script, and current typography.
+  - Unit tests — **NOT RUN** — presentation-only documentation change.
+- **Data / model / ROI evidence:** No new claims or evidence; existing illustrative values and implementation caveats are retained.
+- **Known issues / blockers:** None for this presentation-only commit.
+- **Next action / handoff:** Push the commit to `origin/feature/decision-engine` and verify the remote branch.
+
+### 2026-10-10T17:23:08Z — Member 2 AI coding assistant — Audit authorized data access and FULL readiness
 
 - **Workstream:** Part 1 / Data Foundation, Supabase deployment readiness
 - **Branch:** `codex/member1-postgres-migration`
@@ -562,6 +583,417 @@ itself also requires a filled-in commit entry.
 - **Known issues / blockers:** No connected tenant/as-of context is available yet; those static placeholders were removed rather than presented as filters.
 - **Next action / handoff:** Review on `member4`; do not push or merge without approval.
 - **Reviewer / pairing:** `N/A`
+  - `.\.venv\Scripts\python.exe -B -m pytest -q tests\test_data_freshness.py tests\test_sqlite_data_adapter.py tests\test_reliability.py tests\test_historical_dataset_preparation.py tests\test_label_builder.py tests\test_temporal_splits.py tests\test_data_foundation.py tests\test_cross_member_integration.py tests\test_cross_member_policy_readiness.py --basetemp .pytest-tmp-p27-focused-final` — **PASS** — 173 passed.
+  - `.\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p27-final` — **PASS** — 454 passed, 0 failed/errors/skipped, 24 known SHAP warnings (9 explainability, 15 prediction pipeline), unsuppressed; 20.71s.
+  - Package imports — **PASS**. AST parse — **PASS**, 49 Python files. `git diff --check` — **PASS** (rerun after this log update before handoff).
+  - STANDARD source/preparation manifest SHA and all 8 artifact SHA/size checks — **PASS**. SQLite file checksum-only SHA-256 matches prior manifest `71bc6c18d9266c2b0c8b8e5008f6f6633a55804b1fe90a947f8ea24ca3ee5943`.
+  - Bounded authenticated pilot — **NOT RUN** — no `RETAINIQ_MODEL_TOKEN` in process environment. FULL pilot — **NOT RUN** — expected immutable dataset/database absent and tenant-01 authorization unverified.
+- **Data / model / ROI evidence:** **Synthetic only.** Existing STANDARD v1.2 tenant-01 preparation; no new records, labels, metrics, model, calibration, TEST outcome analysis, or performance claim. Historical handoff FULL counts/import time are cited only as unverified prior documentation. New FULL storage/runtime projections are estimates.
+- **Known issues / blockers:** Existing v4 aggregate freshness/reliability and 9,355 `SOURCE_NOT_CONNECTED` occurrences are pre-correction results and were not recomputed. STANDARD sample gates remain blocked; operational scoring remains blocked. No FULL manifest/tenant grants or usable reader credential. Member 1 historical heartbeat/completeness and batch-read interfaces remain dependencies.
+- **Next action / handoff:** Project lead/Member 1 to provide or locate the immutable FULL artifact, confirm exact tenant-01 authorization, and deliver historical source-health/completeness and bounded-read contracts. Only then run a bounded tenant-01 readiness pilot; do not train or alter frozen TEST/split/calibration policy without a separately authorized prompt.
+
+### 2026-10-10T16:59:47Z — Member 2 AI coding assistant — Audit cross-member policy and readiness
+
+- **Workstream:** Part 2 / Part 1 integration / Docs / QA
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `docs(member2): audit cross-member source readiness contracts` (Prompt 26 pending; not committed)
+- **Issue / task:** Member 2 Prompt 26; no ticket
+- **Files changed:** `docs/MEMBER2_TO_MEMBER1_CONTRACT_REQUESTS.md`, `docs/MEMBER2_TRAINING_READINESS_DECISION.md`, `tests/test_cross_member_policy_readiness.py`, and this log.
+- **What changed:**
+  - Checkpointed the verified Prompt 25 reconciliation as `41041f3de6496d4dcd49676b0104d92e57e956b8` (`fix(member2): reconcile churn outcome evidence and coverage`); no other work was staged.
+  - Audited Member 1's latest-state/all-active cancellation rule against Member 2's any-visible-historical-request routing. Documented ended-subscription and reversed-request cases, downstream denominator/route impact, and alternatives for a versioned shared policy. Existing implementations remain unchanged.
+  - Documented current source-health and outcome-coverage APIs separately from proposed heartbeat, coverage-completeness, and late-arrival aggregate contracts. Added tenant/source authorization, as-of timing, and acceptance requirements; no Member 1 production API/schema was changed.
+  - Recovered frozen tenant-01 stage support from v4 manifest/partition evidence; documented numeric and structural gates, row/unique-account deltas, distinct readiness states, synthetic dataset options, and why training/scoring remain blocked. No TEST metric analysis or model training occurred.
+  - Added current-behavior regression tests and test-only types clearly marked `CONTRACT_PROPOSAL`; they do not claim a production heartbeat or diagnostics API exists.
+- **Why it changed:** Prompt 26 requires cross-member contract alignment and evidence-backed readiness before any future training decision, while preserving Prompt 25 artifacts and frozen splits.
+- **Contract / database / API impact:** No runtime contract or database/API was changed. Proposed versioned cancellation and health/diagnostics contracts require Member 1 and named shared policy-owner review. No Member 1/3/4 worktree was modified.
+- **Tests / verification:**
+  - `.\.venv\Scripts\python.exe -B -m pytest -q tests\test_cross_member_policy_readiness.py --basetemp .pytest-tmp-p26-focused` — **PASS** — 16 passed.
+  - Focused Member 1/2 integration command covering policy/readiness, outcome reconciliation, historical preparation tests, label/eligibility, reliability/freshness, SQLite adapter, Data Foundation and cross-member tests — **PASS** — 175 passed.
+  - `.\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p26` — **PASS** — 448 passed, 0 failed/errors/skipped; 24 existing SHAP warnings (9 explainability, 15 prediction pipeline), unsuppressed; 19.63s.
+  - Package imports and AST parsing — **PASS** — 27 Python package files. `git diff --check` — **PASS**. Private v4 preparation manifest SHA and 8/8 artifact SHA/size checks — **PASS**; source SQLite SHA-256 remains `71bc6c18d9266c2b0c8b8e5008f6f6633a55804b1fe90a947f8ea24ca3ee5943`.
+- **Data / model / ROI evidence:** **Synthetic only** — existing tenant-01 STANDARD v1.2 (`synthetic-saas-v1-2-standard-s2026-970a9d231e68`), immutable source manifest SHA `7f85a83a1697efaaeebe1a5534b075ef6c7a99fa5ad3a1e9514b3eb8ae77db6d`; prepared v4 manifest SHA `1169164a8c3b038572a8c19f534bc519e51cbe14bde235227297238d0bb3d94a`. No model trained, no TEST outcomes inspected for optimization, no dataset re-preparation.
+- **Known issues / blockers:** All three horizons fail at least one frozen stage support gate; all are synthetic-only. Sufficient/fresh snapshots are zero; operational scoring remains blocked. Multi-subscription request aggregation/reversal policy and lifecycle/billing heartbeats/completeness remain unresolved. Existing APIs filter unavailable events without excluded-row aggregate diagnostics.
+- **Next action / handoff:** Project lead to name the domain-policy approver and coordinate with Member 1 on cancellation semantics, lifecycle/billing source health, and authorized diagnostics. Only after agreement and explicit authorization, consider a separate tenant-scoped read-only preparation from the existing immutable FULL synthetic dataset. Preserve its split policy; preflight stage support and reliability, and stop if blocked. Do not train or alter TEST policy until separately authorized.
+
+### 2026-10-10T16:32:00Z — Member 2 AI coding assistant — Reconcile labels and freeze reproducible historical data
+
+- **Workstream:** Part 2 / Part 1 integration
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `fix(member2): reconcile churn outcome evidence and coverage` — checkpoint `41041f3de6496d4dcd49676b0104d92e57e956b8`
+- **Issue / task:** Member 2 Prompt 25; no ticket
+- **Files changed:** `src/retainiq_prediction/label_builder.py`, `src/retainiq_prediction/sqlite_data_adapter.py`, `src/retainiq_prediction/historical_dataset_preparation.py`, `src/retainiq_prediction/reliability.py`, `tests/test_outcome_coverage_reconciliation.py`, `tests/test_reliability.py`, `docs/MEMBER2_OUTCOME_COVERAGE_BLOCKERS.md`, `docs/MEMBER2_SYNTHETIC_HISTORICAL_DATASET_PREPARATION.md`, and this log.
+- **What changed:**
+  - Prompt 24 checkpoint retained at `7971828b9f1c281340806dae39c56641a57a6633`; the verified Prompt 25 changes were subsequently checkpointed as `41041f3de6496d4dcd49676b0104d92e57e956b8`.
+  - Member 1's effective termination `status=ended` is now accepted by Member 2's label semantics. Outcome coverage retains source category/status/completeness/policy metadata; the label builder joins adjacent complete subscription intervals only, requires continuity for all active subscription identities, and keeps gaps/outages/usage-only coverage unknown.
+  - Synthetic final-entitlement evaluation now preserves a first churn episode across later reactivation, requires no paid entitlement at the account churn time, records the final subscription-loss time and all terminal evidence refs, and leaves contradictory state unknown. Reliability reason iteration now sorts essential sources to make serialized feature artifacts deterministic.
+  - Reused the existing authenticated tenant-01 STANDARD SQLite APIs. Added focused regressions and per-horizon reason/source-coverage summaries to the private preparation manifest. Re-prepared into versioned private directories; the final output is `member2-prep-v4`, with all earlier outputs preserved. No model was trained.
+  - Authorized source audit observed 160 terminal lifecycle facts across 155 tenant-01 accounts (147 involuntary, 5 non-renewal, 8 voluntary); 39,824 subscription coverage rows (37,099 complete, 1,162 outage, 63 partial, 750 censored, 750 not-created). Reader access succeeded with tenant-01 retention-inference authorization; no permission bypass or access to other tenants. Existing service-principal also had `model_artifact_write`, which read-only preparation did not use.
+  - End-boundary authorized API aggregate: 750 tenant-01 identities; 629 with paying entitlement (625 eligible, 4 known cancellations), 121 not eligible; 75 accounts with multiple historical subscription IDs, 23 partial-termination accounts, 137 final entitlement-loss transitions, and 154 with a later paid-active lifecycle fact after a qualifying termination.
+  - Corrected full run: 26,267 lifecycle-backed snapshots; 23,415 eligible; 700 unique eligible accounts; 22,715 repeated snapshots; labels positive/negative/unknown: 7d 100/21,851/1,464, 14d 200/21,058/2,157, 30d 437/19,530/3,448. All horizons remain blocked for synthetic training under calibration-stage class/unique-account minimums. Real-world readiness remains blocked.
+  - Frozen splits retained: TRAIN 7,157 (2024-12-09–2025-08-18), VALIDATION 5,859 (2025-10-06–2026-01-19), CALIBRATION 3,700 (2026-03-02–2026-04-20), TEST 6,699 (2026-06-01–2026-08-17). Stage label maturity exclusions were zero; TEST remains evaluation-only. Reliability: 0 sufficient, 654 limited, 22,761 insufficient; freshness: 0 fresh, 654 partially stale, 22,761 stale, 0 unknown. Staleness remains ambiguous between time-relative event watermarks and genuine source gaps because independent heartbeats are absent; thresholds were not weakened.
+  - Final v4 preparation took 950.910 seconds; 57.576 candidate pairs/s, 24.624 eligible snapshots/s, 73.871 labels/s; peak working set unavailable. v3/v4 manifests and all eight artifact hashes match; source DB hash remained unchanged. Final private manifest SHA-256: `1169164a8c3b038572a8c19f534bc519e51cbe14bde235227297238d0bb3d94a`.
+- **Why it changed:** Prompt 24 surfaced zero labels despite an existing authorized STANDARD dataset. The verified root causes were Member 1's canonical `ended` state not being accepted as terminal by Member 2, and Member 2 requiring one coverage segment to span a full horizon instead of joining contiguous complete subscription segments.
+- **Contract / database / API impact:** No Member 1 schema, API, authorization, shared prediction contract, or database was changed. Adapter consumes existing authenticated APIs. Prediction-time features and post-cutoff label outcomes remain separate. Synthetic v1.2 final-paid-entitlement loss remains explicitly dataset-specific.
+- **Tests / verification:**
+  - `.\.venv\Scripts\python.exe -B -m pytest -q tests\test_outcome_coverage_reconciliation.py tests\test_historical_dataset_preparation.py tests\test_sqlite_data_adapter.py tests\test_feature_builder.py tests\test_label_builder.py tests\test_temporal_splits.py tests\test_reliability.py tests\test_data_freshness.py tests\test_data_foundation.py tests\test_cross_member_integration.py --basetemp .pytest-tmp-p25-integration-final2` — **PASS** — 175 passed.
+  - `.\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p25-final` — **PASS** — 432 passed, 0 failed/errors/skipped, 24 existing SHAP warnings; warnings not suppressed.
+  - Focused `tests\test_reliability.py tests\test_outcome_coverage_reconciliation.py tests\test_label_builder.py` — **PASS** — 50 passed.
+  - Authenticated full tenant-01 preparation — **PASS** — 26,267 lifecycle-backed, 23,415 eligible, 70,245 labels; private manifest/artifact checksums verified; SQLite SHA-256 unchanged.
+  - Python package imports and AST parse — **PASS** — 27 package files parsed; `git diff --check` — **PASS**; private output/hash checks — **PASS**.
+- **Data / model / ROI evidence:** Synthetic STANDARD v1.2 only, tenant-01 only, seed 2026; source manifest SHA-256 `7f85a83a1697efaaeebe1a5534b075ef6c7a99fa5ad3a1e9514b3eb8ae77db6d`. No model training, model evaluation, real-world validation, causal effect, saved revenue, or ROI claim. Customer-level prepared data and credentials remain outside Git.
+- **Known issues / blockers:** Every horizon remains `BLOCKED` for synthetic training because calibration partitions do not meet declared positive/unique-account support; 7-day train/validation/test support is also insufficient. 97.21% of eligible rows remain stale/insufficient, with no lifecycle/billing heartbeat to distinguish event silence from an ingestion gap. The bounded-cutoff enumerator mismatch is confirmed: Member 1 excludes a known cancellation only when all active subscriptions are pending cancellation, while Member 2 excludes when any subscription has a known request. Team decision required; conservative Member 2 routing is unchanged. Real multi-subscription churn and source correction/supersession policy remain unresolved.
+- **Next action / handoff:** Member 1/team to clarify heartbeat/watermark, least-privilege read purpose, and account-level known-cancellation semantics; agree real account churn/correction policy. Do not train until all horizon/stage readiness gates are satisfied. Keep TEST sealed from selection and obtain authorized real longitudinal evidence before real-world claims.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T15:17:20Z — Member 2 AI coding assistant — Prepare synthetic historical dataset
+
+- **Workstream:** Part 2 / Part 1 integration
+- **Branch:** integration/member2-main-sqlite
+- **Commit subject:** feat(member2): prepare leakage-safe synthetic historical dataset
+- **Issue / task:** Member 2 Prompt 24; no ticket
+- **Files changed:** src/retainiq_prediction/historical_dataset_preparation.py, src/retainiq_prediction/feature_builder.py, src/retainiq_prediction/sqlite_data_adapter.py, src/retainiq_prediction/label_builder.py, tests/test_historical_dataset_preparation.py, docs/MEMBER2_SYNTHETIC_HISTORICAL_DATASET_PREPARATION.md, and this log.
+- **What changed:**
+  - Added historical preparation orchestration over the existing authenticated Member 1 reader, point-in-time features, synthetic-only final-entitlement churn policy, label maturity, existing temporal splits, and reliability/freshness assessments. Historical customer-level artifacts and manifest remain outside Git.
+  - Corrected negative label maturity: a negative cannot be emitted before its full prediction horizon elapsed, even if future-dated coverage is supplied. Applied the existing dataset-specific all-active-entitlements policy without changing shared requirements.
+  - Ran the existing STANDARD v1.2 dataset for tenant-01 only. Produced 26,267 lifecycle-backed snapshots, 23,415 eligible feature snapshots, and 70,245 horizon labels; all eligible labels were unknown due to missing outcome coverage. Added the audited split, metrics, and manifest findings to the new documentation.
+  - Prompt 23 checkpoint: 28353fb1d0903258afdf1145ef5b6f3c9e7d2774 (feat(member2): integrate authenticated sqlite historical data adapter).
+- **Why it changed:** Prompt 24 requires a reproducible point-in-time-safe dataset preparation path and honest split/label/readiness evidence before any model training.
+- **Contract / database / API impact:** No database schema or shared PredictionOutput contract changed. The preparation consumes existing Member 1 authenticated APIs; feature and label behavior is additive/fixed for correct historical maturity. Synthetic account-churn semantics remain dataset-specific and are not declared as real-customer policy.
+- **Tests / verification:**
+  - .\.venv\Scripts\python.exe -B -m pytest -q tests\test_historical_dataset_preparation.py tests\test_sqlite_data_adapter.py tests\test_feature_builder.py tests\test_label_builder.py tests\test_temporal_splits.py tests\test_reliability.py tests\test_data_freshness.py tests\test_data_foundation.py tests\test_cross_member_integration.py --basetemp .pytest-tmp-p24-integration — PASS — 163 passed.
+  - .\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p24 — PASS — 420 passed, 0 failures/errors/skips, 24 known SHAP warnings.
+  - Actual authenticated STANDARD tenant-01 preparation — PASS as a reproducible structural run — 54,750 candidate pairs, 26,267 lifecycle-backed, 23,415 eligible, 70,245 unknown horizon labels; 920.336 seconds; source DB SHA-256 unchanged.
+  - Package import and AST syntax checks — PASS. All eight private artifact SHA-256 checks and preparation manifest SHA-256 sidecar — PASS. git diff --check — PASS.
+- **Data / model / ROI evidence:** Synthetic v1.2 only; immutable dataset manifest SHA-256 7f85a83a1697efaaeebe1a5534b075ef6c7a99fa5ad3a1e9514b3eb8ae77db6d. Tenant-01 only. Zero mature positives and negatives were surfaced; no class prevalence, model metric, real-world validation, retention effect, or ROI claim. No model trained.
+- **Known issues / blockers:** All horizons are BLOCKED for synthetic training: authorized outcome reads produced no qualifying positive evidence and no complete subscription outcome coverage, despite the four-tenant dataset manifest's 621 episode count. Freshness/reliability were stale/insufficient for 97.21% of eligible snapshots; lifecycle/billing lack independent heartbeats and usage coverage is mostly incomplete. Member 1/Member 2 must reconcile outcome event/coverage fields and watermark contract. The source database, artifacts and private records remain outside Git.
+- **Next action / handoff:** Member 1 and Member 2 to investigate authorized outcome/coverage API evidence and lifecycle/billing heartbeat semantics. Do not begin model training until every horizon has adequate mature class coverage and split-level readiness.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T14:35:16Z — Member 2 AI coding assistant — Add authenticated SQLite prediction adapter
+
+- **Workstream:** Part 2 / Part 1 integration
+- **Branch:** integration/member2-main-sqlite
+- **Commit subject:** feat(member2): add read-only authenticated SQLite data adapter
+- **Issue / task:** Member 2 Prompt 23; no ticket
+- **Files changed:** src/retainiq_prediction/sqlite_data_adapter.py, src/retainiq_prediction/feature_builder.py, tests/test_sqlite_data_adapter.py, docs/MEMBER2_LOCAL_SQLITE_ADAPTER.md, and this log.
+- **What changed:**
+  - Added a typed, tenant-bound adapter over Member 1's authenticated reader APIs. It binds the database identity to the STANDARD v1.2 manifest, preserves synthetic provenance and source timestamps, reconstructs subscription facts from dated events, maps usage/billing/lifecycle and coverage evidence, and rechecks the cutoff on all returned rows.
+  - Extended existing feature/coverage inputs additively for daily usage quantities, distinct active days and coverage metadata. A daily aggregate remains one fact; quantity is not expanded into duplicate sessions. Missing or invalid quantity is not counted as one session.
+  - Added 13 adapter-focused tests covering authorized/unauthorized use, identity mismatch, tenant scoping, historical eligibility/cancellation, payment-failure semantics, future/late/unknown availability, aggregate quantities, zero-versus-unknown coverage, freshness limitations, outcome separation and SQLite read-only behavior.
+  - Generated and validated STANDARD synthetic v1.2 seed-2026 data outside the repository, imported it into private SQLite with idempotency verification, provisioned a tenant-01 reader without billing-valuation permission, and ran both the official cross-member smoke and the new adapter against the actual database.
+- **Why it changed:** Prompt 23 required a verified local synthetic integration path and a Member 2-owned adapter without duplicating Member 1 storage/authentication or asserting real-data readiness.
+- **Contract / database / API impact:** No database schema, PredictionOutput, label policy, or Member 1 API was changed. Existing FeatureValues and UsageCoverage gained additive fields for active-day and coverage-quality semantics. The adapter rejects unsupported availability-policy changes because Member 1's read API currently applies source_available_at then received_at. Member 1 and the team should review the additional feature fields and source-availability limitations before production integration.
+- **Tests / verification:**
+  - Local generator generate --profile standard --seed 2026 — PASS — dataset ID synthetic-saas-v1-2-standard-s2026-970a9d231e68.
+  - Local synthetic validator — PASS — manifest SHA-256 7f85a83a1697efaaeebe1a5534b075ef6c7a99fa5ad3a1e9514b3eb8ae77db6d; no warnings.
+  - Local importer with --verify-idempotency — PASS — 239,721 events and 491,223 coverage records; replay accepted zero and identified 239,721 duplicates; import duration 104.768 seconds.
+  - .\.venv\Scripts\python.exe -B -m examples.member2_synthetic_smoke --db [private-db] --dataset [private-dataset] — PASS — dataset identity and cross-tenant denial verified; training not performed.
+  - Direct authenticated adapter smoke against private SQLite — PASS — tenant-bound historical snapshot and feature assembly; 629 eligible tenant-01 accounts at the selected cutoff; one NOT_ELIGIBLE account was also verified without printing its identifier; freshness for the inspected feature example was stale.
+  - .\.venv\Scripts\python.exe -B -m pytest -q tests/test_sqlite_data_adapter.py tests/test_feature_builder.py — PASS — 26 tests.
+  - .\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p23 — PASS — 413 passed, 0 failed/errors/skipped, 24 existing SHAP/LightGBM warnings, 20.16 seconds.
+  - Package import check and git diff --check — PASS.
+- **Data / model / ROI evidence:** Synthetic v1.2 only; 3,000 accounts, 4 tenants, 239,721 canonical events, 491,223 coverage intervals, 3,262 subscriptions and 621 effective account-churn episodes. No real-data validation, model training, performance, retention effect, or ROI claim.
+- **Known issues / blockers:** The Member 1 reader provisioner grants model_artifact_write in addition to retention_inference; a least-privilege read-only provisioner change belongs to Member 1. Member 1's event API filters unknown/late records before returning them and does not expose exclusion counts, and its current API has no independent lifecycle/billing freshness heartbeat. The synthetic final-paid-entitlement policy must not be silently reused for real multi-subscription accounts. No corrections/supersession or production backend integration was tested.
+- **Next action / handoff:** Keep Prompt 23 changes uncommitted for review. Member 1 should consider least-privilege read grants and explicit excluded-event/source-watermark evidence. Prompt 24 may prepare a frozen synthetic historical training/evaluation dataset path and split readiness checks; do not claim real-world effectiveness or production readiness.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T14:05:36Z — Member 2 AI coding assistant — Integrate Main Data Foundation and synthetic CLI
+
+- **Workstream:** Part 1 / Part 2 integration and QA
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `merge: integrate latest main data foundation with member2`
+- **Issue / task:** Member 2 Prompt 22; no ticket
+- **Files changed:** Merged `origin/main` at `c2fce585d55169d51f8dcf4a0d70c41984eb488a`, including `retaniq/`, `migrations/`, synthetic tooling, examples, Member 1 tests/docs and `DATASET_CARD.md`; resolved `.gitignore` and `TEAM_LOG.md`; updated Member 2 integration/blocker/dependency docs, the synthetic handoff command, and `tests/test_cross_member_integration.py`.
+- **What changed:**
+  - Preserved Member 1's SQLite Data Foundation and synthetic v1.2 implementation alongside Member 2's `src/retainiq_prediction` package. The only merge conflicts were add/add conflicts in `.gitignore` and `TEAM_LOG.md`; both were resolved by retaining all legitimate protections and all Member 1/Member 2 history.
+  - Verified the synthetic `generate`, `validate`, `import`, and `provision-reader` CLIs without generating a dataset. Corrected the smoke command to module execution, removed the unsupported caller-supplied tenant argument, documented manifest-authoritative Prompt 23 commands and secure one-time token handling, and added a CLI regression test.
+  - Updated integration readiness to recognize the merged local SQLite/auth/coverage interfaces while keeping real-data, production PostgreSQL, Member 3/4, durable governance, multi-subscription, and Member 2 SQLite-adapter blockers explicit.
+- **Why it changed:** Safely combine the latest tenant-scoped Data Foundation with the completed Member 2 package before Prompt 23 local dataset generation and adapter work, without conflating synthetic readiness with real or production readiness.
+- **Contract / database / API impact:** No frozen prediction, label, churn, availability, tenant, probability-horizon, or governance contract was changed. SQLite migrations 001–004 and Main's existing API/storage contracts are now present on the isolated integration branch. Local SQLite remains separate from future Supabase/PostgreSQL production integration.
+- **Tests / verification:**
+  - `.venv\Scripts\python.exe -B -m unittest discover -s tests -v` — PASS — 64 Member 1 unittest-style tests in 13.745s.
+  - `.venv\Scripts\python.exe -B -m pytest -q tests/test_data_foundation.py tests/test_member2_handoff.py tests/test_member2_synthetic_smoke.py tests/test_synthetic_generator.py tests/test_synthetic_integration.py --basetemp .pytest-tmp-p22-member1` — PASS — 64 tests in 12.56s.
+  - `.venv\Scripts\python.exe -B -m pytest -q tests/test_cross_member_integration.py --basetemp .pytest-tmp-p22-cross` — PASS — 19 tests in 3.46s.
+  - Member 2 pytest files excluding the five Member 1 files, with `--basetemp .pytest-tmp-p22-member2` — PASS — 336 tests in 5.20s; 24 known SHAP/LightGBM output-shape warnings.
+  - `.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p22` — PASS — 400 combined tests in 19.23s; 24 known SHAP/LightGBM output-shape warnings.
+  - Synthetic CLI and every subcommand `--help`, module-based smoke `--help`, STANDARD seed-2026 configuration/ID calculation, source inspection, and `git diff --check` — PASS. Direct path-based smoke invocation was corrected to the verified module form.
+- **Data / model / ROI evidence:** Synthetic source code, metadata contracts and test fixtures only. Dataset/database status is `EXPECTED_LOCAL_ARTIFACT_NOT_GENERATED`; no dataset was generated, no SQLite database was imported, no reader token was issued, no model was trained, and no performance or ROI evidence was produced.
+- **Known issues / blockers:** Prompt 23 must generate/validate/import the exact manifest-bound STANDARD artifact and implement the Member 2 SQLite adapter. Real historical data, Supabase/PostgreSQL, Member 3/4 interfaces, durable production governance, correction policy, and agreed real-source multi-subscription semantics remain blocked.
+- **Next action / handoff:** Keep this merge on the isolated integration branch. Prompt 23 should create the private Git-ignored synthetic artifact, provision a tenant-scoped token without logging it, run the smoke, and implement/test only the SQLite-to-Member2 adapter.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T08:32:31Z — Member 2 AI coding assistant — Cross-member integration contracts and handoff
+
+- **Workstream:** Part 2 / Part 4 integration
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** `docs(member2): finalize cross-member integration handoff`
+- **Issue / task:** Member 2 Prompt 20; no ticket
+- **Files changed:** `docs/MEMBER2_CROSS_MEMBER_INTEGRATION.md`, `docs/MEMBER2_HANDOFF_BLOCKERS.md`, `docs/MEMBER2_INTEGRATION_DEPENDENCIES.md`, `tests/test_cross_member_integration.py`, `TEAM_LOG.md`
+- **What changed:**
+  - Documented the verified Member 1 input contract, current point-in-time adapter fields, Member 3 canonical prediction/feedback handoff, Member 4 dashboard/outcome semantics, ownership boundaries, security/provenance rules and concrete acceptance checklist.
+  - Added a P0/P1 blocker matrix without inventing backend/API/frontend completion. P0 blockers include the absent authorized longitudinal dataset, authenticated Member 1 adapter, unresolved multi-subscription policy, source availability/correction policy, and durable production model-governance storage.
+  - Added 18 deterministic synthetic cross-member contract tests covering prediction serialization, scored/non-scored states, pipeline blockers, feedback maturity/revisions, tenant isolation, source availability and `prediction_id` linkage. Reused existing contracts; no parallel serializer, API, database, decision engine or UI was added.
+- **Why it changed:** Make Member 2's actual interfaces and integration blockers actionable for Members 1, 3 and 4 while distinguishing local unit-test verification from real production readiness.
+- **Contract / database / API impact:** No public schema, database, endpoint or shared enum change. Existing `PredictionOutput.model_dump/model_validate`, `PipelineResult`, `PointInTimeDataAdapter` and `InMemoryOutcomeReconciliationStore` are the verified local handoff boundaries. External authentication, persistence and endpoint ownership remain with other workstreams.
+- **Tests / verification:**
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_cross_member_integration.py --basetemp .pytest-tmp-p20` — PASS — 18 tests passed.
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_cross_member_integration.py tests/test_prediction_contract.py tests/test_prediction_pipeline.py tests/test_outcome_reconciliation.py --basetemp .pytest-tmp-p20` — PASS — 75 tests passed, 15 known SHAP warnings.
+  - `.venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp-p20` — PASS — 335 tests passed, 24 known SHAP warnings.
+  - `.venv\Scripts\python.exe -c "import retainiq_prediction; ..."` — PASS — Python 3.14.4; canonical prediction, pipeline and reconciliation exports imported.
+  - `git diff --check` — PASS — no whitespace errors; normal LF/CRLF conversion warnings only.
+- **Data / model / ROI evidence:** Explicitly synthetic contract fixtures and existing local unit tests only; no authorized dataset, real score, model metric, intervention effect, saved revenue or ROI evidence.
+- **Known issues / blockers:** P0 handoff blockers remain open. `IMPROVEMENT-001` through `IMPROVEMENT-005` remain pending/unresolved. Prompt 18's original 28-scenario coverage review and Prompt 19's final governance scenario review remain deferred for final regression review.
+- **Next action / handoff:** Member 1 should supply the authenticated canonical adapter, DATASET_CARD, availability/correction policy and multi-subscription decision. Members 3 and 4 should confirm their prediction/feedback and dashboard query contracts against this handoff before integration.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T08:27:02Z — Member 2 AI coding assistant — Human approval, promotion and rollback governance
+
+- **Workstream:** Part 2 / Part 4 governance
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; Prompt 18 checkpoint is `f5872a5`
+- **Issue / task:** Member 2 Prompt 19; no ticket
+- **Files changed:** `src/retainiq_prediction/model_approval.py`, `src/retainiq_prediction/model_promotion.py`, `src/retainiq_prediction/model_rollback.py`, `src/retainiq_prediction/__init__.py`, `tests/test_model_approval.py`, `tests/test_model_promotion.py`, `tests/test_model_rollback.py`, `docs/MEMBER2_MODEL_APPROVAL_PROMOTION_ROLLBACK.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added typed, append-only approval records with request idempotency, preserved `APPROVE`/`REJECT` rationale, immutable audit events, and a replaceable external authorization verifier. Caller role strings, booleans and synthetic verifier evidence fail closed for production approval.
+  - Added separate promotion consideration/technical eligibility/activation checks and a process-local compare-and-swap active bundle reference with generation checks, prior-bundle history and explicit non-production limitations. No prediction pipeline mutation or automatic deployment is performed.
+  - Added rollback request validation for authorized human actions, compatible approved targets, stale active-state rejection, process-local simulation, chain preservation and audit evidence. Added 30 synthetic structural governance scenarios and documented implemented versus unavailable production controls.
+- **Why it changed:** Establish an explicit human-governed release boundary after candidate training/evaluation while preventing synthetic evidence, caller claims, stale pointers, changed artifacts and metadata-only statuses from activating or rolling back a model.
+- **Contract / database / API impact:** No database, API, model-training, calibration, prediction-pipeline, Part 3, or dashboard behavior changed. New interfaces consume existing `ModelBundleMetadata` and frozen candidate-evaluation manifests. Member 1/backend must later provide trusted authorization, durable append-only audit, artifact integrity, deployment compatibility and durable atomic active-bundle storage.
+- **Tests / verification:**
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_model_approval.py tests/test_model_promotion.py tests/test_model_rollback.py --basetemp .pytest-tmp-p19` — PASS — 30 tests passed.
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_model_registry.py tests/test_candidate_training.py tests/test_candidate_evaluation.py tests/test_model_approval.py tests/test_model_promotion.py tests/test_model_rollback.py --basetemp .pytest-tmp-p19` — PASS — 55 tests passed.
+  - `.venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp-p19` — PASS — 317 tests passed, 24 known SHAP warnings.
+  - `.venv\Scripts\python.exe -c "import retainiq_prediction; ..."` — PASS — Python 3.14.4 and new governance exports imported.
+  - `git diff --check` — PASS — no whitespace errors; only normal LF/CRLF conversion warnings.
+- **Data / model / ROI evidence:** Synthetic structural fixtures and process-local simulation only; no authorized production actor, dataset, artifact, deployment, model metric, retention result or ROI evidence.
+- **Known issues / blockers:** The included audit and active pointer are not durable, distributed or production-safe. Real production activation/rollback remains blocked. Prompt 18's original 28 candidate-training/evaluation scenarios still require a final scenario-to-test coverage review; that review was not performed here.
+- **Next action / handoff:** Member 1/backend should provide the trusted authorization and durable deployment/audit interfaces. Member 2 should perform the deferred Prompt 18 scenario coverage review before any real release integration.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T07:02:28Z — Member 2 AI coding assistant — Multi-horizon LightGBM candidate
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; previous checkpoint is `72550fa`
+- **Issue / task:** Member 2 Prompt 10; no ticket
+- **Files changed:** `pyproject.toml`, `src/retainiq_prediction/lightgbm_model.py`, `src/retainiq_prediction/__init__.py`, `tests/test_lightgbm_model.py`, `docs/MEMBER2_LIGHTGBM_MODELS.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added the optional CPU LightGBM dependency and a reusable three-horizon training component with independent 7/14/30-day classifiers, existing feature allowlist reuse, mature TRAIN-mask filtering, optional VALIDATION-only early stopping, and explicit single-class/insufficient/dependency `NOT_READY` results.
+  - Added uncalibrated-probability semantics, deterministic configuration, tenant scope, feature-order/preprocessing metadata, dataset readiness/provenance metadata, trusted-root artifact save/load, malformed-artifact checks, and 21 synthetic structural tests.
+  - Added LightGBM documentation; preserved `IMPROVEMENT-001`, `IMPROVEMENT-002`, and `IMPROVEMENT-003` without changing their statuses or shared prediction contracts.
+- **Why it changed:** Implement the primary model-training candidate while preserving chronological label maturity, untouched CALIBRATION/TEST periods, honest probability semantics, and the current evidence blocker.
+- **Contract / database / API impact:** No database, API, shared prediction enum, production `PredictionOutput`, calibration, SHAP, decision, dashboard, or retraining behavior changed. Raw LightGBM scores remain separate from calibrated production forecasts.
+- **Tests / verification:**
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_lightgbm_model.py --basetemp .pytest-tmp` — PASS — 21 tests passed, 0 skipped in 2.21s.
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_lightgbm_model.py tests/test_baselines.py --basetemp .pytest-tmp` — PASS — 36 tests passed, 0 skipped in 2.40s.
+  - `.venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp` — PASS — 132 tests passed, 0 skipped in 2.53s.
+  - Package import and dependency version check — PASS — Python 3.14.4, NumPy 2.5.3, SciPy 1.18.1, scikit-learn 1.9.1, LightGBM 4.7.0, Pydantic 2.14.0, pytest 8.4.2.
+  - `git diff --check` — PASS — no whitespace errors; Git emitted only normal LF/CRLF conversion warnings.
+- **Data / model / ROI evidence:** Explicitly synthetic fixtures and temporary internal artifacts only; no authorized dataset, calibration, benchmark metric, production model, churn performance, retention result, or ROI evidence. LightGBM is a primary candidate, not a claimed winner.
+- **Known issues / blockers:** No authorized longitudinal dataset exists. Account-level multi-subscription semantics remain `IMPROVEMENT-002: NEEDS_TEAM_DECISION`. Calibration, horizon coherence, SHAP, real evaluation, and promotion governance remain deferred. Pickle artifacts are trusted-internal only.
+- **Next action / handoff:** Member 1 must provide authorized lifecycle/billing data, source availability and correction timestamps, tenant authorization/provenance, observation coverage, and account-level churn policy before real training or evaluation.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:56:37Z — Member 2 AI coding assistant — Isolated ML baseline verification
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** `feat(member2): verify baseline models in isolated ML environment`
+- **Issue / task:** Member 2 Prompt 09; no ticket
+- **Files changed:** `.gitignore`, `pyproject.toml`, `src/retainiq_prediction/baselines.py`, `src/retainiq_prediction/__init__.py`, `tests/test_baselines.py`, `docs/MEMBER2_BASELINE_MODELS.md`, `docs/MEMBER2_IMPROVEMENT_BACKLOG.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added the project-local `.venv/` workflow and `ml` optional dependency (`scikit-learn>=1.7,<2`), with generated environments, caches, and egg-info ignored by Git; the global Python installation was not modified.
+  - Fixed the baseline vectorizer to pass ordered numeric rows to scikit-learn, then verified independent 7/14/30-day Logistic Regression fitting, train-fitted imputation/scaling, mature-label filtering, test isolation, metadata, and trusted-root artifact save/load.
+  - Added `IMPROVEMENT-003` for later rule-threshold validation and documented exact setup/dependency versions plus the pickle trusted-artifact restriction.
+- **Why it changed:** Remove the dependency-related baseline verification gap and validate the existing synthetic comparison pipeline in an isolated, reproducible environment without claiming real model performance.
+- **Contract / database / API impact:** No database, API, shared prediction enum, label policy, calibration, LightGBM, or production `PredictionOutput` change. Baseline outputs remain ranking scores or explicitly uncalibrated probabilities.
+- **Tests / verification:**
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_baselines.py --basetemp .pytest-tmp` — PASS — 15 tests passed, 0 skipped in 2.37s.
+  - `.venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp` — PASS — 111 tests passed, 0 skipped in 2.35s.
+  - Package import check with `.venv\Scripts\python.exe` — PASS — imported package and reported `SKLEARN_AVAILABLE=True`.
+  - `git diff --check` — PASS — no whitespace errors; Git emitted only normal LF/CRLF conversion warnings.
+- **Data / model / ROI evidence:** Synthetic fixtures only; no authorized dataset, production artifact, calibrated probability, empirical metric, retention result, or ROI evidence. Installed versions: Python 3.14.4, NumPy 2.5.3, SciPy 1.18.1, scikit-learn 1.9.1, Pydantic 2.14.0, pytest 8.4.2.
+- **Known issues / blockers:** No authorized longitudinal dataset exists. Pickle artifacts are executable serialization and are restricted to validated trusted-root paths. Rule weights and alert thresholds remain provisional and unvalidated.
+- **Next action / handoff:** Member 1 must provide authorized longitudinal data, canonical billing/lifecycle mappings, source provenance and account-level churn policy. Threshold validation and LightGBM comparison require development/validation data and remain deferred.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:49:46Z — Member 2 AI coding assistant — Rule and Logistic Regression baselines
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; previous temporal-splitting checkpoint is `09527dc`
+- **Issue / task:** Member 2 Prompt 08; no ticket
+- **Files changed:** `src/retainiq_prediction/baselines.py`, `src/retainiq_prediction/__init__.py`, `tests/test_baselines.py`, `docs/MEMBER2_BASELINE_MODELS.md`, `docs/MEMBER2_IMPROVEMENT_BACKLOG.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added versioned, configurable rule-based ranking scores using only point-in-time feature values and optional point-in-time payment-failure counts; missing usage is not treated as zero and payment failure is not treated as churn.
+  - Added a reusable optional scikit-learn Logistic Regression component with independent 7/14/30-day fitting, TRAIN-only temporal masks, explicit numeric feature allowlist, train-fitted imputation/scaling, fixed random state, one-class/insufficient-data `NOT_READY` results, uncalibrated score labeling, and trusted-local artifact persistence.
+  - Recorded `IMPROVEMENT-002` as an unresolved Member 1 + Member 2 multi-subscription churn-definition decision without changing `IMPROVEMENT-001` or existing label semantics.
+- **Why it changed:** Provide honest comparison baselines before the future personalized multi-horizon LightGBM implementation while preserving temporal label maturity and the canonical prediction boundary.
+- **Contract / database / API impact:** No database, API, shared prediction enum, label policy, or production `PredictionOutput` change. Baseline results remain separate from calibrated production forecasts. The optional Logistic Regression backend reports `NOT_READY` when scikit-learn is unavailable.
+- **Tests / verification:**
+  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 106 tests passed, 5 skipped in 0.59s; skips are scikit-learn-dependent fit/persistence tests because the local environment does not provide scikit-learn.
+  - `PYTHONPATH=src` package import check — PASS — imported baseline classes and reported `SKLEARN_AVAILABLE=False`.
+  - `git diff --check` — PASS — no whitespace errors; Git emitted only normal LF/CRLF conversion warnings.
+- **Data / model / ROI evidence:** Synthetic baseline fixtures only; no authorized dataset, fitted Logistic Regression artifact, production probability, calibration, model metric, retention result, or ROI evidence. Rule thresholds are configurable operational assumptions, not validated performance claims.
+- **Known issues / blockers:** scikit-learn is not installed in the current Python 3.14.4 environment, so real Logistic Regression fitting was not executed. No authorized longitudinal dataset exists. Member 1 must finalize canonical payment feature mapping, lifecycle/account churn semantics, provenance, and authorization before model readiness can change.
+- **Next action / handoff:** Provide an isolated approved scikit-learn environment and authorized data, then rerun fitting and chronological evaluation before comparing against LightGBM. Keep `IMPROVEMENT-002` unresolved until the account-level policy is agreed.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:44:28Z — Member 2 AI coding assistant — Chronological dataset splitting
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; previous label-builder checkpoint is `fd9ae10`
+- **Issue / task:** Member 2 Prompt 07; no ticket
+- **Files changed:** `src/retainiq_prediction/temporal_splits.py`, `src/retainiq_prediction/__init__.py`, `tests/test_temporal_splits.py`, `docs/MEMBER2_TEMPORAL_SPLITTING.md`, `docs/MEMBER2_IMPROVEMENT_BACKLOG.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added deterministic timezone-aware TRAIN, VALIDATION, CALIBRATION, and TEST partitioning by prediction `as_of` using explicit half-open boundaries; all horizons for one snapshot remain together and duplicate snapshot assignments are rejected.
+  - Added per-horizon supervised/evaluation masks, label-maturity enforcement using `evaluation_as_of` and an optional maturity gap, test-label evaluation isolation, account-overlap reporting, class/sample warnings, and a reproducible split manifest.
+  - Added the temporal-splitting handoff documentation and persisted `IMPROVEMENT-001` for a future personalized-baseline ablation study; no model training or performance claims were added.
+- **Why it changed:** Prevent temporal assignment and label-observation leakage before future 7/14/30-day model development, while preserving unknown labels and the existing churn-label semantics.
+- **Contract / database / API impact:** No database or API schema changed. The splitter consumes existing `FeatureSnapshot`/`ChurnLabel` records and requires Member 1 to provide an authorized longitudinal dataset, canonical lifecycle mappings, availability/evaluation timestamps, coverage evidence, and account-level multi-subscription semantics.
+- **Tests / verification:**
+  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 96 tests passed in 0.60s.
+  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q tests/test_temporal_splits.py` — PASS — 14 tests passed in 0.35s.
+  - `PYTHONPATH=src` package import check — PASS — imported `retainiq_prediction`, `TemporalSplitter`, and `TemporalSplitManifest`.
+  - `git diff --check` — PASS — no whitespace errors reported; Git emitted only normal LF/CRLF conversion warnings.
+- **Data / model / ROI evidence:** Explicitly synthetic structural fixtures only; no authorized real dataset, training, model, metric, prediction, or ROI result. The manifest keeps real training readiness `BLOCKED` without an authorized dataset.
+- **Known issues / blockers:** No authorized longitudinal dataset exists in the repository. Member 1 must finalize source availability/correction semantics, canonical field mappings, account-level churn policy, and authorization/provenance evidence before real training readiness can change.
+- **Next action / handoff:** Member 1 should implement the real adapter and dataset evidence mapping; Member 2 can then replay the splitter on an authorized historical dataset before model work.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:38:33Z — Member 2 AI coding assistant — 7/14/30-day churn label builder
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; previous feature checkpoint is `f82a290`
+- **Issue / task:** Member 2 Prompt 06; no ticket
+- **Files changed:** `src/retainiq_prediction/label_builder.py`, `src/retainiq_prediction/__init__.py`, `tests/test_label_builder.py`, `docs/MEMBER2_LABEL_ENGINEERING.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added typed/versioned `ChurnLabel` records for independent 7-, 14-, and 30-day horizons with explicit positive, negative, unknown, excluded, and unsupported statuses.
+  - Added a replaceable lifecycle/outcome adapter and synthetic in-memory implementation that separates prediction `as_of` from later `evaluation_as_of`, enforces source availability, preserves evidence references, and reports late/unknown coverage.
+  - Implemented qualifying effective voluntary cancellation, non-renewal, and finalized involuntary termination semantics; payment failures, requests, inactivity, and missing events are not churn by themselves.
+  - Added conservative known-cancellation, already-terminated, right-censoring, multi-subscription, boundary, cross-tenant, late-outcome, and conflicting-lifecycle handling. No model training, temporal splitting, prediction API, or feature mutation was added.
+- **Why it changed:** Establish reproducible supervised-target generation without allowing future outcome evidence to enter prediction-time features or prospective eligibility.
+- **Contract / database / API impact:** No database or API schema changed. Member 1 can implement `LifecycleOutcomeAdapter` against canonical lifecycle storage and must supply effective timestamps, availability/received timestamps, account mapping, stable IDs, and observation coverage.
+- **Tests / verification:**
+  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 82 tests passed in 0.40s.
+  - `PYTHONPATH=src` package import check — PASS — imported `retainiq_prediction` and label enums.
+  - `git diff --check` — PASS — no whitespace errors reported; Git emitted only normal LF/CRLF conversion warnings.
+- **Data / model / ROI evidence:** Synthetic lifecycle and observation fixtures only; no real dataset, labels from production data, trained model, prediction, performance metric, or ROI evidence.
+- **Known issues / blockers:** Member 1 must finalize canonical churn event mappings, source-availability precedence, observation-coverage semantics, account-level multi-subscription churn policy, source-correction handling, authorization boundary, and the real adapter. No authorized longitudinal dataset exists in the repository.
+- **Next action / handoff:** Review label policy and lifecycle/coverage mappings with Member 1 before allowing positive/negative labels into supervised training.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:29:51Z — Member 2 AI coding assistant — Personalized behavioral feature foundation
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; local checkpoint is `37df5de`
+- **Issue / task:** Member 2 Prompt 05; no ticket
+- **Files changed:** `src/retainiq_prediction/feature_builder.py`, `src/retainiq_prediction/__init__.py`, `tests/test_feature_builder.py`, `docs/MEMBER2_FEATURE_ENGINEERING.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added a versioned `FeatureSnapshot` with typed feature values, point-in-time cutoff metadata, coverage/missingness quality fields, and source evidence references.
+  - Added configurable session-event semantics and personalized four-week baseline features: 7/30-day sessions, inactivity days, recent trend, observed weeks, averages, deviations, ratio, variability, and explicit baseline availability status.
+  - Added optional explicit usage-coverage evidence so confirmed zero activity is distinct from unknown or incomplete history. No cohort baseline, labels, model training, prediction calculation, cancellation feature, or churn outcome was added.
+- **Why it changed:** Establish the first leakage-safe behavioral feature layer required before label building or model work.
+- **Contract / database / API impact:** No database, API, or Member 1 source contract changed. The builder consumes `PointInTimeDataAdapter`; Member 1 must later supply canonical session semantics, source coverage evidence, and availability timestamps through a replaceable adapter boundary.
+- **Tests / verification:**
+  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 62 tests passed in 0.37s.
+  - `git diff --check` — NOT RUN after this uncommitted feature edit; the checkpoint staged check reported preserved requirements-document trailing whitespace and an existing blank line at EOF. No requirement documents were rewritten to hide those source formatting issues.
+- **Data / model / ROI evidence:** Synthetic usage and coverage fixtures only; no real dataset, labels, trained model, prediction, performance metric, or ROI evidence.
+- **Known issues / blockers:** Member 1 must confirm session event semantics, period-level usage coverage/completeness representation, availability precedence, and production adapter mapping. Personalized baselines remain unavailable for sparse or unobserved histories; no cohort fallback is implemented.
+- **Next action / handoff:** Review the feature field names and coverage contract with Member 1, then connect the canonical adapter before implementing labels or models.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:23:21Z — Member 2 AI coding assistant — Point-in-time adapter and eligibility foundation
+
+- **Workstream:** Part 2 / Integration
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; working tree change only
+- **Issue / task:** Member 2 Prompt 04; no ticket
+- **Files changed:** `src/retainiq_prediction/point_in_time.py`, `src/retainiq_prediction/eligibility.py`, `src/retainiq_prediction/__init__.py`, `tests/test_point_in_time.py`, `tests/test_eligibility.py`, `docs/MEMBER2_POINT_IN_TIME_AND_ELIGIBILITY.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added a typed, replaceable in-memory point-in-time adapter with exact tenant/customer scoping, timezone-aware cutoff validation, event/effective-time filtering, configurable source-availability precedence, provenance preservation, and explicit exclusion limitations.
+  - Added eligibility reconstruction for eligible, known cancellation, not eligible, and insufficient data states, including machine-readable reason codes, conservative lifecycle handling, payment-failure non-churn behavior, and explicit unresolved multi-subscription policy handling.
+  - Added synthetic-only focused tests and documented the Member 1 input contract. No database, ingestion API, feature engineering, labels, model training, or prediction calculations were added.
+- **Why it changed:** Establish the leakage-safe storage boundary and eligibility routing foundation before feature or label implementation.
+- **Contract / database / API impact:** No database or API implementation changed. The adapter expects dated subscription, usage, and billing facts with source provenance and an availability/received timestamp when available. Availability precedence remains configurable pending Member 1 agreement.
+- **Tests / verification:**
+  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 49 tests passed in 0.43s.
+  - `PYTHONPATH=src` source import check — PASS — `import retainiq_prediction`.
+  - `git diff --check` — PASS — no whitespace errors reported.
+- **Data / model / ROI evidence:** Synthetic fixtures only; no dataset, feature set, labels, trained model, performance metric, prediction result, or ROI claim.
+- **Known issues / blockers:** Member 1 must provide the real adapter/database mapping, source availability semantics, event availability timestamps, authoritative lifecycle history, account-level multi-subscription churn policy, and authorization boundary. Unknown availability is conservatively excluded and yields an explicit limitation.
+- **Next action / handoff:** Agree the availability precedence and account-level subscription policy with Member 1, then connect the real adapter without changing the eligibility business logic.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:17:45Z — Member 2 AI coding assistant — Historical dataset readiness gate
+
+- **Workstream:** Part 2 / Integration
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** `feat: add historical dataset readiness gate`
+- **Issue / task:** Member 2 Prompt 03; no ticket
+- **Files changed:** `src/retainiq_prediction/dataset_readiness.py`, `src/retainiq_prediction/__init__.py`, `tests/test_dataset_readiness.py`, `docs/MEMBER2_DATASET_READINESS.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added a read-only adapter-based readiness validator that checks account identity, tenant mapping, events, lifecycle history, outcome timestamps, source availability, duplicates, observation coverage, provenance, and personalized-baseline evidence.
+  - Added structured `PASS`/`PARTIAL`/`BLOCKED` reports with supported horizons, blockers, missing fields, quality issues, field-state evidence, and non-PII row counts.
+  - Documented the Member 1 adapter boundary and the current project status: no dataset supplied, therefore `BLOCKED`.
+- **Why it changed:** Prevent genuine 7/14/30-day model work from starting without timestamped, authorized, outcome-observable historical evidence.
+- **Contract / database / API impact:** No database, ingestion, or API changes. The validator consumes a documented adapter view and does not create a competing schema. The default 28-day baseline span is an explicit configurable readiness heuristic, not a finalized model contract.
+- **Tests / verification:**
+  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 29 tests passed in 0.31s.
+  - Source import with `PYTHONPATH=src` and empty-adapter check — PASS — package imported and returned `BLOCKED`.
+  - Initial `python -m pytest -q` / bare source import — NOT PASS — Windows Python app-execution alias was unavailable and the uninstalled `src` layout is not on `sys.path`; explicit interpreter plus `PYTHONPATH=src` was used for final verification.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** Synthetic structural fixtures only; no real dataset, trained model, accuracy metric, prediction result, or ROI claim. The actual repository readiness status remains `BLOCKED`.
+- **Known issues / blockers:** No authorized longitudinal dataset or `DATASET_CARD.md`; Member 1’s canonical adapter, source-availability semantics, multi-subscription churn policy, and outcome schema remain unavailable. The package is not installed into the interpreter environment; tests use the declared `src` path configuration.
+- **Next action / handoff:** Member 1 should supply the canonical mapped records and provenance/evidence gate. Only after a real dataset passes should Member 2 implement features, labels, splits, or training.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:12:43Z — Member 2 AI coding assistant — Minimal prediction contract foundation
+
+- **Workstream:** Part 2 / Integration
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** `feat: add canonical prediction contract foundation`
+- **Issue / task:** Member 2 Prompt 02; no ticket
+- **Files changed:** `pyproject.toml`, `src/retainiq_prediction/__init__.py`, `src/retainiq_prediction/contracts.py`, `tests/test_prediction_contract.py`, `docs/MEMBER2_PREDICTION_CONTRACT.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added a minimal Python package with Pydantic v2 models for the canonical flat `PredictionOutput` payload and nested reliability, freshness, and non-quantified uncertainty contracts.
+  - Added validation for status-dependent probabilities, cumulative horizon ordering, non-empty/distinct IDs, timezone-aware timestamps, documented enum values, and JSON round trips.
+  - Added focused contract documentation and synthetic-only fixtures; no training, feature engineering, API, or database code was added.
+- **Why it changed:** Establish the shared Part 2 prediction interface before implementing feature building or model inference.
+- **Contract / database / API impact:** Defines the local validation contract for the integrated `prediction_id`/`prediction_run_id` distinction and flat `p_churn_7d`/`p_churn_14d`/`p_churn_30d` fields. No database or API implementation changed; unresolved cross-part questions remain documented.
+- **Tests / verification:**
+  - `python -m pytest -q` — PASS — 21 tests passed in 0.31s.
+  - `git diff --check` — PASS — no whitespace errors.
+  - Python/Pydantic/pytest environment check — PASS — Python 3.14.4, Pydantic 2.13.5, pytest 8.4.2.
+- **Data / model / ROI evidence:** Synthetic contract fixtures only; no dataset, trained model, performance metric, prediction result, or ROI claim.
+- **Known issues / blockers:** Member 1’s canonical data/API contract, authorized longitudinal dataset, account-level multi-subscription churn semantics, source-availability timestamp semantics, and attribution shape remain unresolved.
+- **Next action / handoff:** Coordinate the unresolved contracts with Members 1 and 4, then implement time-safe features and labels only after the dataset evidence gate is available.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:08:15Z — Member 2 AI coding assistant — Repository documentation setup
+
+- **Workstream:** Part 2 / Integration / Docs
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** `docs: set up prediction-engine repository documentation`
+- **Issue / task:** Repository documentation setup; no ticket
+- **Files changed:** `AGENTS.md`, `RetainIQ_v2_Complete_Requirements.md`, `TEAM_LOG.md`, `docs/RetainIQ_v2_Data_Foundation.md`, `docs/RetainIQ_v2_Part2_Prediction_Engine_Requirements.md`, `docs/RetainIQ_v2_Part3_Decision_Engine_Requirements.md`, `docs/RetainIQ_v2_Part4_Closed_Loop_Learning_and_Dashboard_Requirements.md`, `docs/MEMBER2_INTEGRATION_DEPENDENCIES.md`
+- **What changed:**
+  - Copied the supplied canonical requirements, team guidance, and Part 1–4 specifications into the repository without content changes; created `AGENTS.md` as an exact copy of the available `AGENT.md`.
+  - Added the Member 2 integration dependency note covering confirmed prediction contracts, downstream handoffs, unresolved decisions, and blockers.
+- **Why it changed:** Establish the repository documentation baseline and make Member 2’s cross-part dependencies explicit before implementation.
+- **Contract / database / API impact:** No implementation or API/database changes. The canonical flat prediction payload and `prediction_id`/`prediction_run_id` distinction are documented as integration requirements.
+- **Tests / verification:**
+  - Source/destination SHA-256 comparison — PASS — copied documents match their Downloads originals.
+  - Repository audit and `git diff --check` — PASS — clean formatting check; no implementation tests exist or were needed for documentation-only setup.
+- **Data / model / ROI evidence:** N/A; no dataset, model, prediction, or ROI result was created.
+- **Known issues / blockers:** Repository still has no backend, database, dependency manifest, tests, dataset, or Member 1 implementation. Account-level multi-subscription churn semantics and event-availability timestamp contract remain unresolved.
+- **Next action / handoff:** Member 1 should provide the canonical data/API contract and dataset evidence gate; Member 2 can then implement time-safe labels/features and prediction services.
+- **Reviewer / pairing:** N/A
+- **Reviewer / pairing:** N/A
 
 ### 2026-10-10T17:54:55Z — Codex — Remove repeated demo indicators across pages
 
@@ -1306,6 +1738,34 @@ itself also requires a filled-in commit entry.
 - **Next action / handoff:** Member 2 provisions a service principal with only the required source/purpose grants, uses the as-of APIs, and maps descriptive reliability text to stable reason codes. Member 4 may use the new operator health endpoint. Project owners still need to authorize a genuine historical dataset before training work.
 - **Reviewer / pairing:** N/A
 
+### 2026-10-10T07:42:00Z — Member 3 — Action execution tracking endpoint and actual cost audit trail
+
+- **Workstream:** Part 3 — Decision Engine
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `feat: add action execution endpoint, actual vs predicted cost tracking, and migration 004`
+- **Issue / task:** Spec §7.7 Action Execution & Cost Audit Trail (RetainIQ_v2_Complete_Requirements.md §7.7)
+- **Files changed:**
+  - `backend/decision/migrations/004_action_executions.sql` *(new)* — table `action_executions` with RLS, audit indexes, and separation of actual monetary/staff costs
+  - `backend/decision/models.py` *(modified)* — added `ExecutionStatus`, `ExecutionRequest`, `ExecutionResponse`, and `notes: list[str]` on `EvaluationResponse`
+  - `backend/decision/api.py` *(modified)* — implemented live `POST /v1/decisions/cases/{case_id}/execution` endpoint transitioning case status to EXECUTED / FOLLOW_UP_DUE / CLOSED
+  - `tests/decision/test_api_phase3.py` *(modified)* — added tests for live execution endpoint, failed execution status transition, and tenant header authorization
+  - `TEAM_LOG.md` *(this entry)*
+- **What changed:**
+  - `004_action_executions.sql`: Created schema for `action_executions` table separating actual monetary costs (`actual_monetary_cost_minor`) and staff effort (`actual_staff_minutes`) from initial predictions on `action_proposals`. Added tenant isolation with PostgreSQL RLS.
+  - `models.py`: Added Pydantic schemas `ExecutionRequest` and `ExecutionResponse` validating `execution_status` in `('EXECUTED', 'FAILED', 'CANCELLED')` and non-negative actual cost/time numbers.
+  - `api.py`: Implemented `POST /v1/decisions/cases/{case_id}/execution` endpoint that validates case status (must be `ASSIGNED` or `HUMAN_REVIEWED`), inserts the execution record, updates the case status to `EXECUTED` or `FOLLOW_UP_DUE` (when `follow_up_anchor` is provided), computes the 7/14/30d follow-up schedule, and logs an append-only `ACTION_EXECUTED` event to `case_history`.
+  - `test_api_phase3.py`: Added 3 tests validating successful execution recording, transition to `CLOSED` upon execution failure, and rejection of requests missing tenant identification.
+- **Why it changed:** Completes spec §7.7 requirement: "Record predicted action cost and actual monetary/staff effort separately" and provides execution lifecycle transitions.
+- **Contract / database / API impact:** Added `POST /v1/decisions/cases/{case_id}/execution`. Added `action_executions` table in migration 004.
+- **Tests / verification:**
+  - `pytest tests/decision/ -v` — PASS (91 passed, 0 failed in 0.60s).
+  - `pytest deepseek_python_20261010_dc4479.py deepseek_python_20261010_7837fa.py -v` — PASS (14 passed in 0.21s).
+  - `python deepseek_python_20261010_54466f.py` — PASS (39 passed, 0 failed).
+- **Data / model / ROI evidence:** Fully conforms to non-causal guardrails (§10.3) and separate actual vs predicted expense accounting (§7.7).
+- **Known issues / blockers:** None.
+- **Next action / handoff:** Provide status update to team and user, commit and push changes.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T07:41:34Z — Member 1 / Data & Backend Engineer — Real dataset gate and Member 2 handoff
 
 - **Workstream:** Part 1 / Data Foundation & Core Backend
@@ -1356,6 +1816,45 @@ itself also requires a filled-in commit entry.
 - **Next action / handoff:** Member 2 may persist valuation-bearing features only through a principal with `billing_valuation`; prediction builders must use no source data later than the declared `as_of`.
 - **Reviewer / pairing:** Read-only code review; PIT, purpose-gating, and reliability-reason findings corrected.
 
+### 2026-10-10T07:18:00Z — Member 3 — Decision engine top-level adapter APIs and validation harness
+
+- **Workstream:** Part 3 — Decision Engine
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `feat: add top-level decision engine adapter APIs and pass validation test suite`
+- **Issue / task:** Part 3 validation — `deepseek_python_20261010_dc4479.py`, `deepseek_python_20261010_54466f.py`, `deepseek_python_20261010_7837fa.py`
+- **Files changed:**
+  - `backend/decision/enums.py` *(modified)* — exported `Route` and `HumanDecision` aliases
+  - `backend/decision/router_engine.py` *(modified)* — added `route_account` top-level adapter
+  - `backend/decision/ranker.py` *(modified)* — added `rank_top_k` top-level adapter
+  - `backend/decision/action_catalog.py` *(modified)* — added `propose_actions` top-level adapter
+  - `backend/decision/roi_calculator.py` *(modified)* — added `break_even_card` sensitivity analysis adapter
+  - `backend/decision/workflow.py` *(modified)* — added `approve_case` human decision workflow adapter
+  - `backend/decision/outcomes.py` *(modified)* — added `record_outcome` outcome observation adapter
+  - `backend/decision/evaluator.py` *(modified)* — added `evaluate_strategies` multi-strategy evaluation adapter
+  - `deepseek_python_20261010_54466f.py` *(modified)* — project ROOT path resolution supporting repo root or scripts dir
+  - `TEAM_LOG.md` *(this entry)*
+- **What changed:**
+  - Implemented top-level convenience adapter functions across the Decision Engine module:
+    - `route_account(case: dict | PredictionPayload) -> Route`
+    - `rank_top_k(accounts: list[dict], k: int = 10) -> list[dict]`
+    - `propose_actions(facts: dict | CustomerFacts) -> list[dict]`
+    - `break_even_card(...) -> dict` returning sensitivity metrics with strict guardrails
+    - `approve_case(...) -> dict` checking operational modes and enforcing budget/staff caps
+    - `record_outcome(...) -> dict` recording 7, 14, 30d outcomes with non-causal guardrail notes
+    - `evaluate_strategies(cohort: list, k: int = 10) -> dict` evaluating A, B, C strategies
+  - Fixed ROOT path resolution in `deepseek_python_20261010_54466f.py`.
+- **Why it changed:** Enables clean top-level integration testing and automated validation against Part 3 specifications.
+- **Contract / database / API impact:** None on existing FastAPI routes or PostgreSQL tables. Adapters provide clean programmatic access for third-party scripts and team members.
+- **Tests / verification:**
+  - `pytest deepseek_python_20261010_dc4479.py -v` — PASS (1 passed in 0.14s)
+  - `python deepseek_python_20261010_54466f.py --verbose` — PASS (Total: 39, PASS: 39, FAIL: 0)
+  - `pytest deepseek_python_20261010_7837fa.py -v` — PASS (13 passed in 0.16s)
+  - `pytest tests/decision/ -v` — PASS (88 passed in 0.55s)
+- **Data / model / ROI evidence:** All guardrails verified: SCENARIO_ONLY labels enforced, zero cost ROI is None, non-causal outcome notes preserved, no forbidden ROI claims.
+- **Known issues / blockers:** None. All 3 validation scripts pass 100%.
+- **Next action / handoff:** Part 3 is fully validated and ready for end-to-end integration with Members 1, 2, and 4.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T07:16:26Z — Member 1 / Data & Backend Engineer — Enforce purpose and valuation contracts
 
 - **Workstream:** Part 1 / Data Foundation & Core Backend
@@ -1401,6 +1900,158 @@ itself also requires a filled-in commit entry.
 - **Data / model / ROI evidence:** Synthetic engineering fixtures only. No real dataset was present; no model, churn, or ROI evidence was generated. Dataset gate remains `NOT_READY`.
 - **Known issues / blockers:** No authorized historical dataset/license, managed encrypted database, TLS termination, PostgreSQL adapter, external identity provider, or scheduled daily worker exists in this checkout. Currency validation checks three-uppercase-letter syntax, not full ISO registry membership.
 - **Next action / handoff:** Member 2 can consume tenant-scoped point-in-time histories and the shared feature/label/prediction contracts. Member 3 can consume as-of MRR, currency, valuation time, and factual billing/usage references. The team must verify dataset provenance and provision production storage/security before real scoring.
+
+### 2026-10-10T07:05:00Z — Member 3 — Phase 3: Human approval state machine, budget enforcement, outcomes, evaluation
+
+- **Workstream:** Part 3 — Decision Engine
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `feat: Phase 3 — human approval workflow, budget capacity safeguards, 7/14/30d outcomes, RevenueCaptured@K`
+- **Issue / task:** Phase 3 — Human Approval + Outcome Tracking (RetainIQ_v2_Complete_Requirements.md §7.5, §7.7, §7.8; rolemember.md §开发优先顺序)
+- **Files changed:**
+  - `backend/decision/workflow.py` *(new)* — human authority state machine & transactional budget/capacity cap guards (§7.5, §7.7)
+  - `backend/decision/outcomes.py` *(new)* — 7/14/30d outcome observation engine with unknown-status integrity checks (§7.7)
+  - `backend/decision/evaluator.py` *(new)* — frozen replay evaluation engine for Strategies A, B, and C with RevenueCaptured@K metric (§7.8)
+  - `backend/decision/migrations/003_human_decisions_and_outcomes.sql` *(new)* — human_decisions, outcome_observations, and case_history audit tables + RLS
+  - `backend/decision/models.py` *(modified)* — HistoryEvent, CaseHistoryResponse, EvaluationCohortAccount, EvaluationResponse; enhanced Approval & Outcome models
+  - `backend/decision/api.py` *(modified)* — live POST /cases/{case_id}/approve, GET /cases/{case_id}/history, POST /cases/{case_id}/outcomes, GET /evaluation endpoints
+  - `tests/decision/test_workflow.py` *(new)* — 9 unit tests for APPROVE/MODIFY/REJECT/NO_INTERVENTION, budget caps, overrides, idempotency
+  - `tests/decision/test_outcomes.py` *(new)* — 5 unit tests for 7/14/30d horizons, coverage, and unknown status guardrails
+  - `tests/decision/test_evaluator.py` *(new)* — 5 unit tests for Strategies A/B/C, RevenueCaptured@K, zero-denominator handling
+  - `tests/decision/test_api_phase3.py` *(new)* — 4 FastAPI integration tests for all live Phase 3 endpoints
+  - `TEAM_LOG.md` *(this entry)*
+- **What changed:**
+  - `workflow.py`: Implemented state machine transitions (PROPOSED -> ASSIGNED, REJECTED, CLOSED_NO_ACTION, HUMAN_REVIEWED). Preserved original system proposal vs final human choice. Enforced transactional budget and staff-minute capacity caps against double-spend, requiring authorized override with reason. Rejects attempts to execute simulation-only or disabled actions live on MODIFY. Anchors follow-up at decided_at with automated 7d/14d/30d due date calculation. Idempotent re-approvals safely return existing decision without double deduction.
+  - `outcomes.py`: Validates follow-up horizons (strictly 7, 14, 30 days) and observed statuses (active, churned, pending_cancellation, downgraded, unknown). Enforces §7.7 rule that unknown/incomplete observation is NOT a successful retention outcome. Emits strict non-causal guardrail note 'active_is_not_proof_of_retention_effectiveness'.
+  - `evaluator.py`: Implemented frozen historical replay evaluation comparing Strategy A (calibrated p30 descending), Strategy B (p30 * MRR exposure descending), and Strategy C (RetainIQ gated planning: reliability gating + cooldown + top-K + p30*MRR + p7 urgency tie-break). Computes RevenueCaptured@K (Subsequently Churned MRR Identified@K) and Recall@K. Zero churned MRR denominator cleanly yields N/A. Strictly labeled as historical identification coverage, never claiming causal revenue saved.
+  - `api.py`: Promoted remaining stubs (/approve, /history, /outcomes, /evaluation) to fully functional live handlers with database and demo fixture fallback paths.
+- **Why it changed:** Completes all Phase 3 requirements, closing Part 3 decision engine scope per §7.5, §7.7, §7.8, §7.9.
+- **Contract / database / API impact:** All 8 Decision API endpoints are now fully live and conformant with `shared/fixtures/decision_mock.json` and `shared/contracts/prediction_contract.md`. Migration 003 adds `human_decisions`, `outcome_observations`, and `case_history` tables.
+- **Tests / verification:**
+  - `pytest tests/decision/ -v` — PASS (88 passed, 0 failed in 0.57s).
+- **Data / model / ROI evidence:** Evaluation and outcomes strictly labeled with non-causal guardrails.
+- **Known issues / blockers:** None for Part 3. Ready for Part 1/2 real model/data integration and Part 4 frontend visualization.
+- **Next action / handoff:** Part 3 is complete and ready for end-to-end integration with Member 1 (data foundation), Member 2 (ML model), and Member 4 (frontend dashboard).
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:55:00Z — Member 3 — Phase 2: Action catalog engine, break-even ROI card, DB migration, live API, tests
+
+- **Workstream:** Part 3 — Decision Engine
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `feat: Phase 2 — action catalog rule engine, break-even ROI calculator, proposal migrations, live endpoints`
+- **Issue / task:** Phase 2 — Action Rules + ROI (RetainIQ_v2_Complete_Requirements.md §7.4, §7.5, §7.6; rolemember.md §开发优先顺序)
+- **Files changed:**
+  - `backend/decision/action_catalog.py` *(new)* — Next Best Action catalog & fact-based candidate generation (§7.4)
+  - `backend/decision/roi_calculator.py` *(new)* — one-month break-even sensitivity & scenario ROI calculation (§7.6)
+  - `backend/decision/migrations/002_action_proposals.sql` *(new)* — action_proposals & budget_config tables + RLS
+  - `backend/decision/models.py` *(modified)* — SupportingFactRef, ActionProposal, DisabledAction, CaseProposalsResponse, CustomerFacts, BudgetConfigRecord
+  - `backend/decision/router_engine.py` *(modified)* — populated reliability_status and data_freshness_status in RouteResult
+  - `backend/decision/database.py` *(modified)* — clean FastAPI generator dependency without contextmanager, fallback when pool is not initialized
+  - `backend/decision/api.py` *(modified)* — live GET /v1/decisions/cases/{case_id}/proposals & GET /v1/decisions/cases/{case_id}/roi endpoints
+  - `tests/decision/test_action_catalog.py` *(new)* — 15 unit tests covering eligibility, contraindications, suppression, data investigation
+  - `tests/decision/test_roi_calculator.py` *(new)* — 10 unit tests covering verified arithmetic, zero cost, bounds, pp vs % formatting
+  - `tests/decision/test_api_phase2.py` *(new)* — 2 FastAPI integration tests for live proposals and ROI calculation
+  - `TEAM_LOG.md` *(this entry)*
+- **What changed:**
+  - `action_catalog.py`: Catalog defined with canonical actions and strict modes (operational: ACCOUNT_CHECK_IN, PAYMENT_RECOVERY, DATA_INVESTIGATION, NO_INTERVENTION; conditional: PRODUCT_WALKTHROUGH; disabled/simulation: TECH_SUPPORT_ESCALATION, PLAN_REVIEW, PAUSE, DOWNGRADE, CONDITIONAL_DISCOUNT). Implemented fact-based candidate generator attaching source table IDs (usage_events, billing_events, feature_events). Discretionary contact suppressed when open action exists or active cooldown applies. When evidence is missing or stale, routes strictly to DATA_INVESTIGATION rather than fabricating incentives. Non-operational actions segregated into disabled_actions list.
+  - `roi_calculator.py`: Implements §7.6 break-even arithmetic: contribution_value = MRR * margin; break_even_abs = cost / contribution_value (in percentage points pp); break_even_share = break_even_abs / p30 (in percentage %). Zero cost produces ROI N/A. Break-even exceeding p30 marked break_even_achievable=False ("not achievable in this simplified scenario"). Clamps assumed reduction within [0, p30]. Strictly labeled SCENARIO_ONLY.
+  - `api.py`: Promoted GET /cases/{case_id}/proposals and GET /cases/{case_id}/roi from stubs to live calculation engines. Preserved real reliability_status and data_freshness_status in decision_cases insertion.
+- **Why it changed:** Fulfills Phase 2 requirements for Part 3 Decision Engine per §7.4, §7.5, §7.6.
+- **Contract / database / API impact:** Live response formats match frozen shared fixture `shared/fixtures/decision_mock.json` exactly. Migration 002 adds `action_proposals` and `budget_config` tables.
+- **Tests / verification:**
+  - `pytest tests/decision/ -v` — PASS (65 passed, 0 failed in 0.55s).
+- **Data / model / ROI evidence:** ROI calculation strictly enforces SCENARIO_ONLY sensitivity labeling. No causal uplift claimed.
+- **Known issues / blockers:** Part 1 SQL view `account_mrr_as_of` still pending from Member 1; inline MRR or default fallback used in the interim.
+- **Next action / handoff:** Phase 3 — Human approval state machine, transactional budget enforcement, 7/14/30d outcome tracking, and RevenueCaptured@K evaluation (§7.5, §7.7, §7.8).
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:42:00Z — Member 3 — Phase 1: Routing engine, ranker, DB migration, API, tests
+
+- **Workstream:** Part 3 — Decision Engine
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `feat: Phase 1 — routing engine, top-K ranker, decision_cases migration, FastAPI`
+- **Issue / task:** Phase 1 — Routing + Ranking (rolemember.md §开发优先顺序)
+- **Files changed:**
+  - `backend/requirements.txt` *(new)*
+  - `backend/decision/__init__.py` *(new)*
+  - `backend/decision/enums.py` *(new)* — all canonical route/status/action enums
+  - `backend/decision/models.py` *(new)* — Pydantic schemas for prediction, MRR, routing, cases, ROI, approvals
+  - `backend/decision/config.py` *(new)* — env-var settings
+  - `backend/decision/database.py` *(new)* — psycopg2 connection pool
+  - `backend/decision/router_engine.py` *(new)* — 5-gate routing logic (§7.2)
+  - `backend/decision/ranker.py` *(new)* — exposure proxy + Top-K sort (§7.3)
+  - `backend/decision/api.py` *(new)* — FastAPI handlers (Phase 1 live + Phase 2/3 stubs)
+  - `backend/decision/main.py` *(new)* — app entry point (uvicorn port 8003)
+  - `backend/decision/migrations/001_decision_cases.sql` *(new)* — decision_cases table + RLS + indexes
+  - `tests/__init__.py`, `tests/decision/__init__.py` *(new)*
+  - `tests/decision/test_router_engine.py` *(new)* — 23 routing unit tests
+  - `tests/decision/test_ranker.py` *(new)* — 15 ranking unit tests
+  - `TEAM_LOG.md` *(this entry)*
+- **What changed:**
+  - `router_engine.py`: Implements the 5-step gate in strict order (NOT_ELIGIBLE → KNOWN_CANCELLATION → HUMAN_REVIEW × 8 triggers → threshold → cooldown → PRIORITY_REVIEW). Pure function — no DB side effects, fully testable.
+  - `ranker.py`: Deterministic 4-level sort (exposure DESC, p7 DESC, oldest ASC, customer_id ASC). Currency-safe: filters by single currency before ranking.
+  - `models.py`: Pydantic v2 with validators — monotonicity check p7≤p14≤p30, mrr_missing→null guard.
+  - `api.py`: Phase 1 endpoints `POST /route`, `POST /cases/batch`, `GET /cases` are live. Phase 2/3 endpoints are working stubs returning `decision_mock.json` fixture.
+  - `001_decision_cases.sql`: Tenant-scoped table with `UNIQUE(tenant_id, customer_id, prediction_id)`, RLS policy, auto-updated_at trigger, 4 performance indexes.
+- **Why it changed:** Phase 1 priority per rolemember.md — routing and ranking core logic must be live before Phase 2 action catalog.
+- **Contract / database / API impact:**
+  - New table: `decision_cases`. FK: `prediction_id` references Member 2's `predictions` table. MRR data from Member 1's `account_mrr_as_of` view.
+  - New endpoints: `POST /v1/decisions/route`, `POST /v1/decisions/cases/batch`, `GET /v1/decisions/cases`.
+  - **Notify Member 4:** Phase 2/3 stubs are live — all 8 endpoints callable, returning `decision_mock.json`.
+  - **Notify Member 1:** Need `account_mrr_as_of` view available with fields from `mrr_contract.md`.
+  - **Notify Member 2:** `decision_cases.prediction_id` FK — must be a stable immutable `prediction_id` per account/cutoff.
+- **Tests / verification:**
+  - `pytest tests/decision/ -v --tb=short` — **38 passed, 0 failed** — `PASS`
+  - Exposure proxy arithmetic (Bob §7.3 example): `0.65 × 120000 = 78000` — `PASS`
+  - High risk never overrides limited_evidence gate — `PASS`
+  - Monotonicity validator p7>p14 raises — `PASS`
+  - mrr_missing + non-null mrr_minor raises — `PASS`
+  - Currency mixing prevention (MYR vs USD not ranked together) — `PASS`
+  - `psycopg2` DB not started (no local PostgreSQL) — DB-dependent endpoints NOT RUN in unit tests
+- **Data / model / ROI evidence:** Synthetic fixture only. No real prediction data consumed yet.
+- **Known issues / blockers:**
+  - `database.py` requires PostgreSQL at `DATABASE_URL`. Run migration `001_decision_cases.sql` before starting API.
+  - Phase 2/3 endpoints return mock fixture — real action catalog, ROI calculation, and human approval to be implemented in Phase 2 and 3.
+  - `reliability_status` and `data_freshness_status` stored as route_reason placeholder in `_store_decision_cases` — refine to store proper enum values in Phase 2.
+  - Member 1 `account_mrr_as_of` view not yet available — using inline MRR from request body for now.
+- **Next action / handoff:**
+  - Member 3: Phase 2 — action catalog + ROI card calculation
+  - Member 4: Stub endpoints are live — `GET /v1/decisions/cases` returns real sorted data when DB is up; other endpoints return fixture
+  - Member 1: Please confirm `account_mrr_as_of` view schema matches `mrr_contract.md`
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:30:00Z — Member 3 — Day 0 contract freeze: prediction + decision mock fixture
+
+- **Workstream:** Part 3 — Decision Engine / Integration
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `docs: freeze prediction contract and publish decision mock fixture`
+- **Issue / task:** Day 0 Integration Contract Freeze (rolemember.md §开发开始前)
+- **Files changed:**
+  - `shared/contracts/prediction_contract.md` *(new)*
+  - `shared/fixtures/decision_mock.json` *(new)*
+  - `TEAM_LOG.md` *(this entry)*
+- **What changed:**
+  - Created `prediction_contract.md`: frozen v1.0 prediction JSON schema agreed with Member 2. Covers all fields — `prediction_id`, `p_churn_7d/14d/30d`, `reliability.status`, `data_freshness.status`, `uncertainty`, `explanations_by_horizon`. Includes status enums, Part 3 consumption rules, and 7 mock fixture accounts.
+  - Created `decision_mock.json`: synthetic fixture for all 8 Decision API endpoints — `GET /cases`, `GET /proposals`, `GET /roi`, `POST /approve`, `GET /history`, `POST /outcomes`, `GET /evaluation`. Uses MRR values from `mrr_contract.md` (minor units + ISO currency). Clearly labeled `SYNTHETIC_FIXTURE`.
+- **Why it changed:** Member 4 cannot start frontend development without mock API responses. Member 3 cannot build routing without confirmed prediction payload shape. Freezing contracts Day 0 per rolemember.md workflow.
+- **Contract / database / API impact:**
+  - `prediction_id` confirmed as the FK linking `predictions → decision_cases → prediction_feedback`.
+  - `as_of` must match `mrr_as_of` for correct point-in-time MRR lookup (Option A: SQL view `account_mrr_as_of`).
+  - Prediction probabilities are Member 2's frozen output — Part 3 must NOT rewrite them.
+  - **Notify:** Member 2 to confirm `prediction_contract.md` matches actual model output shape before real model is ready. Member 4 can begin using `decision_mock.json` immediately.
+- **Tests / verification:**
+  - JSON fixture validated for structure — `PASS` (manual review)
+  - Arithmetic check: `exposure_proxy_30d` for cust_002: `0.65 × 120000 = 78000 minor MYR` — `PASS`
+  - ROI card check: `150/840 = 0.1786 = 17.86 pp`, `0.1786/0.65 = 27.47%`, `net = 84-150 = -66`, `ROI = -44%` — `PASS`
+  - Unit tests: `NOT RUN` — test scaffolding not yet created (Phase 1 next)
+- **Data / model / ROI evidence:** Synthetic fixture — not real model predictions. ROI numbers are the verified spec example from §7.6.
+- **Known issues / blockers:**
+  - Member 2 must confirm prediction payload shape matches `prediction_contract.md` when real model is ready.
+  - Member 1 must confirm `account_mrr_as_of` SQL view field names match `mrr_contract.md`.
+  - `RevenueCaptured@K` in evaluation mock returns `null` — requires real historical data from Member 1+2.
+- **Next action / handoff:**
+  - Member 3: begin Phase 1 — routing engine code + `decision_cases` table migration
+  - Member 4: start Strategy Lab UI using `shared/fixtures/decision_mock.json`
+  - Member 2: review `prediction_contract.md` and confirm or propose field changes
 - **Reviewer / pairing:** N/A
 
 ### 2026-10-10T07:02:28Z — Member 2 AI coding assistant — Multi-horizon LightGBM candidate
