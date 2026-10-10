@@ -187,3 +187,29 @@ coverage is requested; batching must preserve per-account authorization and
 both event/availability-time filters. No cache or alternate reader was
 introduced. Member 1 owns API/query optimization. **P1 nonblocking** for frozen
 tenant-01 artifacts; needed for scale/coverage diagnostics.
+
+### Read-only service-principal lifecycle and import side effects
+
+**Prompt 28 code audit:** `create-service-principal` can create an `analyst`
+principal scoped to exact sources and `retention_inference` only, but it does
+not bind/check the dataset identity at provisioning time. Dataset identity is
+checked by a later authorized read. Source-category grants live on the backing
+integration records, not the service principal. In contrast,
+`provision_member2_reader` additionally grants `model_artifact_write`, and
+`import_dataset` creates per-tenant analyst principals with
+`retention_inference`, `billing_valuation`, and `model_artifact_write`; the
+import-created bearer strings are not returned, but those principal rows are
+persisted. `provision_member2_reader` creates its broader-purpose principal
+before comparing database identity to the selected manifest, so an identity
+mismatch can leave an orphaned principal row. Retrying an import can create
+additional principal rows even though event/coverage streams resume from
+checkpoints. No supported service-principal rotation or revocation API/CLI was
+found.
+
+**Request:** make import provisioning free of hidden broad-purpose principals
+or idempotently limited to an approved least-privilege set; provide a supported
+rotation/revocation path; and ensure the read-only tenant/source/purpose grants
+can be verified against immutable dataset identity before reads. Do not use
+direct SQLite edits as a workaround. Member 1 owns implementation; Member 2
+cannot safely retry or provision a live pilot at scale until this lifecycle is
+resolved. This is a request, not an adopted API or schema change.

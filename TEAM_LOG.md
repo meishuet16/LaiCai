@@ -72,6 +72,33 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T17:23:08Z — Member 2 AI coding assistant — Audit authorized data access and FULL readiness
+
+- **Workstream:** Part 2 / Part 1 integration / Docs / QA
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `docs(member2): audit authorized dataset readiness and FULL provisioning blockers` (Prompt 28 pending; uncommitted)
+- **Issue / task:** Member 2 Prompt 28; no ticket
+- **Files changed:** `docs/MEMBER2_AUTHORIZED_FULL_DATASET_READINESS.md`, `docs/MEMBER2_TO_MEMBER1_CONTRACT_REQUESTS.md`, and this log.
+- **What changed:**
+  - Reviewed and checkpointed the exact Prompt 27 change set as `ed7493f290cb0a9732a37318ea0b2bc32a9d430b`; current branch is `integration/member2-main-sqlite`.
+  - Reverified the STANDARD v1.2 manifest and all 20 listed file hashes/sizes; reverified the prior tenant-01 prepared manifest and all eight output hashes; the STANDARD SQLite file hash matches the recorded prior verified database. No private SQLite rows were queried.
+  - Confirmed the documented FULL artifact/database paths remain absent and `RETAINIQ_MODEL_TOKEN` is absent. No credentials were provisioned, no authenticated calls were made, and no data pilot ran.
+  - Documented current least-privilege read flow, extra `model_artifact_write`/`billing_valuation` principal grants in convenience/import paths, missing service-principal revoke/rotation, bounded FULL provisioning steps, and explicitly estimated (not measured) compute/storage.
+  - Updated the Member 1 contract request with the newly confirmed principal-lifecycle/import side effects. No shared API/schema policy was changed.
+- **Why it changed:** Prompt 28 requires evidence-backed STANDARD/FULL artifact status, safe reader setup, bounded-pilot decision, and a reviewed FULL provisioning plan without creating/importing data absent prerequisites.
+- **Contract / database / API impact:** Documentation/request only; no API, database, source artifact, split, calibration, label, TEST, or reliability policy changed. Member 1 action requested for least-privilege principal lifecycle, import idempotency, health/completeness, and bounded reads.
+- **Tests / verification:**
+  - `.\.venv\Scripts\python.exe -B -m pytest -q tests\test_dataset_readiness.py tests\test_sqlite_data_adapter.py tests\test_data_freshness.py tests\test_reliability.py tests\test_label_builder.py tests\test_historical_dataset_preparation.py tests\test_cross_member_policy_readiness.py tests\test_cross_member_integration.py tests\test_data_foundation.py tests\test_temporal_splits.py --basetemp .pytest-tmp-p28-focused` — **PASS** — 181 passed in 11.06s; fixture/test evidence, not live authorization.
+  - `.\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p28` — **PASS** — 454 passed, 0 failed/errors/skipped, 24 existing SHAP warnings in 19.43s; warnings unsuppressed.
+  - STANDARD source manifest and 20 artifacts — **PASS**; prepared v4 manifest and 8 artifacts — **PASS**; SQLite SHA-256 matches prior verified checksum. Hash-only checks; no record reads.
+  - Authenticated pilot and FULL pilot — **NOT RUN** — reader token absent; FULL artifact/database absent. Authenticated data API calls: 0.
+  - CLI help/source inspection — **PASS** for documented generator/importer/provisioner options; generation/import/provisioning were not invoked.
+  - 11 package imports — **PASS**; AST/syntax parse — **PASS** for 79 Python files; `git diff --check` — **PASS**. No files are staged; changed paths are documentation/log only and contain no credentials or private rows.
+- **Data / model / ROI evidence:** Synthetic-only provenance. No new observations or outcomes, corrected live freshness counts, labels, model, calibration, metrics, or claims. Prior v4 reliability aggregates are explicitly pre-correction; FULL storage/runtime figures are linear estimates only.
+- **Known issues / blockers:** STANDARD reader credential unavailable. FULL manifest/database absent. No supported service-principal revocation/rotation was found; import retries can add extra service-principal rows. Source operational-health/completeness evidence remains unavailable. Training and operational scoring remain blocked.
+- **Next action / handoff:** Member 1 to provide safe principal lifecycle/import behavior and health/batch contracts; authorized operator to securely inject a tenant-01 read-only `RETAINIQ_MODEL_TOKEN`. Then execute the bounded STANDARD pilot before any separately approved FULL generation/import. Prompt 28 stays uncommitted; no push or merge.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T17:14:17Z — Member 2 AI coding assistant — Correct source-state attribution and assess FULL feasibility
 
 - **Workstream:** Part 2 / Part 1 integration / Docs / QA
