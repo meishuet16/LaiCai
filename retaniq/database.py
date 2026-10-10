@@ -238,7 +238,14 @@ class DatabaseConnection:
             return self._raw_connection.execute(statement, parameters)
         try:
             cursor = self._raw_connection.cursor()
-            cursor.execute(_postgresql_placeholders(statement), parameters)
+            # Passing an empty parameter sequence makes psycopg parse literal
+            # percent signs as placeholders (for example PostgreSQL's
+            # format('%I', identifier) inside a DO block). None selects the
+            # no-parameters protocol and preserves such SQL unchanged.
+            cursor.execute(
+                _postgresql_placeholders(statement),
+                None if parameters == () else parameters,
+            )
             return cursor
         except Exception as error:
             if getattr(error, "sqlstate", None) and str(error.sqlstate).startswith("23"):

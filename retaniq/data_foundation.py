@@ -188,7 +188,12 @@ def normalize_timestamp(value: Any) -> str:
 
 
 @contextmanager
-def _db(path: str | Path | DatabaseConfig, *, postgresql: bool = False):
+def _db(
+    path: str | Path | DatabaseConfig,
+    *,
+    postgresql: bool = False,
+    principal: ReadPrincipal | None = None,
+):
     """Open one explicitly supported repository path; never fall back silently."""
     config = resolve_database_config(path)
     if config.is_postgresql and not postgresql:
@@ -198,6 +203,30 @@ def _db(path: str | Path | DatabaseConfig, *, postgresql: bool = False):
     connection = connect_database(config)
     try:
         with connection:
+            if config.is_postgresql and principal is not None:
+                if not isinstance(principal, (IntegrationPrincipal, ServicePrincipal)):
+                    raise DataFoundationError("unauthorized")
+                if not isinstance(principal.tenant_id, str) or not principal.tenant_id:
+                    raise DataFoundationError("unauthorized")
+                connection.execute(
+                    "SELECT set_config('retaniq.tenant_id', ?, true)",
+                    (principal.tenant_id,),
+                )
+                if isinstance(principal, ServicePrincipal):
+                    # The artifact-writer capability can read only the
+                    # authorization rows needed by the shared repository
+                    # checks. RLS uses this transaction-local source context;
+                    # as with tenant_id, it is trusted only when supplied by
+                    # the authenticated backend and is not proof against a
+                    # caller holding the database credential.
+                    connection.execute(
+                        "SELECT set_config('retaniq.authorized_sources', ?, true)",
+                        (",".join(principal.authorized_sources),),
+                    )
+                    connection.execute(
+                        "SELECT set_config('retaniq.service_principal_id', ?, true)",
+                        (principal.service_principal_id,),
+                    )
             yield connection
     finally:
         # ``with connection`` already closes on the normal path.  close() is
@@ -370,7 +399,7 @@ def bind_dataset_identity(
 def get_dataset_identity(path: str | Path, principal: ReadPrincipal) -> dict[str, str]:
     """Return immutable dataset provenance to an authorized tenant reader."""
     _require_purposes(principal, "retention_inference")
-    with _db(path, postgresql=True) as connection:
+    with _db(path, postgresql=True, principal=principal) as connection:
         _assert_read_principal(connection, principal)
         row = connection.execute("SELECT * FROM dataset_identity WHERE singleton_id = 1").fetchone()
         if row is None or row["dataset_type"] != "synthetic_saas":
@@ -688,18 +717,25 @@ def authenticate_integration(path: str | Path, token: str | None) -> Integration
         raise DataFoundationError("unauthorized")
     digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
     with _db(path, postgresql=True) as connection:
-        row = connection.execute(
-            "SELECT integration_id, tenant_id, source, authorized_purposes_json, schema_version, mapping_version "
-            "FROM integrations WHERE token_digest = ?",
-            (digest,),
-        ).fetchone()
-        categories = () if row is None else tuple(
-            item["category"] for item in connection.execute(
-                "SELECT category FROM integration_event_categories "
-                "WHERE tenant_id = ? AND source = ? ORDER BY category",
-                (row["tenant_id"], row["source"]),
+        if connection.backend == "postgresql":
+            rows = connection.execute(
+                "SELECT * FROM retaniq_authenticate_integration(?)", (digest,),
             ).fetchall()
-        )
+            row = rows[0] if rows else None
+            categories = tuple(item["category"] for item in rows if item["category"] is not None)
+        else:
+            row = connection.execute(
+                "SELECT integration_id, tenant_id, source, authorized_purposes_json, schema_version, mapping_version "
+                "FROM integrations WHERE token_digest = ?",
+                (digest,),
+            ).fetchone()
+            categories = () if row is None else tuple(
+                item["category"] for item in connection.execute(
+                    "SELECT category FROM integration_event_categories "
+                    "WHERE tenant_id = ? AND source = ? ORDER BY category",
+                    (row["tenant_id"], row["source"]),
+                ).fetchall()
+            )
     if row is None:
         raise DataFoundationError("unauthorized")
     return IntegrationPrincipal(
@@ -763,10 +799,15 @@ def authenticate_service_principal(path: str | Path, token: str | None) -> Servi
         raise DataFoundationError("unauthorized")
     digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
     with _db(path, postgresql=True) as connection:
-        row = connection.execute(
-            "SELECT service_principal_id, tenant_id, role, authorized_sources_json, authorized_purposes_json "
-            "FROM service_principals WHERE token_digest = ?", (digest,),
-        ).fetchone()
+        if connection.backend == "postgresql":
+            row = connection.execute(
+                "SELECT * FROM retaniq_authenticate_service_principal(?)", (digest,),
+            ).fetchone()
+        else:
+            row = connection.execute(
+                "SELECT service_principal_id, tenant_id, role, authorized_sources_json, authorized_purposes_json "
+                "FROM service_principals WHERE token_digest = ?", (digest,),
+            ).fetchone()
     if row is None:
         raise DataFoundationError("unauthorized")
     return ServicePrincipal(
@@ -883,7 +924,7 @@ def update_mapping_version(
 ) -> IntegrationPrincipal:
     """Record an operator-approved source mapping version during local import setup."""
     mapping_version = _validate_id(mapping_version)
-    with _db(path, postgresql=True) as connection:
+    with _db(path, postgresql=True, principal=principal) as connection:
         row = _assert_principal(connection, principal)
         connection.execute(
             "UPDATE integrations SET mapping_version = ? WHERE integration_id = ?",
@@ -904,7 +945,7 @@ def record_integration_failure(
 ) -> None:
     code = error_code if error_code in SAFE_MESSAGES else "invalid_event"
     at = normalize_timestamp(occurred_at) if occurred_at else _utc_now()
-    with _db(path, postgresql=True) as connection:
+    with _db(path, postgresql=True, principal=principal) as connection:
         row = _assert_principal(connection, principal)
         connection.execute(
             "UPDATE integrations SET last_failure_at = ?, last_failure_code = ? WHERE integration_id = ?",
@@ -1299,7 +1340,7 @@ def ingest_event(
             principal, payload, trusted_source_available_at=trusted_source_available_at,
         )
         digest = _event_hash(event)
-        with _db(path, postgresql=True) as connection:
+        with _db(path, postgresql=True, principal=principal) as connection:
             integration = _assert_principal(connection, principal)
             if event["category"] not in principal.authorized_categories:
                 raise DataFoundationError("event_category_not_authorized")
@@ -1524,7 +1565,7 @@ def get_events_as_of(
         raise DataFoundationError("invalid_contract")
     _require_purposes(principal, "retention_inference")
     include_billing = "billing_valuation" in principal.authorized_purposes
-    with _db(path, postgresql=True) as connection:
+    with _db(path, postgresql=True, principal=principal) as connection:
         authorized_sources = _assert_read_principal(connection, principal)
         category_filter, category_params = _authorized_category_filter(
             connection, principal, authorized_sources, table_alias="ce",
@@ -1658,7 +1699,7 @@ def record_observation_coverage(
         json.dumps(normalized, sort_keys=True, separators=(",", ":")).encode("utf-8"),
     ).hexdigest()
     _require_purposes(principal, "identity_mapping")
-    with _db(path, postgresql=True) as connection:
+    with _db(path, postgresql=True, principal=principal) as connection:
         _assert_principal(connection, principal)
         if connection.execute("SELECT 1 FROM dataset_identity WHERE singleton_id = 1").fetchone() is None:
             raise DataFoundationError("invalid_contract")
@@ -1916,7 +1957,7 @@ def get_observation_coverage_as_of(
     if source_category is not None and source_category not in EVENT_CATEGORIES:
         raise DataFoundationError("invalid_contract")
     _require_purposes(principal, "retention_inference")
-    with _db(path, postgresql=True) as connection:
+    with _db(path, postgresql=True, principal=principal) as connection:
         sources = _assert_read_principal(connection, principal)
         category_filter, category_params = _authorized_category_filter(
             connection, principal, sources, table_alias="observation_coverage", category_column="source_category",
@@ -1971,7 +2012,7 @@ def get_subscriptions_as_of(
 ) -> list[dict[str, Any]]:
     customer_id = _validate_id(customer_id)
     cutoff = normalize_timestamp(as_of)
-    with _db(path, postgresql=True) as connection:
+    with _db(path, postgresql=True, principal=principal) as connection:
         authorized_sources = _assert_read_principal(connection, principal)
         category_filter, category_params = _authorized_category_filter(
             connection, principal, authorized_sources, table_alias="ce",
@@ -2057,7 +2098,7 @@ def get_account_snapshot_as_of(
 ) -> dict[str, Any]:
     customer_id = _validate_id(customer_id)
     cutoff = normalize_timestamp(as_of)
-    with _db(path, postgresql=True) as connection:
+    with _db(path, postgresql=True, principal=principal) as connection:
         authorized_sources = _assert_read_principal(connection, principal)
         _require_purposes(principal, "retention_inference")
         source_placeholders = ",".join("?" for _ in authorized_sources)
@@ -2290,7 +2331,7 @@ def store_feature_snapshot(
     # underscore, which the canonical ID alphabet intentionally excludes.
     feature_snapshot_id = secrets.token_hex(18)
     encoded = json.dumps(features, sort_keys=True, separators=(",", ":"), allow_nan=False)
-    with _db(path, postgresql=True) as connection:
+    with _db(path, postgresql=True, principal=principal) as connection:
         _assert_artifact_customer(connection, principal, customer_id)
         try:
             connection.execute(
@@ -2348,7 +2389,7 @@ def store_churn_label(
         raise DataFoundationError("invalid_contract")
     elif normalized_label == "unknown" and normalized_outcome is not None:
         raise DataFoundationError("invalid_contract")
-    with _db(path, postgresql=True) as connection:
+    with _db(path, postgresql=True, principal=principal) as connection:
         _assert_artifact_customer(connection, principal, customer_id)
         try:
             connection.execute(
@@ -2414,7 +2455,7 @@ def store_prediction(
     feature_snapshot_id = prediction.get("feature_snapshot_id")
     if feature_snapshot_id is not None:
         feature_snapshot_id = _validate_id(feature_snapshot_id)
-    with _db(path, postgresql=True) as connection:
+    with _db(path, postgresql=True, principal=principal) as connection:
         _assert_artifact_customer(connection, principal, customer_id)
         if feature_snapshot_id is not None:
             snapshot = connection.execute(
@@ -2449,7 +2490,7 @@ def get_integration_health(
     path: str | Path,
     principal: IntegrationPrincipal,
 ) -> list[dict[str, Any]]:
-    with _db(path, postgresql=True) as connection:
+    with _db(path, postgresql=True, principal=principal) as connection:
         _assert_principal(connection, principal)
         rows = connection.execute(
         "SELECT tenant_id, source, authorized_purposes_json, schema_version, mapping_version, created_at, "
@@ -2487,7 +2528,7 @@ def get_tenant_integration_health(
     if not isinstance(principal, ServicePrincipal) or principal.role not in {"admin", "operator"}:
         raise DataFoundationError("unauthorized")
     _require_purposes(principal, "integration_health")
-    with _db(path, postgresql=True) as connection:
+    with _db(path, postgresql=True, principal=principal) as connection:
         _assert_service_principal(connection, principal)
         placeholders = ",".join("?" for _ in principal.authorized_sources)
         rows = connection.execute(

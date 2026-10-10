@@ -71,6 +71,8 @@ class PostgreSQLWSGIAPITests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.config = _CONFIG
+        from postgresql_security_support import bootstrap_test_roles
+        bootstrap_test_roles(cls.config)
         initialize_database(cls.config, migrate_postgresql=True)
         cls.server = psycopg.connect(cls.config.postgresql_dsn, connect_timeout=4)
         identity = cls.server.execute(

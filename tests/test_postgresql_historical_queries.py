@@ -306,6 +306,8 @@ class PostgreSQLHistoricalQueryTests(HistoricalQueryContract, unittest.TestCase)
     @classmethod
     def setUpClass(cls):
         cls.db = _POSTGRES_CONFIG
+        from postgresql_security_support import bootstrap_test_roles
+        bootstrap_test_roles(cls.db)
         initialize_database(cls.db, migrate_postgresql=True)
         with connect_database(cls.db) as connection:
             identity = connection.execute("SELECT dataset_id FROM dataset_identity WHERE singleton_id=1").fetchone()

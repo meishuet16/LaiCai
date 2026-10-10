@@ -284,6 +284,8 @@ class PostgreSQLArtifactPersistenceTests(ArtifactPersistenceContract, unittest.T
     @classmethod
     def setUpClass(cls):
         cls.db = _POSTGRES_TEST_CONFIG
+        from postgresql_security_support import bootstrap_test_roles
+        bootstrap_test_roles(cls.db)
         initialize_database(cls.db, migrate_postgresql=True)
 
 

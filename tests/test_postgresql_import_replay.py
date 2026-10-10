@@ -48,6 +48,8 @@ _PARENT_CONFIG = _postgres_test_config()
 class PostgreSQLImportReplayTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        from postgresql_security_support import bootstrap_test_roles
+        bootstrap_test_roles(_PARENT_CONFIG)
         cls.temp = tempfile.TemporaryDirectory()
         cls.root = Path(cls.temp.name)
         dataset = generate_dataset(

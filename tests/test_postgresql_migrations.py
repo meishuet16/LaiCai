@@ -28,7 +28,7 @@ class PostgreSQLMigrationUnitTests(unittest.TestCase):
         migrations = discover_migrations()
         self.assertEqual(
             [migration.version for migration in migrations],
-            ["001", "002", "003", "004"],
+            ["001", "002", "003", "004", "005", "006", "007"],
         )
         self.assertTrue(all(len(migration.checksum) == 64 for migration in migrations))
         self.assertEqual(migrations, discover_migrations())
@@ -203,6 +203,8 @@ class PostgreSQLMigrationIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.config, _database_name = _TEST_TARGET
+        from postgresql_security_support import bootstrap_test_roles
+        bootstrap_test_roles(cls.config)
         cls.schema = f"retaniq_06c_{uuid4().hex[:12]}"
         cls.result = run_postgresql_migrations(cls.config, schema=cls.schema)
 
@@ -222,8 +224,8 @@ class PostgreSQLMigrationIntegrationTests(unittest.TestCase):
         return connection
 
     def test_fresh_schema_tables_columns_types_constraints_and_indexes(self):
-        self.assertEqual(self.result.applied_versions, ("001", "002", "003", "004"))
-        self.assertEqual(self.result.current_version, "004")
+        self.assertEqual(self.result.applied_versions, ("001", "002", "003", "004", "005", "006", "007"))
+        self.assertEqual(self.result.current_version, "007")
         connection = self._connect()
         try:
             rows = connection.execute(
@@ -438,7 +440,7 @@ class PostgreSQLMigrationIntegrationTests(unittest.TestCase):
     def test_constraints_types_round_trip_and_migration_rerun(self):
         rerun = run_postgresql_migrations(self.config, schema=self.schema)
         self.assertEqual(rerun.applied_versions, ())
-        self.assertEqual(rerun.current_version, "004")
+        self.assertEqual(rerun.current_version, "007")
 
         connection = self._connect()
         try:
@@ -659,8 +661,8 @@ class PostgreSQLMigrationIntegrationTests(unittest.TestCase):
                     lambda _index: run_postgresql_migrations(self.config, schema=schema),
                     range(2),
                 ))
-            self.assertEqual(sorted(len(result.applied_versions) for result in results), [0, 4])
-            self.assertEqual({result.current_version for result in results}, {"004"})
+            self.assertEqual(sorted(len(result.applied_versions) for result in results), [0, 7])
+            self.assertEqual({result.current_version for result in results}, {"007"})
         finally:
             connection = self._connect()
             try:

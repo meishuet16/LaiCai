@@ -74,6 +74,9 @@ to SQLite's logical milestones:
 | `002_authorized_services_and_subscription_owners.sql` | Service principals, subscription ownership registry, and ownership FKs. |
 | `003_integration_event_categories.sql` | Explicit category grants and legacy-safe backfill. |
 | `004_dataset_identity_and_observation_coverage.sql` | Dataset identity, observation coverage, and resumable import checkpoints. |
+| `005_rls_and_least_privilege.sql` | Locally tested capability-role grants, tenant RLS, global-table restrictions, and trusted-backend token authentication lookup. See the separate 07B-1 security acceptance document. |
+| `006_artifact_authorization_scope.sql` | Source-scoped authorization reads needed for real artifact persistence under the artifact-writer capability; no source-event reads. |
+| `007_restore_global_maintenance_grants.sql` | Forward correction restoring only maintenance grants on global dataset/checkpoint tables that migration 005's final revoke removed. |
 
 `retaniq.postgresql_migrations` validates strict, contiguous `NNN_name.sql`
 versions, reads UTF-8 files, and computes SHA-256 over the exact file bytes.
@@ -157,10 +160,12 @@ exception handling. Prompt 06D-2 must add reviewed historical-query and
 coverage compatibility while preserving temporal availability, MRR currency
 rules, dataset checks, and all current SQLite tests.
 
-The schema contains no RLS policies. Application authorization is not a
-replacement for database-enforced row security. Phase 07 must first agree the
-runtime database role, authenticated tenant context, connection-pool reset,
-and trusted context-setting design; then implement and verify RLS independently.
+At the 06C milestone this schema had no RLS policies; application
+authorization was not considered a replacement for database-enforced row
+security. Prompt 07B-1 now adds migrations 005–007 and a role bootstrap. Its
+partially verified local status, trust boundary, migrations 005–007, and
+remaining limitations are documented in
+[the 07B-1 security acceptance](MEMBER1_POSTGRESQL_RLS_AND_AUTHORIZATION.md).
 No Supabase database is initialized by this runner, and no production-ready
 claim is made.
 

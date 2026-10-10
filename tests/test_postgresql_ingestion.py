@@ -70,6 +70,8 @@ class PostgreSQLIngestionParityTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.database = _TEST_CONFIG
+        from postgresql_security_support import bootstrap_test_roles
+        bootstrap_test_roles(cls.database)
         initialize_database(cls.database, migrate_postgresql=True)
         with connect_database(cls.database) as connection:
             timestamp = datetime(2026, 10, 1, tzinfo=timezone.utc)
