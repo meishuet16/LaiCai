@@ -1,8 +1,7 @@
-import type { ActionId, ActionProposal, Capacity, DecisionCase, DecisionInput, ExecutionInput } from '../domain/decision';
-import type { Money, Role } from '../domain/customer';
+import type { ActionId, ActionProposal, Capacity, DecisionCase, DecisionInput, ExecutionInput } from '../domain/decision.ts';
+import type { Currency, Money, Role } from '../domain/customer.ts';
 
-const cutoff = '2026-10-10T00:00:00Z';
-const money = (amount_minor: number, currency: 'MYR' | 'SGD'): Money => ({ amount_minor, currency });
+const money = (amount_minor: number, currency: Currency): Money => ({ amount_minor, currency });
 const auditTimes: Record<string, string> = { c01: '2026-10-08T08:00:00Z', c02: '2026-10-09T08:00:00Z', c03: '2026-10-05T08:00:00Z', c04: '2026-10-09T09:00:00Z', c05: '2026-10-09T08:00:00Z', c06: '2026-10-09T07:00:00Z', c07: '2026-10-09T09:30:00Z', c08: '2026-10-08T08:00:00Z', c09: '2026-10-09T08:00:00Z' };
 const audit = (id: string, detail: string) => [{ id: `demo_audit_${id}_1`, at: auditTimes[id], actor: 'demo_policy_v1', type: 'ROUTED', detail }];
 const seeds: DecisionCase[] = [
@@ -20,7 +19,7 @@ let cases = structuredClone(seeds);
 let sequence = 2;
 const clone = <T,>(value: T): T => structuredClone(value);
 const active = (item: DecisionCase) => ['HUMAN_REVIEWED', 'ASSIGNED', 'EXECUTED', 'FOLLOW_UP_DUE', 'FOLLOW_UP_COMPLETE'].includes(item.status);
-const budget = [money(50000, 'MYR'), money(30000, 'SGD')];
+const budget: Money[] = [money(50000, 'MYR'), money(30000, 'SGD')];
 
 export function proposalsFor(item: DecisionCase): ActionProposal[] {
   const currency = item.customer_id === 'c08' ? 'SGD' : 'MYR';
@@ -38,7 +37,7 @@ export function proposalsFor(item: DecisionCase): ActionProposal[] {
 export function getCapacity(): Capacity {
   const activeCases = cases.filter(active);
   const used = budget.map(limit => money(cases.reduce((sum, item) => sum + (active(item) && item.estimated_cost?.currency === limit.currency ? item.estimated_cost.amount_minor : 0), 0), limit.currency));
-  return { review_slots: 4, used_review_slots: activeCases.length, pending: cases.filter(item => ['PROPOSED', 'HUMAN_REVIEWED', 'DEFERRED'].includes(item.status)).length, overdue: cases.filter(item => item.due_at && item.due_at < cutoff && !['REJECTED', 'CLOSED_NO_ACTION', 'CANCELLED'].includes(item.status)).length, staff_minutes_total: 120, staff_minutes_used: activeCases.reduce((sum, item) => sum + item.estimated_minutes, 0), budgets: clone(budget), budget_used: used, investigation_queue: cases.filter(item => item.route === 'HUMAN_REVIEW' && ['PROPOSED', 'DEFERRED'].includes(item.status)).length };
+  return { review_slots: 4, used_review_slots: activeCases.length, pending: cases.filter(item => ['PROPOSED', 'HUMAN_REVIEWED', 'DEFERRED'].includes(item.status)).length, overdue: null, staff_minutes_total: 120, staff_minutes_used: activeCases.reduce((sum, item) => sum + item.estimated_minutes, 0), budgets: clone(budget), budget_used: used, investigation_queue: cases.filter(item => item.route === 'HUMAN_REVIEW' && ['PROPOSED', 'DEFERRED'].includes(item.status)).length };
 }
 
 export const decisionService = {

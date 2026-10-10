@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useApp } from './AppContext';
 import { navItems, timelinePath, type Section } from './routes';
-import type { Currency, Horizon, Role } from '../domain/customer';
+import type { Currency, DataMode, Horizon, Role } from '../domain/customer';
 import { CommandCenterPage } from '../features/CommandCenterPage';
 import { DecisionCasesPage } from '../features/DecisionCasesPage';
 import { DecisionCaseDetailPage } from '../features/DecisionCaseDetailPage';
@@ -62,7 +62,7 @@ function RouteDrawer({ eyebrow, title, onClose, children, centered = false }: { 
 }
 
 export function AppShell() {
-  const { route, navigate, closeDrawer, query, setQuery, role, setRole, horizon, setHorizon, currency, setCurrency } = useApp();
+  const { route, navigate, closeDrawer, role, setRole, horizon, setHorizon, currency, setCurrency, dataMode, setDataMode } = useApp();
   const mainRef = useRef<HTMLElement>(null);
   const previousPageKey = useRef('');
   const scrollByPage = useRef<Record<string, number>>({});
@@ -100,27 +100,23 @@ export function AppShell() {
           return <a key={item.section} href={href} aria-current={active ? 'page' : undefined} className={`nav-link${active ? ' active' : ''}`} onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navigate(href); } }}><NavGlyph section={item.section} /><span>{item.label}</span></a>;
         })}
       </nav>
-      <div className="sidefoot"><small>SYNTHETIC DEMO</small><b>tenant_abc</b><span>Fixture data · no live backend</span></div>
     </aside>
     <div className="main">
       <header className="topbar">
         <div className="page-heading"><h1>{title}</h1>{subtitles[activePage] && <p className="subtitle">{subtitles[activePage]}</p>}</div>
         <div className="topbar-tools">
-          <div className="search"><span aria-hidden="true">⌕</span><input aria-label="Search demo accounts" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search customers or IDs" /></div>
-          <span className="demo-tag tenant-tag">Demo tenant <b>tenant_abc</b></span>
-          <label className="header-control">Role<select value={role} onChange={event => setRole(event.target.value as Role)}><option>Manager</option><option>CSM</option><option>Admin</option><option>Viewer</option></select></label>
-          <span className="demo-tag asof-tag">As of 10 Oct 2026 · 00:00 UTC</span>
-          {activePage !== 'command-center' && <label className="header-control">Currency<select value={currency} onChange={event => setCurrency(event.target.value as Currency | 'All')}><option>All</option><option>MYR</option><option>SGD</option></select></label>}
-          {activePage !== 'command-center' && <div className="horizon-control"><span>Horizon</span><div className="seg" aria-label="Prediction horizon">{([7, 14, 30] as Horizon[]).map(days => <button aria-pressed={horizon === days} className={horizon === days ? 'on' : ''} onClick={() => setHorizon(days)} key={days}>{days}d</button>)}</div></div>}
+          <label className="header-control">Data source<select value={dataMode} onChange={event => setDataMode(event.target.value as DataMode)}><option value="connected">Connected · unavailable</option><option value="demo_fixture">Sample data</option></select></label>
+          {activePage === 'predictions' || activePage === 'cases' ? <label className="header-control">Currency<select value={currency} onChange={event => setCurrency(event.target.value as Currency | 'All')}><option>All</option><option>MYR</option><option>USD</option><option>SGD</option></select></label> : null}
+          {activePage === 'predictions' || activePage === 'timeline' ? <div className="horizon-control"><span>Horizon</span><div className="seg" aria-label="Prediction horizon">{([7, 14, 30] as Horizon[]).map(days => <button aria-pressed={horizon === days} className={horizon === days ? 'on' : ''} onClick={() => setHorizon(days)} key={days}>{days}d</button>)}</div></div> : null}
+          {activePage === 'cases' || activePage === 'timeline' ? <label className="header-control">Role preview<select aria-label="Role preview (not authentication)" value={role} onChange={event => setRole(event.target.value as Role)}><option>Manager</option><option>CSM</option><option>Admin</option><option>Viewer</option></select></label> : null}
         </div>
       </header>
       <main ref={mainRef}>
-        {activePage !== 'command-center' && <div className="notice bluenote global-demo-notice"><b>Demo environment</b><span>Synthetic fixtures only. No live data source, trained model, or authenticated role is connected.</span></div>}
         <div className="page-stack">
           {pages.map(page => <section key={page.section} className="page-view" hidden={activePage !== page.section} aria-hidden={activePage !== page.section} inert={activePage !== page.section || drawerOpen} aria-label={navItems.find(item => item.section === page.section)?.label}>{page.content}</section>)}
         </div>
         {route.section === 'prediction-detail' && <RouteDrawer eyebrow="Churn Prediction · Account evidence" title="Prediction details" onClose={closeDrawer} centered><PredictionDetailPage predictionId={route.predictionId} /></RouteDrawer>}
-        {route.section === 'case-detail' && <RouteDrawer eyebrow="Retention Actions · Case workflow" title="Retention case details" onClose={closeDrawer}><DecisionCaseDetailPage key={route.caseId} caseId={route.caseId} /></RouteDrawer>}
+        {route.section === 'case-detail' && <RouteDrawer eyebrow="Retention Actions" title="Retention case details" onClose={closeDrawer} centered><DecisionCaseDetailPage key={route.caseId} caseId={route.caseId} /></RouteDrawer>}
       </main>
     </div>
   </div>;

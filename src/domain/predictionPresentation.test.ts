@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { fixtureDataSource } from '../services/retainIQService.ts';
-import { isNonForecastAccount, predictionWarnings, probabilityAt, riskBandAt } from './predictionPresentation.ts';
+import { isNonForecastAccount, predictionWarnings, probabilityAt } from './predictionPresentation.ts';
 
 test('prediction presentation uses the stored horizon and keeps non-scores unscored', async () => {
   const accounts = await fixtureDataSource.listAccounts();
@@ -11,9 +11,7 @@ test('prediction presentation uses the stored horizon and keeps non-scores unsco
   assert.equal(probabilityAt(scored.prediction, 14), 0.45);
   assert.equal(probabilityAt(scored.prediction, 30), 0.7);
   assert.equal(probabilityAt(abstained.prediction, 30), null);
-  assert.equal(riskBandAt(null), 'no_score');
-  assert.equal(riskBandAt(0.3), 'medium');
-  assert.equal(riskBandAt(0.6), 'high');
+  assert.equal(scored.prediction?.risk_bands_by_horizon, null);
 });
 
 test('known cancellations and ineligible accounts stay outside the forecast cohort', async () => {

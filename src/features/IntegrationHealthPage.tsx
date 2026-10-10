@@ -84,10 +84,11 @@ function suggestedCheck(title: string): string {
 }
 
 export function IntegrationHealthPage() {
-  const { status, data } = useIntegrationHealth();
+  const { status, data, error } = useIntegrationHealth();
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   if (status === 'loading') return <p role="status">Loading integration health…</p>;
+  if (status === 'unavailable') return <section className="card unavailable-state"><h2>Data Integration is not connected</h2><p>The current backend exposes integration health only through an authenticated integration/admin principal; this frontend has no browser-safe authenticated adapter.</p><p>Customer coverage, event counts, rejected records, and source-level observations are not available from the active API. No connection, import, or sync operation will be simulated.</p></section>;
   if (status === 'error' || !data) return <div role="alert" className="notice ambernote">Integration health could not be loaded.</div>;
 
   const selected = data.sources.find(source => source.source === selectedSource);
@@ -104,7 +105,8 @@ export function IntegrationHealthPage() {
   };
 
   return <>
-    <div className="integration-page-meta"><p className="muted page-intro">Source status, data coverage and quality signals from the current integration read model.</p><span className={`pill ${data.evidence_kind === 'synthetic' ? 'neutral' : 'good'}`}>{data.evidence_kind === 'synthetic' ? 'Synthetic fixture data' : 'Source-backed data'}</span></div>
+    <div className="integration-page-meta"><p className="muted page-intro">Source status, data coverage and quality signals from the selected data source.</p></div>
+    <div className="notice bluenote"><b>Canonical event semantics</b><span>Usage v1.2 primarily emits daily <code>usage_aggregate_updated</code> records; each aggregate describes that day’s session quantity, not one session. Payment failure is not churn, a cancellation request is not an effective cancellation, and an event-level cancellation is not automatically account-level churn.</span></div>
     <section className="metrics integration-metrics" aria-label="Source summary">
       <article className="quick"><small>Configured sources</small><strong>{data.sources.length}</strong><span>Fixture records; connection is not verified</span></article>
       <article className="quick"><small>Sources reporting</small><strong>{availableSources}</strong><span>Healthy or warning status in this read model</span></article>
@@ -116,7 +118,7 @@ export function IntegrationHealthPage() {
       <div className="section-head"><div><h2>Source health and freshness</h2><p className="muted">Occurrence time and availability/ingestion time are distinct fields.</p></div></div>
       <div className="tablewrap"><table><thead><tr><th>Source / type</th><th>Event types</th><th>Last successful sync</th><th>Latest event occurrence</th><th>Latest availability / ingestion</th><th>Freshness</th><th>Mapping</th><th>Rejected / errors</th><th>Status</th><th></th></tr></thead><tbody>
         {data.sources.map(source => <tr key={source.source}>
-          <td><b>{source.source}</b><small>Source type N/A — not supplied</small></td>
+          <td><b>{source.category}</b><small>{source.source}</small></td>
           <td>{source.event_types.length ? source.event_types.join(', ') : 'N/A'}</td>
           <td>{formatDateTime(source.last_success_at)}</td>
           <td>{formatDateTime(source.latest_occurred_at)}</td>

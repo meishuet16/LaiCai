@@ -1,47 +1,41 @@
-# RetainIQ frontend architecture — Five primary pages
+# RetainIQ frontend architecture
 
-This is a local, synthetic frontend foundation. No API, trained model, authenticated tenant, or persistent decision workflow is connected.
+The frontend keeps five primary pages and secondary detail drawers. It is currently a UI/integration shell, not a connected production retention system.
 
-## Navigation
+## Navigation and shared state
 
-`src/app/routes.ts` owns route parsing and URL generation. `AppContext` synchronizes route state with browser history, including Back/Forward and drawer closing. The five primary pages are Business Overview (`/command-center`), Data Integration (`/integrations`), Churn Prediction (`/predictions`), Retention Actions (`/cases`), and Customer Insights (`/customers/:customerId/timeline`). Existing prediction and case detail URLs (`/predictions/:predictionId`, `/cases/:caseId`) are secondary drawers over their parent pages, not primary navigation pages. All five page components stay mounted to preserve filters and scroll when switching between related drawers/pages.
+`src/app/routes.ts` owns the existing route parsing and URL generation for Business Overview (`/command-center`), Data Integration (`/integrations`), Churn Prediction (`/predictions`), Retention Actions (`/cases`), and Customer Insights (`/customers/:customerId/timeline`). Prediction and case detail routes remain secondary drawers. `AppContext` owns route, account-ID search, horizon, currency, role-demo control, and the explicit data mode.
 
-## State and data
+The shell does not claim an authenticated tenant, model cutoff, dataset identity, or wall-clock historical snapshot. Connected mode requires authorized server context that this frontend cannot currently obtain. A browser-selected tenant or URL value is not an authorization mechanism.
 
-`AppContext` holds route, search, horizon, currency, and the simulated demo role. The displayed tenant and role are fixture controls, not authorization. A future backend must derive tenant identity and enforce permissions server-side.
+## Explicit data modes
 
-`src/domain/customer.ts` defines the shared account, money, route, reliability, freshness, and prediction types. Money uses integer minor units plus currency. A scored prediction has distinct 7/14/30-day values and an immutable prediction ID. `src/services/retainIQService.ts` defines `RetainIQDataSource`; the current implementation supplies synthetic records. Later API adapters can implement the same interface without making pages own transport logic.
+`demo_fixture` is the initial view while customer/prediction and decision/capacity integrations are not connected. The user can explicitly select `connected`; services do not silently replace connection failures with fixtures. Customer/prediction, decision/capacity, and customer timeline reads then report unavailable because this checkout has no browser-safe authenticated API adapter or corresponding read endpoints. Data Integration also stays unavailable because the health endpoints require service-principal authorization and the browser has no approved credential flow.
 
-`useCustomers` and `useAccount` handle asynchronous loading and failure states. They cancel obsolete requests when unmounted or when an account changes. Pages show explicit loading, empty, error, and missing-record states.
+`demo_fixture` is labeled `DEMO FIXTURE — SAMPLE DATA`; these local illustrative records are not Synthetic SaaS v1.2 records, trained model predictions, observed outcomes, or durable decisions. The original illustrative company names and sample owners remain in this mode only. Fixture account IDs are display identifiers; authenticated tenant identity and prediction cutoff metadata are not invented. Case decisions remain browser-session simulations.
 
-## Data Integration and Churn Prediction
+## Domain and formatting
 
-`src/domain/integration.ts` and `src/services/integrationService.ts` define the source health, coverage, alert, and rejected-event read model. Data Integration keeps event occurrence and availability/ingestion timestamps distinct, links actionable checks to safe source details, and shows rejected-event metadata only in a redacted inspector. Missing source-level schema, separate quarantine counts, sensitivity, and provenance remain unavailable rather than inferred. The page omits Push API and Historical Replay panels; import, synchronization, replay, resolution, and report operations are not presented as available without a real authorized backend.
+`src/domain/customer.ts` holds customer, prediction, route, and money contracts. `src/domain/currency.ts` mirrors the current backend-supported currency-code snapshot, including MYR, USD, and SGD. Money is stored as integer minor units and formatted only at the display boundary. Unsupported currencies, invalid amounts, and absent values display as `N/A`. Aggregates are grouped by currency; no exchange conversion or cross-currency total is implied.
 
-Churn Prediction reads shared account records through `useCustomers`, with account search, currency, horizon, risk-band, route, reliability, freshness, segment, owner, sort, and pagination controls. Unknown-MRR accounts stay visible under a currency filter. The account table displays supplied p7/p14/p30 outputs directly, flags missing, out-of-range, or non-monotonic values without rewriting them, and keeps known cancellations and ineligible records in separate non-forecast sections. A URL such as `/predictions/demo_pred_c02` opens an accessible prediction detail drawer through `getPrediction`, preserving the parent table state. Baselines and model attributions are shown as unavailable unless supplied; uncertainty is explicitly not quantified. The app has no per-account risk-history stream or held-out evaluation results, so those states remain unavailable rather than becoming fabricated trends or metrics. Risk bands are display-only, consistently colored, and are not decision-policy thresholds.
+`src/domain/integration.ts` uses the backend canonical event vocabulary. Cancellation requests, payment failures, and event-level cancellations remain distinct evidence; none is relabeled as account-level churn. Usage aggregates are daily session quantities, not individual session events.
 
-## Retention Actions
+Predictions retain independent p7/p14/p30 values and explicit non-forecast states. Client code does not invent risk thresholds, repair invalid probability order, or synthesize historical score trends. Risk-band display is used only when supplied by the prediction policy. Scenario ROI is clearly hypothetical and fixture-only; it is not measured savings, causal uplift, or an authoritative backend decision result.
 
-`src/domain/decision.ts` defines the case, proposal, audit, decision, execution, and capacity contracts. `src/services/decisionService.ts` holds a synthetic in-memory case fixture and implements guarded demo decisions and execution records. Work Queue exposes all five routes, workload/capacity/budget indicators, ranked risk, evidence status, and case drawers. Case details include related timeline evidence, eligible proposals, required reason/owner inputs, confirmation, execution actuals, follow-up, outcome maturity gaps, and audit history. Strategy & ROI provides explicitly labeled budget/capacity what-if arithmetic, an assumption-only break-even calculator, and an unavailable historical-replay comparison state.
+## Page integration status
 
-The demo role selector is not authentication. Decisions are not persisted after reload and do not send messages or payment requests. Checks for slots, minutes, budget, cooldown, eligibility, and tenant/role permissions must move to a transactional, authenticated server before real use. The current service checks slot, staff-minute, and budget availability only in browser memory and does **not** claim concurrency safety. Synthetic fact IDs do not link to real source records.
+| Page | Connected status | Demo behavior |
+|---|---|---|
+| Business Overview | Customer, prediction, decision, outcome, and evaluation reads unavailable | Explicit fixture summary; currency-separated MRR/exposure; no source-backed claims |
+| Data Integration | Authenticated integration-health read is not connected in browser | Explicit example health/events; canonical types; safe metadata only |
+| Churn Prediction | Prediction and evaluation APIs unavailable | Fixture probabilities are identified as non-model samples; no fabricated risk history |
+| Retention Actions | Case, capacity, budget, and approval APIs unavailable | Session-only decisions/execution and a `SCENARIO ONLY` slider simulator for budget, review slots, action cost, margin, and assumed risk reduction |
+| Customer Insights | Customer, event, provenance, and feedback APIs unavailable | Small illustrative timeline; selected historical cutoff gates event availability |
 
-`src/domain/scenario.ts` is a pure one-month, assumption-only break-even calculator. It keeps absolute churn reduction in percentage points distinct from its share of baseline p30, marks mathematically impossible break-even, and returns `N/A` for invalid or missing inputs. It does not estimate causal treatment effect.
+## Current backend boundary
 
-## Business Overview
+The active backend exposes event ingestion and service-principal integration-health routes, but no browser-safe authenticated customer, subscription/MRR, prediction/evaluation, decision, timeline, or feedback read APIs. The frontend intentionally does not invent those endpoints. See [MEMBER4_INTEGRATION.md](MEMBER4_INTEGRATION.md) for the confirmed route boundary and minimum contracts needed for integration.
 
-`src/services/dashboardService.ts` joins the current account/case fixture read models and includes the separate Data Integration example for alert display. `src/domain/dashboard.ts` applies filters and derives coverage, route/workload, risk bands, currency-separated at-risk exposure, selected actions, recorded decisions, cost/effort, missingness, and available response latency. Business Overview exposes shared search/currency/horizon controls plus route, action status/type, owner, and segment filters. A visible workflow strip and chart selections link to customer, prediction, and case context.
+## Verification
 
-The account/case cohort has nine synthetic rows. Data Integration's larger source aggregate fixture is a **different example population**; its alert count is labeled separately and is not combined with account totals. There is only one prediction cutoff and no complete historical decision-event stream, source-backed outcome/feedback table, measured model metrics, or approved model registry. Trend, full lifecycle funnel/rates, outcome breakdown, maturity, PR-AUC/Brier/calibration/Recall@K, and candidate comparison therefore show `N/A` / `NOT_READY`, never fabricated evidence. Budget/effort actuals remain distinct from estimates, and absent actuals are not displayed as zero.
-
-## Customer Insights
-
-`src/domain/timeline.ts` defines read-only timeline events and a pure historical visibility gate. An event appears at a selected cutoff only when both its occurrence time and record availability time are no later than that cutoff. Prediction feedback uses the prediction's `as_of` anchor: an unfinished horizon is `PENDING`; once the window ends, the UI shows `NOT_CONNECTED` until a source-backed feedback record exists, never an inferred negative. `NOT_CONNECTED` is a display availability marker, not a canonical feedback label. Known cancellations and ineligible predictions are `INELIGIBLE`.
-
-`src/services/timelineService.ts` combines the account/prediction fixture, case audit snapshot, and a small set of redacted synthetic source events. `useTimeline` handles loading, missing records, and cancellation. Customer Insights offers UTC date-range, category, event-type, decision/source-only, horizon, and historical-cutoff filters; chronological events; timestamp/provenance detail; and links to the related Churn Prediction and Retention Actions drawers. Restricted payloads are absent, not client-side hidden behind the simulated role selector.
-
-The case fixture includes workflow history older than the single displayed prediction. Timeline case events therefore **do not claim** a `prediction_id` association. An action reconstructed from the case snapshot is labelled as such, not presented as an authoritative immutable execution record. Numeric feature/baseline snapshots, raw source links, source-backed outcomes, complete prediction-feedback records, and model-evaluation links remain `N/A`. A real API must supply immutable tenant-authorized events, true availability timestamps, historical account state, source permissions, explicit case/prediction linkage, and mature coverage evidence before production use.
-
-## Current limits and next handoff
-
-Business Overview, Customer Insights, and Data Integration/Churn Prediction figures are synthetic examples. Live integrations, predictions, role enforcement, durable decisions, authoritative audit history, and mature outcomes require their owning backend contracts. The five-page experience is a demo architecture, not a production-integrated retention system.
+The repository's `package.json` defines `npm run build`; it does not define lint, typecheck, or test scripts. Frontend tests use Node's test runner with TypeScript stripping. See the latest `TEAM_LOG.md` entry for commands actually executed and results.
