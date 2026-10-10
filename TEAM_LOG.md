@@ -72,6 +72,28 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T19:09:15Z — Member 2 AI coding assistant — Final prediction diagnostics and acceptance audit
+
+- **Workstream:** Part 2 / ML / Integration / Docs / QA
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `feat(member2): audit prediction quality and harden duplicate facts`
+- **Issue / task:** Member 2 Prompt 32; no ticket
+- **Files changed:** `examples/member2_prompt32_diagnostics.py`, `src/retainiq_prediction/point_in_time.py`, `tests/test_point_in_time.py`, `tests/test_feature_builder.py`, `tests/test_member2_prompt32_diagnostics.py`, `docs/MEMBER2_FINAL_ACCEPTANCE_REPORT.md`, and this log.
+- **What changed:**
+  - Added a TRAIN/VALIDATION-only, fail-closed diagnostic runner that verifies frozen artifact identity, saved model digests, feature order, class-1 score direction, snapshot/horizon alignment, model reload reproducibility, paired baseline metrics, personalization ablation, feature missingness, SHAP additivity, bounded outlier inference and batch timing. It writes aggregate-only JSON outside Git.
+  - Exact duplicate in-memory source facts are counted once; conflicting facts with the same tenant/customer/source/category/record identity are rejected. Added duplicate/conflict and deterministic large-quantity regression tests, plus imbalance/metric/ablation tests.
+  - Published the full acceptance report, including weak development metrics, comparison/ablation evidence, limitations, stress-test outcomes, held-out policy and Member 3/4 safety handoff.
+- **Why it changed:** Prompt 32 requires an evidence-based final Part 2 audit and fair development comparisons without opening TEST/CALIBRATION outcomes or presenting synthetic raw scores as production probabilities.
+- **Contract / database / API impact:** No shared PredictionOutput, label, feature, split, database or API contract changed. In-memory adapter now deduplicates exact repeated source records and fails closed on conflicting reuse of a scoped source identity. No Member 1/3/4 implementation changed.
+- **Tests / verification:**
+  - Consolidated Prompt 32 focused batch across 23 relevant test modules — **initial result: 332 passed, 1 failed, 24 warnings**; the single failure was an exact floating-point equality assertion in the new imbalance test, not application behavior. Changed it to approximate comparison, then `& .\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p32-fix tests\test_member2_prompt32_diagnostics.py` — **PASS, 5 passed**. The other initially passing tests were not rerun; no full repository suite was run for Prompt 32.
+  - `& .\.venv\Scripts\python.exe -B -m examples.member2_prompt32_diagnostics --prepared-dir 'C:\Users\User\RetainIQ-private\synthetic_saas_v1_2\prepared\synthetic-saas-v1-2-standard-s2026-970a9d231e68\tenant-01\member2-prep-v4' --prompt31-dir 'C:\Users\User\RetainIQ-private\synthetic_saas_v1_2\experiments\prompt31-standard-tenant01-demo-v1' --output-dir 'C:\Users\User\RetainIQ-private\synthetic_saas_v1_2\experiments\prompt32-diagnostics-v3'` — **PASS** — TRAIN/VALIDATION only; 9,026 raw scores reproduced; 43.9381 seconds; output aggregate SHA-256 `7fda46f721f0380aecf3def2d4fa7a4d22de53c9748864f78fdf738b31b65246`.
+  - Repository-local package imports — **PASS**; AST syntax parse — **PASS, 31 files**; `git diff --check` — **PASS**. SHAP/LightGBM warnings were not suppressed; 24 warnings in the focused batch were reviewed as output-shape warnings, and actual model attribution/additivity probes passed.
+- **Data / model / ROI evidence:** Synthetic-only STANDARD v1.2, seed 2026, tenant-01; immutable existing artifacts. No TEST or CALIBRATION row artifacts accessed. No source database changed and no private row-level artifacts, credentials or customer scores added to Git. Validation shows weak discrimination; constant TRAIN-prevalence Brier is better than LightGBM at both trained horizons. Personalization removal improves AP/Brier on these cohorts; this is not a general or causal claim. No real-world performance, retention, savings or ROI claim.
+- **Known issues / blockers:** 7d unsupported; CALIBRATION gates fail; 14d/30d uncalibrated metrics are weak and sparse; training evidence is synthetic-only; usage coverage is partial and baseline-feature missingness shifts by about 20 percentage points between TRAIN and VALIDATION. Stored Prompt 24 reliability/freshness aggregates predate the unknown-connectivity correction. Feature baseline windows differ from the older handoff description and overlap the 30d window. TEST remains sealed. Production prediction readiness is blocked.
+- **Next action / handoff:** Members 3/4 must retain `MODEL_BUNDLE_NOT_READY` and must not rank/use private raw 14d/30d scores as calibrated risk. Member 1/owners should reconcile historical coverage/freshness and the baseline window definition. Any future model work requires authorized representative data, mature horizon support, calibration support and separately authorized untouched evaluation.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T18:50:03Z — Member 2 AI coding assistant — Fit synthetic-only STANDARD horizon demos
 
 - **Workstream:** Part 2 / ML / Integration / Docs / QA

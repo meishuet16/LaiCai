@@ -174,3 +174,42 @@ def test_fact_provenance_fields_are_preserved():
     assert snapshot.usage_events[0].record_id == "usage-1"
     assert snapshot.usage_events[0].source == "product_app"
     assert snapshot.billing_events[0].payment_status == "failed"
+
+
+def test_exact_duplicate_source_fact_is_counted_once():
+    fact = UsageFact(
+        record_id="usage-idempotency-key",
+        tenant_id="tenant-a",
+        customer_id="customer-a",
+        source="product_app",
+        event_type="session_started",
+        occurred_at=at(2),
+        source_available_at=at(2),
+        received_at=at(3),
+    )
+
+    snapshot = InMemoryPointInTimeAdapter([fact, fact.model_copy(deep=True)]).snapshot_for(
+        "tenant-a", "customer-a", at(10)
+    )
+
+    assert [item.record_id for item in snapshot.usage_events] == [fact.record_id]
+    assert snapshot.excluded_record_counts["duplicate_source_record"] == 1
+
+
+def test_conflicting_facts_with_same_scoped_source_identity_fail_closed():
+    fact = UsageFact(
+        record_id="corrected-event-id",
+        tenant_id="tenant-a",
+        customer_id="customer-a",
+        source="product_app",
+        event_type="session_started",
+        occurred_at=at(2),
+        source_available_at=at(2),
+        received_at=at(3),
+    )
+    conflict = fact.model_copy(update={"occurred_at": at(3)})
+
+    with pytest.raises(ValueError, match="conflicting facts share"):
+        InMemoryPointInTimeAdapter([fact, conflict]).snapshot_for(
+            "tenant-a", "customer-a", at(10)
+        )

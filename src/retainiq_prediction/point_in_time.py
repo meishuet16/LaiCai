@@ -147,6 +147,7 @@ class InMemoryPointInTimeAdapter:
         availability_basis: dict[str, str] = {}
         excluded: dict[str, int] = {}
         limitations: list[str] = []
+        seen_source_records: dict[tuple[str, str, str, FactCategory, str], HistoricalFact] = {}
 
         def exclude(reason: str) -> None:
             excluded[reason] = excluded.get(reason, 0) + 1
@@ -154,6 +155,23 @@ class InMemoryPointInTimeAdapter:
         for fact in self._facts:
             if fact.tenant_id != tenant_id or fact.customer_id != customer_id:
                 continue
+
+            source_record_key = (
+                fact.tenant_id,
+                fact.customer_id,
+                fact.source,
+                fact.category,
+                fact.record_id,
+            )
+            previous = seen_source_records.get(source_record_key)
+            if previous is not None:
+                if previous != fact:
+                    raise ValueError(
+                        "conflicting facts share a tenant/customer/source record identity"
+                    )
+                exclude("duplicate_source_record")
+                continue
+            seen_source_records[source_record_key] = fact
 
             event_time = fact.point_in_time()
             if event_time > as_of:

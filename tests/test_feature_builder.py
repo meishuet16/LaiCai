@@ -239,3 +239,36 @@ def test_incomplete_coverage_keeps_observed_events_but_disables_valid_history():
     assert snapshot.features.sessions_prev_7d == 1
     assert snapshot.features.valid_usage_history is False
     assert snapshot.quality.usage_coverage_status is UsageCoverageStatus.PARTIAL
+
+
+def test_large_usage_quantity_is_counted_deterministically_without_overflow():
+    event_time = CUTOFF - timedelta(days=1)
+    aggregate = UsageFact(
+        record_id="large-quantity-fixture",
+        tenant_id="tenant-a",
+        customer_id="customer-a",
+        source="synthetic_usage",
+        event_type="usage_aggregate_updated",
+        occurred_at=event_time,
+        source_available_at=event_time,
+        received_at=event_time,
+        attributes={"quantity": 1_000_000_000},
+    )
+    configured_builder = builder(
+        [aggregate],
+        config=FeatureBuilderConfig(
+            session_event_types=frozenset({"usage_aggregate_updated"}),
+            quantity_event_types=frozenset({"usage_aggregate_updated"}),
+        ),
+    )
+
+    first = configured_builder.build(
+        "tenant-a", "customer-a", CUTOFF, usage_coverage=[coverage()]
+    )
+    second = configured_builder.build(
+        "tenant-a", "customer-a", CUTOFF, usage_coverage=[coverage()]
+    )
+
+    assert first.features.sessions_prev_7d == 1_000_000_000
+    assert first.features.active_days_prev_7d == 1
+    assert first.model_dump(mode="json") == second.model_dump(mode="json")
