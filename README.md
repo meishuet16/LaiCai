@@ -1,6 +1,5 @@
-<div align="center">
+# 🍍 LaiCai — RetainIQ v2
 
-# 🍍 LaiCai
 ### Predict early. Plan realistically. Let humans decide.
 
 **From customer churn warnings to explainable, actionable retention decisions.**
@@ -10,8 +9,6 @@
 **Connect → Predict → Decide → Learn**
 
 [The Problem](#the-problem) · [Our Solution](#the-solution) · [Key Features](#key-features) · [Product Walkthrough](#product-walkthrough) · [Getting Started](#getting-started) · [Evaluation](#evaluation-and-evidence) · [Demo](#demo-guide)
-
-</div>
 
 > **What is LaiCai?** LaiCai (RetainIQ v2) is a human-governed customer retention intelligence system for subscription businesses. It is designed to connect to existing product, billing, and subscription systems; identify emerging churn risk across **7, 14, and 30 days**; prioritize limited Customer Success resources; recommend fact-supported actions; and learn responsibly from subsequent outcomes.
 >

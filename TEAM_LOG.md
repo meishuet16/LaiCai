@@ -72,6 +72,29 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T20:57:28Z — ChatGPT / Docs — Refresh README homepage rendering
+
+- **Workstream:** Docs / GitHub Repository Presentation
+- **Branch:** `main`
+- **Commit subject:** `docs: refresh GitHub homepage README rendering`
+- **Issue / task:** User reported repository homepage README preview showing old content while opening the root README file displayed the new complete project document.
+- **Files changed:** `README.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Replaced the README opening HTML alignment wrapper with a native GitHub Markdown H1 heading that prominently displays the LaiCai / RetainIQ v2 identity.
+  - Kept every subsequent README section, architecture flow, requirements discussion, demo details and evidence limitations identical.
+  - Created a new commit to request GitHub's repository-page preview refresh; homepage browser rendering/cache is not directly observable through the repository API.
+- **Why it changed:** Improve predictable repository homepage rendering and refresh the README display without discarding the comprehensive documentation.
+- **Contract / database / API impact:** None; documentation only.
+- **Tests / verification:**
+  - GitHub root tree and `main` HEAD inspected — PASS — only one root `README.md` exists and `main` references the expected current commit.
+  - README text comparison — PASS — all existing content beyond the opening title block is byte-for-byte preserved.
+  - GitHub homepage browser-rendered cache — NOT VERIFIED — connector exposes repository files, not a browser view of this private repo.
+  - Runtime tests — NOT RUN — documentation/display-only update, no code changed.
+- **Data / model / ROI evidence:** Unchanged; synthetic/demo and hypothetical financial examples remain explicitly labeled.
+- **Known issues / blockers:** GitHub website/browser CDN cache invalidation cannot be guaranteed or independently observed via API.
+- **Next action / handoff:** Check the repository root view using a fresh/private browser session; if still stale, compare visible commit/branch and ask GitHub support for persistent repository homepage caching.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T20:42:20Z — ChatGPT / Docs — Publish complete judging-ready LaiCai README
 
 - **Workstream:** Docs / Track 1 Pitch & Integration
