@@ -72,11 +72,37 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T18:30:11Z — Member 2 AI coding assistant — Execute authenticated STANDARD historical pilot
+
+- **Workstream:** Part 2 / Part 1 integration / QA / Docs
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `feat(member2): checkpoint authenticated STANDARD pilot`
+- **Issue / task:** Member 2 Prompt 29; no ticket
+- **Files changed:** `examples/member2_authenticated_standard_pilot.py`, `tests/test_authenticated_standard_pilot.py`, `docs/MEMBER2_AUTHENTICATED_STANDARD_PILOT_RESULTS.md`, and this log.
+- **What changed:**
+  - Added a deterministic, aggregate-only pilot capped at 30 tenant-01 accounts × three frozen TRAIN/VALIDATION cutoffs, using Member 1's DPAPI wrapper, authenticated historical APIs, and Member 2's existing SQLite adapter/features/eligibility/freshness/reliability/label components. Added runtime rejection of unprivileged valuation fields.
+  - Added offline structural tests and recorded the authenticated STANDARD pilot, source/working-copy integrity, stage/horizon labels, source-state and reliability outcomes, API-call counts, and readiness classifications.
+  - Clarified that Prompt 28 was checkpointed locally as `853f11b60afc9d73b0e85bda61d665305de7c716`; verified Member 1 P0 HEAD `c312eb80a75c6686e16049f1e04ebe31713e403f` without modifying either Member 1 worktree.
+- **Why it changed:** Verify the secured cross-member read boundary and corrected unknown-source handling on a bounded synthetic STANDARD cohort before considering any separately authorized larger experiment.
+- **Contract / database / API impact:** No shared schema, API, split boundary, TEST, reliability threshold, or label policy changed. The observed 60-pair Member 1 `not_eligible` versus Member 2 `INSUFFICIENT_DATA` difference requires team agreement. Reader grants remain tenant-01 `retention_inference` only; no database writes or artifact writes.
+- **Tests / verification:**
+  - `.\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p29-focused-final tests\test_authenticated_standard_pilot.py` — **PASS** — 9 passed in 3.81s.
+  - `.\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p29-cross-member tests\test_authenticated_standard_pilot.py tests\test_dataset_readiness.py tests\test_sqlite_data_adapter.py tests\test_data_freshness.py tests\test_reliability.py tests\test_label_builder.py tests\test_outcome_coverage_reconciliation.py tests\test_outcome_reconciliation.py tests\test_historical_dataset_preparation.py tests\test_temporal_splits.py tests\test_cross_member_policy_readiness.py tests\test_cross_member_integration.py tests\test_data_foundation.py` — **PASS** — 221 passed in 13.97s.
+  - `.\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p29-full` — **PASS** — 463 passed, 0 failures/errors/skips, 24 existing SHAP warnings in 24.60s; warnings unsuppressed.
+  - P0 `test_member1_p0_reader.py`, `test_member2_handoff.py`, `test_data_foundation.py`, run with Member 2's absolute local interpreter — **PASS** — 59 passed in 7.09s. An initial invocation used a nonexistent P0-relative `.venv` path and ran no tests; corrected without changing P0 files.
+  - Supplemental authenticated one-account/one-cutoff contract smoke through the DPAPI wrapper — **PASS** — one read each for account snapshot, events, subscriptions, and coverage; live valuation-redaction assertions passed; excluded from pilot sample counts.
+  - Nine package imports; AST parse of 67 Python files; `git diff --check` — **PASS**. Manifest artifacts 20/20; immutable source and working-copy SHA-256s matched approved values; both SQLite files returned `integrity_check=ok` opened read-only.
+  - Two successful authenticated bounded executions used the same 90 deterministic account/cutoff pairs; final corrected aggregate is documented. No TEST reads, data generation/import, model training, or direct database row queries.
+- **Data / model / ROI evidence:** Synthetic-only API observations. 90 candidate pairs; 28 eligible; per horizon 1 positive, 27 negative, 0 unknown, 2 excluded, 60 unsupported. No model was trained and no predictive performance, real-world readiness, or retention impact is claimed.
+- **Known issues / blockers:** 60 sampled account-state disagreements (`not_eligible` vs `INSUFFICIENT_DATA`); no known-cancellation case sampled; no historical independent heartbeat/disconnection evidence; 25/28 eligible cases require abstention; only one positive account and zero TRAIN positives. Operational scoring and offline training remain blocked.
+- **Next action / handoff:** Agree eligibility semantics and request an API-backed lifecycle/source-health evidence contract with Member 1. Only afterward, request separate approval for a larger bounded STANDARD development sample. Prompt 29 is checkpointed locally in this commit; no push, merge, deployment, TEST inspection, or training.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T17:23:08Z — Member 2 AI coding assistant — Audit authorized data access and FULL readiness
 
 - **Workstream:** Part 2 / Part 1 integration / Docs / QA
 - **Branch:** `integration/member2-main-sqlite`
-- **Commit subject:** `docs(member2): audit authorized dataset readiness and FULL provisioning blockers` (Prompt 28 pending; uncommitted)
+- **Commit subject:** `docs(member2): audit authorized synthetic dataset readiness` (Prompt 28 checkpoint `853f11b60afc9d73b0e85bda61d665305de7c716`)
 - **Issue / task:** Member 2 Prompt 28; no ticket
 - **Files changed:** `docs/MEMBER2_AUTHORIZED_FULL_DATASET_READINESS.md`, `docs/MEMBER2_TO_MEMBER1_CONTRACT_REQUESTS.md`, and this log.
 - **What changed:**
@@ -96,7 +122,7 @@ itself also requires a filled-in commit entry.
   - 11 package imports — **PASS**; AST/syntax parse — **PASS** for 79 Python files; `git diff --check` — **PASS**. No files are staged; changed paths are documentation/log only and contain no credentials or private rows.
 - **Data / model / ROI evidence:** Synthetic-only provenance. No new observations or outcomes, corrected live freshness counts, labels, model, calibration, metrics, or claims. Prior v4 reliability aggregates are explicitly pre-correction; FULL storage/runtime figures are linear estimates only.
 - **Known issues / blockers:** STANDARD reader credential unavailable. FULL manifest/database absent. No supported service-principal revocation/rotation was found; import retries can add extra service-principal rows. Source operational-health/completeness evidence remains unavailable. Training and operational scoring remain blocked.
-- **Next action / handoff:** Member 1 to provide safe principal lifecycle/import behavior and health/batch contracts; authorized operator to securely inject a tenant-01 read-only `RETAINIQ_MODEL_TOKEN`. Then execute the bounded STANDARD pilot before any separately approved FULL generation/import. Prompt 28 stays uncommitted; no push or merge.
+- **Next action / handoff:** Member 1 to provide safe principal lifecycle/import behavior and health/batch contracts; authorized operator to securely inject a tenant-01 read-only `RETAINIQ_MODEL_TOKEN`. Then execute the bounded STANDARD pilot before any separately approved FULL generation/import. Prompt 28 was committed locally as `853f11b60afc9d73b0e85bda61d665305de7c716`; no push or merge.
 - **Reviewer / pairing:** N/A
 
 ### 2026-10-10T17:14:17Z — Member 2 AI coding assistant — Correct source-state attribution and assess FULL feasibility
