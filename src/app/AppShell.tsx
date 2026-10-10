@@ -31,7 +31,7 @@ function NavGlyph({ section }: { section: Section }) {
   return <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" {...common}>{paths[section] ?? paths['command-center']}</svg>;
 }
 
-function RouteDrawer({ eyebrow, title, onClose, children }: { eyebrow: string; title: string; onClose: () => void; children: ReactNode }) {
+function RouteDrawer({ eyebrow, title, onClose, children, centered = false }: { eyebrow: string; title: string; onClose: () => void; children: ReactNode; centered?: boolean }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -53,8 +53,8 @@ function RouteDrawer({ eyebrow, title, onClose, children }: { eyebrow: string; t
       if (returnFocus?.isConnected) returnFocus.focus();
     };
   }, [onClose]);
-  return <div className="detail-overlay route-overlay" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
-    <section ref={drawerRef} className="route-drawer" role="dialog" aria-modal="true" aria-label={title}>
+  return <div className={`detail-overlay route-overlay${centered ? ' route-overlay--center' : ''}`} onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <section ref={drawerRef} className={`route-drawer${centered ? ' route-drawer--center' : ''}`} role="dialog" aria-modal="true" aria-label={title}>
       <header className="drawer-head"><div><p className="drawer-eyebrow">{eyebrow}</p><h2>{title}</h2></div><button ref={closeRef} className="btn outline" onClick={onClose} aria-label={`Close ${title}`}>Close</button></header>
       <div className="drawer-scroll">{children}</div>
     </section>
@@ -67,6 +67,7 @@ export function AppShell() {
   const previousPageKey = useRef('');
   const scrollByPage = useRef<Record<string, number>>({});
   const [timelineCustomerId, setTimelineCustomerId] = useState(() => route.section === 'timeline' ? route.customerId : 'c01');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   const activePage: PrimarySection = route.section === 'prediction-detail' ? 'predictions' : route.section === 'case-detail' ? 'cases' : route.section;
   const displayedTimelineCustomerId = route.section === 'timeline' ? route.customerId : timelineCustomerId;
@@ -88,9 +89,10 @@ export function AppShell() {
     { section: 'timeline', content: <TimelinePage customerId={displayedTimelineCustomerId} /> },
   ];
 
-  return <div className="app">
+  return <div className={`app${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
     <aside className="sidebar">
       <a className="logo" href="/command-center" aria-label="RetainIQ — Business Overview" onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navigate('/command-center'); } }}><span>R</span><b>RetainIQ</b></a>
+      <button type="button" className="sidebar-toggle" onClick={() => setSidebarCollapsed(value => !value)} aria-label={sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'} aria-expanded={!sidebarCollapsed}><span aria-hidden="true">{sidebarCollapsed ? '›' : '‹'}</span></button>
       <nav aria-label="Main navigation">
         {navItems.map(item => {
           const active = activePage === item.section;
@@ -117,7 +119,7 @@ export function AppShell() {
         <div className="page-stack">
           {pages.map(page => <section key={page.section} className="page-view" hidden={activePage !== page.section} aria-hidden={activePage !== page.section} inert={activePage !== page.section || drawerOpen} aria-label={navItems.find(item => item.section === page.section)?.label}>{page.content}</section>)}
         </div>
-        {route.section === 'prediction-detail' && <RouteDrawer eyebrow="Churn Prediction · Account evidence" title="Prediction details" onClose={closeDrawer}><PredictionDetailPage predictionId={route.predictionId} /></RouteDrawer>}
+        {route.section === 'prediction-detail' && <RouteDrawer eyebrow="Churn Prediction · Account evidence" title="Prediction details" onClose={closeDrawer} centered><PredictionDetailPage predictionId={route.predictionId} /></RouteDrawer>}
         {route.section === 'case-detail' && <RouteDrawer eyebrow="Retention Actions · Case workflow" title="Retention case details" onClose={closeDrawer}><DecisionCaseDetailPage key={route.caseId} caseId={route.caseId} /></RouteDrawer>}
       </main>
     </div>
