@@ -1,0 +1,3 @@
+"""RetainIQ's dependency-free Part 1 data foundation."""
+
+__version__ = "0.1.0"
