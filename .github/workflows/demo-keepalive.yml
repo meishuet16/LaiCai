@@ -1,0 +1,36 @@
+name: Dormathon 2026 demo backend keep-alive
+
+# One-day window: 2026-10-11 09:30-18:00 MYT (UTC+8)
+# GitHub scheduled jobs are best-effort and may run late or be dropped.
+on:
+  schedule:
+    - cron: '30-59/5 1 11 10 *'
+    - cron: '*/5 2-9 11 10 *'
+    - cron: '0 10 11 10 *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping Render health endpoint within demo window
+        env:
+          PING_URL: https://laicai-api.onrender.com/healthz
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Cron does not support a year. Prevent all scheduled requests after demo day.
+          if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
+            day="$(TZ=Asia/Kuala_Lumpur date +%F)"
+            hhmm="$(TZ=Asia/Kuala_Lumpur date +%H%M)"
+            if [[ "$day" != "2026-10-11" ]] || (( 10#$hhmm < 930 || 10#$hhmm > 1800 )); then
+              echo "Outside the 2026-10-11 09:30-18:00 MYT demo window; skipping."
+              exit 0
+            fi
+          fi
+          curl --fail --silent --show-error --max-time 55 --retry 2 --retry-delay 3 "$PING_URL"
+          echo "Health ping succeeded."

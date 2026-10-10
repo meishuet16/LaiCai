@@ -66,6 +66,21 @@ Copy the block below **for each commit** and replace every bracketed placeholder
 
 ## 4. Commit history — newest first
 
+### 2026-10-10T22:59:10Z — ChatGPT — Demo-only Render health keep-alive
+
+- **Workstream:** QA / Integration / Demo
+- **Branch:** `main`
+- **Commit subject:** `chore: add timed Render demo keep-alive`
+- **Issue / task:** User-requested Dormathon 2026 live demo readiness, 2026-10-11 09:30–18:00 MYT
+- **Files changed:** `.github/workflows/demo-keepalive.yml`, `TEAM_LOG.md`
+- **What changed:** Added read-only GitHub Actions cron pings to `https://laicai-api.onrender.com/healthz` every 5 minutes during the one-day demo window, with local-date/time guard and optional manual dispatch.
+- **Why it changed:** Reduce the chance of Render Free cold starts during judging without creating a paid service or deploying any new backend code.
+- **Contract / database / API impact:** None. Health endpoint only; no tenant data, mutation, or Render auto-deploy configuration changes.
+- **Tests / verification:** Existing Render `/healthz` returned HTTP 200 in service logs — **PASS** (prior observation); cron/date-window logic reviewed — **PASS** (static); first GitHub Actions scheduled run — **NOT RUN**, future scheduled start at 09:30 MYT.
+- **Data / model / ROI evidence:** N/A. No customer, dataset, or model data involved.
+- **Known issues / blockers:** GitHub Actions cron runs can be delayed/dropped; this is not guaranteed always-on hosting. Render Free's temporary SQLite database remains ephemeral. Scheduled jobs are date-gated to 2026-10-11; remove this workflow after the event to prevent irrelevant annual GitHub job invocations.
+- **Next action / handoff:** Verify the first workflow run in GitHub Actions on demo day; manually warm the URL shortly before presenting.
+
 <!--
 Insert the first real commit entry DIRECTLY BELOW this comment, then keep
 newer entries above older ones. No Git commits have been assumed or fabricated
