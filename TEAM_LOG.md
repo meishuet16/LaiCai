@@ -307,6 +307,31 @@ itself also requires a filled-in commit entry.
 
 Members may cover several workstreams. Update assignments through a logged commit.
 
+### 2026-10-10T07:16:47Z — Member 2 AI coding assistant — Calibration and horizon coherence foundation
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; previous LightGBM checkpoint is `f1999f4`
+- **Issue / task:** Member 2 Prompt 11; no ticket
+- **Files changed:** `src/retainiq_prediction/calibration.py`, `src/retainiq_prediction/horizon_coherence.py`, `src/retainiq_prediction/__init__.py`, `tests/test_calibration.py`, `tests/test_horizon_coherence.py`, `docs/MEMBER2_CALIBRATION_AND_COHERENCE.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added independent sigmoid/Platt calibration for 7-, 14-, and 30-day raw LightGBM probabilities. Each horizon reads only mature, confirmed labels from the CALIBRATION partition; VALIDATION and TEST are excluded from fitting.
+  - Added versioned calibration metadata, finite/bounded calibrated outputs, compatibility checks, trusted-root artifact persistence, and diagnostics for raw/calibrated/optional post-coherence Brier scores plus a calibration table.
+  - Added explicit cumulative-max horizon coherence over complete compatible three-horizon outputs, preserving original probabilities and adjustment metadata. Added readiness reporting that requires all model/calibrator pairs and real `DatasetStatus.PASS` evidence.
+  - Added synthetic-only tests and documented that the canonical `PredictionOutput` remains unchanged.
+- **Why it changed:** Provide the post-model probability safeguards required before production prediction assembly without treating synthetic fits as calibrated performance evidence.
+- **Contract / database / API impact:** No database, API, shared `PredictionOutput`, decision-engine, dashboard, SHAP, reliability, threshold, or retraining implementation changed. Calibrated outputs remain a separate internal contract.
+- **Tests / verification:**
+  - `& .venv\Scripts\python.exe -m pytest -q tests/test_calibration.py tests/test_horizon_coherence.py --basetemp .pytest-tmp` — PASS — 25 tests passed in 2.26s.
+  - `& .venv\Scripts\python.exe -m pytest -q tests/test_lightgbm_model.py tests/test_baselines.py --basetemp .pytest-tmp` — PASS — 36 tests passed in 2.42s.
+  - `& .venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp` — PASS — 157 tests passed in 2.76s.
+  - `& .venv\Scripts\python.exe -c "import sys, pydantic, sklearn, lightgbm; import retainiq_prediction"` — PASS — Python 3.14.4, Pydantic 2.14.0, scikit-learn 1.9.1, LightGBM 4.7.0, and the package import succeeded.
+  - `git diff --check` — PASS — no whitespace errors; Git emitted only normal LF/CRLF conversion warnings.
+- **Data / model / ROI evidence:** Synthetic fixtures only; no authorized longitudinal dataset, production calibrator, empirical calibration metric, prediction, retention result, or ROI claim. Local environment: Python 3.14.4, NumPy 2.5.3, SciPy 1.18.1, scikit-learn 1.9.1, LightGBM 4.7.0, Pydantic 2.14.0, pytest 8.4.2.
+- **Known issues / blockers:** Real readiness remains `BLOCKED` because no authorized longitudinal dataset exists. Member 1 must provide canonical lifecycle/billing mappings, source availability and correction semantics, complete observation coverage, provenance/authorization, and the account-level multi-subscription churn policy. Cumulative-max adjustment can change calibration properties and requires held-out evaluation.
+- **Next action / handoff:** Connect the real Member 1 adapter and dataset evidence, then fit and evaluate each calibrator on frozen chronological cohorts before any production promotion or PredictionOutput assembly.
+- **Reviewer / pairing:** N/A
+
 ## 6. Shared integration agreements — verify before changing
 
 - **Prediction anchor:** `prediction_id` = unique account forecast snapshot; `prediction_run_id` = inference batch/job ID.
