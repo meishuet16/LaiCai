@@ -72,6 +72,24 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T18:08:07Z — Codex — Center and emphasize Retention Actions tabs
+
+- **Workstream:** Frontend / QA
+- **Branch:** `member4`
+- **Commit subject:** `style: center and emphasize retention action tabs`
+- **Issue / task:** Center the Work Queue and Strategy & ROI Simulator view selectors and make the selected view easier to identify.
+- **Files changed:** `src/index.css` and this log.
+- **What changed:** Centered the two tab buttons, gave them equal visual weight, increased their size, added a clear selected-state treatment and hover feedback, and centered the labels on narrow screens.
+- **Why it changed:** The existing tabs were left-aligned and visually understated in a full-width strip.
+- **Contract / database / API impact:** None.
+- **Tests / verification:**
+  - `git diff --check` — PASS — no whitespace errors.
+  - Automated tests/build — NOT RUN — CSS-only visual change; no behavior or data contracts changed.
+- **Data / model / ROI evidence:** N/A; presentation-only change.
+- **Known issues / blockers:** None known.
+- **Next action / handoff:** Review the updated tabs in the local Retention Actions page.
+- **Reviewer / pairing:** `N/A`
+
 ### 2026-10-10T18:01:53Z — Codex — Show only useful page controls in the header
 
 - **Workstream:** Frontend / QA

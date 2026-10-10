@@ -236,10 +236,12 @@ tbody tr:hover { background: #fbfaf7; }
 .record-links, .overview-shortcuts { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .integration-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .integration-metrics .sync-value { font-size: 13px; line-height: 1.35; overflow-wrap: anywhere; }
-.page-tabs { display: flex; gap: 8px; margin: 0 0 15px; padding: 4px; background: #f6f5f0; border: 1px solid var(--line); border-radius: 13px; }
-.page-tabs button { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 13px; color: #6e746c; background: transparent; border: 1px solid transparent; border-radius: 10px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
-.page-tabs button[aria-selected="true"] { color: var(--forest-deep); background: #fff; border-color: var(--line); box-shadow: 0 1px 3px #292d240c; }
-.page-tabs button span { color: var(--muted); font-size: 10px; font-weight: 500; }
+.page-tabs { display: flex; justify-content: center; gap: 10px; margin: 0 0 15px; padding: 7px; background: #f6f5f0; border: 1px solid var(--line); border-radius: 15px; }
+.page-tabs button { display: flex; flex: 0 1 340px; align-items: center; justify-content: center; gap: 12px; min-height: 54px; padding: 11px 18px; color: #667168; background: #fff; border: 1px solid var(--line); border-radius: 12px; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; transition: background .16s ease, color .16s ease, box-shadow .16s ease, transform .16s ease; }
+.page-tabs button:hover { color: var(--forest-deep); box-shadow: 0 3px 10px #263a3012; transform: translateY(-1px); }
+.page-tabs button[aria-selected="true"] { color: #fff; background: var(--forest); border-color: var(--forest); box-shadow: 0 5px 14px #30463824; }
+.page-tabs button[aria-selected="true"] span { color: #dce9e0; }
+.page-tabs button span { color: var(--muted); font-size: 11px; font-weight: 550; }
 .route-tabs button { display: grid; min-width: 110px; gap: 2px; }
 .route-tabs button small { margin: 0; color: var(--muted); font-size: 9px; text-transform: none; }
 .scenario-workbench .form-grid { margin-bottom: 16px; }
@@ -335,7 +337,9 @@ tbody tr:hover { background: #fbfaf7; }
   .sidebar nav a.nav-link span { max-width: 88px; font-size: 8px; }
   .workflow-strip { gap: 4px; padding: 8px; font-size: 9px; }
   .workflow-strip > span { flex-basis: 100%; }
-  .page-tabs button { flex: 1; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px; font-size: 11px; }
+  .page-tabs { gap: 7px; padding: 5px; }
+  .page-tabs button { flex: 1 1 0; flex-direction: column; gap: 3px; min-height: 58px; padding: 8px 5px; font-size: 11px; text-align: center; }
+  .page-tabs button span { font-size: 9px; }
   .scenario-results { grid-template-columns: 1fr 1fr; }
   .pagination { align-items: flex-start; flex-direction: column; }
   .route-tabs { overflow-x: auto; flex-wrap: nowrap; }
