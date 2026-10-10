@@ -73,6 +73,24 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T22:27:04Z — Codex — Verify Render deployment configuration
+
+- **Workstream:** Part 1 / QA / Integration
+- **Branch:** `codex/render-data-foundation-deploy`
+- **Commit subject:** `test: record Render deployment verification`
+- **Issue / task:** Render Data Foundation deployment plan, Task 4
+- **Files changed:** `docs/RENDER_DEPLOYMENT.md`, `docs/superpowers/plans/2026-10-11-render-data-foundation-deployment.md`, and this log.
+- **What changed:** Clarified that operators must select one backend in Render Environment settings before the first manual deploy and documented the accepted Supabase connection modes. Recorded the final integrated focused test result and completed plan checklist.
+- **Why it changed:** Make first-start configuration actionable and preserve the final test evidence in the team log.
+- **Contract / database / API impact:** Documentation and verification record only. No schema or authenticated route behavior changed. No migration or dataset import ran.
+- **Tests / verification:**
+  - `python -m pytest tests/test_render_deployment.py tests/test_database_config.py tests/test_supabase_configuration.py -q --basetemp .pytest-tmp-final` — **PASS** — 32 passed and 14 subtests passed in 1.84s. SQLite used a temporary local file; Supabase selection used a fake DSN with the app factory patched, with no remote connection.
+  - `git diff --check` — **PASS** — no whitespace errors.
+- **Data / model / ROI evidence:** N/A. No production data, model, or ROI evidence used.
+- **Known issues / blockers:** A real Supabase connection/schema check and Render deployment were not performed. A prepared database and protected restricted app DSN are required for production runtime use.
+- **Next action / handoff:** Configure protected runtime values and prepare the database through authorized operator procedures. Any deploy requires separate explicit approval.
+- **Reviewer / pairing:** Codex with implementation and review subagents
+
 ### 2026-10-10T22:24:49Z — Codex — Configure Render Data Foundation deployment
 
 - **Workstream:** Part 1 / Data Foundation / Docs

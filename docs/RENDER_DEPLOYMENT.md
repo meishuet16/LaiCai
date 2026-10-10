@@ -4,6 +4,14 @@ This guide configures the existing Data Foundation WSGI application for a
 Render web service. The Blueprint builds the package and starts Gunicorn; it
 does not apply database migrations or import a dataset during build or start.
 
+## Configure the backend before the first deploy
+
+Create the web service from `render.yaml`, then set exactly one of the
+database configurations below in the service's protected Environment
+settings before starting a manual deploy. The Blueprint leaves database
+selection to the operator so the same application code can run against either
+backend.
+
 ## Temporary SQLite staging
 
 For a short-lived staging deployment, set:
@@ -32,6 +40,10 @@ RETAINIQ_SUPABASE_EXPECTED_PROJECT_REF=<PROJECT_REF>
 RETAINIQ_SUPABASE_CONNECTION_MODE=<DIRECT_OR_POOLER_MODE>
 RETAINIQ_SUPABASE_DB_APP_DSN=<RESTRICTED_APP_LOGIN_DSN>
 ```
+
+Set the connection mode to `DIRECT`, `SESSION_POOLER`, or
+`TRANSACTION_POOLER` to match the host and port in the dashboard-provided app
+DSN.
 
 Use placeholders in documentation and examples; enter real values only in the
 Render service's protected environment settings. The app DSN must use a

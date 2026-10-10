@@ -98,17 +98,17 @@ Commit subject: `feat: add Data Foundation health check`.
 - Consumes: `DatabaseConfig.from_environment()` and `retaniq.api.create_app()`.
 - Produces: module-level WSGI callable `render_wsgi.application`.
 
-- [ ] **Step 1: Add failing tests for SQLite and Supabase environment selection**
+- [x] **Step 1: Add failing tests for SQLite and Supabase environment selection**
 
 Extend `tests/test_render_deployment.py` with a test that imports the WSGI module under a temporary SQLite environment and verifies it constructs a real app backed by the requested SQLite file. Add a separate Supabase test using a fake test DSN and a patched `retaniq.api.create_app`; assert the factory receives a `DatabaseConfig` with `is_supabase` true and `is_postgresql` true. Do not open a remote connection in this unit test.
 
-- [ ] **Step 2: Run the focused tests and confirm the WSGI module is missing**
+- [x] **Step 2: Run the focused tests and confirm the WSGI module is missing**
 
 Run: `python -m pytest tests/test_render_deployment.py -q`
 
 Expected before implementation: import of `render_wsgi` fails because the module does not exist.
 
-- [ ] **Step 3: Create the WSGI import target**
+- [x] **Step 3: Create the WSGI import target**
 
 ```python
 from retaniq.api import create_app
@@ -117,13 +117,13 @@ from retaniq.database_config import DatabaseConfig
 application = create_app(DatabaseConfig.from_environment())
 ```
 
-- [ ] **Step 4: Re-run focused deployment tests**
+- [x] **Step 4: Re-run focused deployment tests**
 
 Run: `python -m pytest tests/test_render_deployment.py -q`
 
 Expected: health, SQLite WSGI startup, and Supabase configuration-selection tests pass.
 
-- [ ] **Step 5: Commit Task 2 with a `TEAM_LOG.md` entry**
+- [x] **Step 5: Commit Task 2 with a `TEAM_LOG.md` entry**
 
 Commit subject: `feat: add environment-configured Render WSGI entry point`.
 
@@ -139,7 +139,7 @@ Commit subject: `feat: add environment-configured Render WSGI entry point`.
 - The Blueprint defines a Python web service named `laicai-api`, region `singapore`, repository root, Gunicorn startup, `/healthz`, and auto deploy off.
 - The guide explains the requested SQLite staging variables and Supabase production variables, restricted app credentials, and operator-run migration/import boundaries.
 
-- [ ] **Step 1: Write the deployment dependency file**
+- [x] **Step 1: Write the deployment dependency file**
 
 ```text
 -e .
@@ -147,7 +147,7 @@ Commit subject: `feat: add environment-configured Render WSGI entry point`.
 gunicorn>=26,<27
 ```
 
-- [ ] **Step 2: Write the Render Blueprint**
+- [x] **Step 2: Write the Render Blueprint**
 
 ```yaml
 services:
@@ -162,17 +162,17 @@ services:
     autoDeployTrigger: "off"
 ```
 
-- [ ] **Step 3: Write `docs/RENDER_DEPLOYMENT.md`**
+- [x] **Step 3: Write `docs/RENDER_DEPLOYMENT.md`**
 
 Include the exact staging values `RETAINIQ_DATABASE_BACKEND=sqlite` and `RETAINIQ_SQLITE_PATH=/tmp/retainiq-staging.sqlite3`; label `/tmp` storage temporary, restart/redeploy-volatile, and unsuitable for persistent production. For Supabase, list the existing project URL, expected project reference, connection mode, and app DSN names. Tell operators to put only a restricted app login in the service, never credentials in the repository, and ensure PostgreSQL schema migrations and dataset imports are run explicitly by their authorized operators before runtime use. State that deployment does not run migrations/imports and that authenticated routes and tenant scope remain unchanged.
 
-- [ ] **Step 4: Review the configuration and documentation against the design**
+- [x] **Step 4: Review the configuration and documentation against the design**
 
 Run: `git diff --check`
 
 Expected: no whitespace errors; all service fields match the requested values; no credential values, migration commands, or import commands appear in the Blueprint startup/build sequence.
 
-- [ ] **Step 5: Commit Task 3 with a `TEAM_LOG.md` entry**
+- [x] **Step 5: Commit Task 3 with a `TEAM_LOG.md` entry**
 
 Commit subject: `docs: configure Render Data Foundation deployment`.
 
@@ -182,19 +182,19 @@ Commit subject: `docs: configure Render Data Foundation deployment`.
 - Modify: `TEAM_LOG.md`
 - Include: all implementation paths and this plan in the final commit or earlier task commits.
 
-- [ ] **Step 1: Run the focused tests for both database modes, WSGI startup, and health**
+- [x] **Step 1: Run the focused tests for both database modes, WSGI startup, and health**
 
 Run: `python -m pytest tests/test_render_deployment.py tests/test_database_config.py tests/test_supabase_configuration.py -q`
 
 Expected: all selected tests pass. Tests use a temporary local SQLite file and non-secret fake Supabase configuration; they make no remote database connection.
 
-- [ ] **Step 2: Check changed-file scope and whitespace**
+- [x] **Step 2: Check changed-file scope and whitespace**
 
 Run: `git status --short --branch` and `git diff --check`.
 
 Expected: changes are limited to Data Foundation health/WSGI, Render config/dependencies, deployment docs/tests, plan, and `TEAM_LOG.md`; Decision Engine files are absent.
 
-- [ ] **Step 3: Commit all remaining implementation and log changes**
+- [x] **Step 3: Commit all remaining implementation and log changes**
 
 Commit subject: `feat: prepare Data Foundation backend for Render`.
 
