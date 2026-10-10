@@ -29,6 +29,17 @@ from .eligibility import (
     EligibilityState,
     evaluate_prediction_eligibility,
 )
+from .feature_builder import (
+    FeatureBuilder,
+    FeatureBuilderConfig,
+    FeatureQuality,
+    FeatureSnapshot,
+    FeatureValues,
+    PersonalBaselineStatus,
+    UsageCoverage,
+    UsageCoverageProvider,
+    UsageCoverageStatus,
+)
 from .point_in_time import (
     AvailabilityPolicy,
     BillingFact,
@@ -74,4 +85,13 @@ __all__ = [
     "EligibilityResult",
     "EligibilityState",
     "evaluate_prediction_eligibility",
+    "FeatureBuilder",
+    "FeatureBuilderConfig",
+    "FeatureQuality",
+    "FeatureSnapshot",
+    "FeatureValues",
+    "PersonalBaselineStatus",
+    "UsageCoverage",
+    "UsageCoverageProvider",
+    "UsageCoverageStatus",
 ]
