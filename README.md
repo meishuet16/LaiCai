@@ -1,4 +1,4 @@
-# 🍍 LaiCai — RetainIQ v2
+# 🍍 LaiCai
 
 ### Predict early. Plan realistically. Let humans decide.
 
