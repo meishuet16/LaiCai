@@ -1,0 +1,12 @@
+# Decision Engine — Python Dependencies
+# Member 3: Part 3 Decision Engine
+
+fastapi>=0.115.2
+uvicorn[standard]>=0.30.6
+psycopg2-binary==2.9.9
+pydantic>=2.12.5
+pydantic-settings>=2.4.0
+python-dotenv==1.0.1
+pytest==8.3.3
+pytest-mock==3.14.0
+httpx>=0.28.1

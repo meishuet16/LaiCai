@@ -1,7 +1,8 @@
 # RetainIQ v2 — Team Development & Commit Log
 
 **Project:** Dormathon 2026 — RetainIQ v2  
-**Purpose:** Give every team member a shared, truthful record of what changed in **every Git commit**.  
+**Project:** Dormathon 2026 — RetainIQ v2  
+**Purpose:** Give every team member a shared, truthful record of what changed in **every Git commit**.
 **Related documents:** `RetainIQ_v2_Complete_Requirements.md`, `AGENT.md`.
 
 > **Team rule — mandatory:** **Every commit that changes project files must include an update to `TEAM_LOG.md` in that same commit.** This includes code, documentation, database migrations, model artifacts/configuration, dashboard work and agent-generated changes. A commit with only a log correction must still explain that correction.
@@ -120,6 +121,78 @@ itself also requires a filled-in commit entry.
 - **Next action / handoff:** Resume only with a separately authorized, versioned recovery plan; do not train from the incomplete private files.
 - **Reviewer / pairing:** N/A
 
+### 2026-10-10T21:23:45Z — Codex / Member 1 — Merge PostgreSQL and Supabase foundation into main
+
+- **Workstream:** Part 1 / Integration
+- **Branch:** `codex/member1-main-merge` targeting `main`
+- **Commit subject:** `merge: integrate Member 1 PostgreSQL and Supabase foundation`
+- **Issue / task:** User-authorized merge of `codex/member1-postgres-migration` into the latest `origin/main`, including conflict resolution.
+- **Files changed:** Member 1 PostgreSQL migrations, runtime/database configuration, RLS/security tooling, tenant-scoped import/API code, tests and documentation; merged `README.md` and `TEAM_LOG.md`.
+- **What changed:**
+  - Integrated the complete Member 1 PostgreSQL/Supabase history through source commit `2a4b205572e8b9f575bd97d373cd999aa1cade46` with the latest main frontend/documentation history.
+  - Resolved README and team-log conflicts by retaining main's judge-facing README, adding accurate PostgreSQL/Supabase first-bind status and Member 1 security documentation links, and preserving both branches' development records.
+  - Included the secure one-time Supabase first-bind and DPAPI-protected restricted backend/maintenance import wrappers. Operator-supplied remote evidence confirms migrations 001–007, forced RLS on 18 tables, two restricted logins without BYPASSRLS, and the approved tenant-01 dataset identity bind. STANDARD tenant rows are not yet imported.
+- **Why it changed:** Make the verified Member 1 Data Foundation available from `main` without discarding concurrent frontend or documentation work.
+- **Contract / database / API impact:** Adds SQLite/PostgreSQL dual-backend support, PostgreSQL migrations 001–007, RLS/capability roles, Supabase preflight/first-bind/import entry points, and authenticated history APIs. No remote database mutation was performed during this merge.
+- **Tests / verification:**
+  - `py -3.14 -B -m unittest tests.test_supabase_first_bind -v` — **PASS** — 16/16.
+  - `py -3.14 -B -m compileall -q retaniq tests` — **PASS**.
+  - Initial `npm run build` — **BLOCKED by missing local dependencies** (`tsc` unavailable); `npm ci` completed with 0 vulnerabilities, then `npm run build` — **PASS** — 46 modules transformed.
+  - `git diff --check` and conflict-marker scan — **PASS** before staging.
+- **Data / model / ROI evidence:** Approved synthetic STANDARD manifest only. Supabase first bind exists, but tenant-01 import/API smoke and any model/ROI evidence remain pending.
+- **Known issues / blockers:** Shared transaction-local tenant GUC remains a trusted-backend boundary rather than independent database authentication. Tenant-01 STANDARD import and bounded remote API smoke have not yet run.
+- **Next action / handoff:** Import only tenant-01 through the restricted backend/maintenance logins, verify expected counts and cross-tenant absence, then run the bounded authenticated API smoke.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T20:59:22Z — Member 2 AI coding assistant — Prompt 34 LightGBM artifact validation
+
+- **Workstream:** Prompt 34 / Track B / model persistence
+- **Branch:** `codex/prompt34-parallel`
+- **Commit subject:** `fix(member2): validate loaded LightGBM artifact contract`
+- **Issue / task:** Member 2 Prompt 34 delivery
+- **Files changed:** `src/retainiq_prediction/lightgbm_model.py`, `tests/test_lightgbm_model.py`, and this log.
+- **What changed:** Hardened persisted LightGBM loading to require a ready fit and validate horizon, configuration, vectorizer, estimator, feature-count and available label-policy/dataset-provenance metadata. Added a cross-horizon mismatch regression test. This does not claim training completion; training still requires finalized prepared artifacts and passing frozen support gates.
+- **Verification:** With the project virtual environment and repository-local pytest temp directory, `tests/test_lightgbm_model.py` passed (22 tests). A first invocation using pytest's default shared Windows temp directory hit the existing `WinError 5` setup failure; rerunning with `--basetemp .pytest-tmp-trackb` passed.
+- **Data / model evidence:** No training, calibration, TEST-label reads or private-artifact changes were performed in this commit.
+- **Known issues / next action:** Verify finalized reduced prepared artifacts and fixed support counts before invoking the existing three-horizon training command.
+- **Reviewer / pairing:** Track B agent implementation; root verification.
+
+### 2026-10-10T20:59:22Z — Member 2 AI coding assistant — Prompt 34 calibration and replay integration fixture
+
+- **Workstream:** Prompt 34 / Track C / calibration, SHAP and replay integration
+- **Branch:** `codex/prompt34-track-c`
+- **Commit subject:** `test(member2): cover saved calibrated model replay integration`
+- **Issue / task:** Member 2 Prompt 34 delivery
+- **Files changed:** `tests/test_prompt34_model_calibration_replay_integration.py` and this log.
+- **What changed:** Added an isolated integration fixture that fits and persists three horizon-specific LightGBM models and sigmoid calibrators, reloads them, and exercises T1/T2 replay, calibrated monotonic probabilities, SHAP explanations and persisted risk changes. The test validates existing components without reading the private SQLite database or real TEST outcomes.
+- **Verification:** `tests/test_prompt34_model_calibration_replay_integration.py` passed (1 test; six known SHAP binary-output shape warnings).
+- **Data / model evidence:** Fixture models are synthetic test-only artifacts. This commit does not supply or claim a Prompt 34 trained bundle.
+- **Known issues / next action:** Run the same integration path against the verified prepared bundle after Track B passes support gates; confirm bundle ID and horizon contracts before end-to-end replay.
+- **Reviewer / pairing:** Track C agent implementation; root verification.
+
+### 2026-10-10T20:57:28Z — ChatGPT / Docs — Refresh README homepage rendering
+
+- **Workstream:** Docs / GitHub Repository Presentation
+- **Branch:** `main`
+- **Commit subject:** `docs: refresh GitHub homepage README rendering`
+- **Issue / task:** User reported repository homepage README preview showing old content while opening the root README file displayed the new complete project document.
+- **Files changed:** `README.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Replaced the README opening HTML alignment wrapper with a native GitHub Markdown H1 heading that prominently displays the LaiCai / RetainIQ v2 identity.
+  - Kept every subsequent README section, architecture flow, requirements discussion, demo details and evidence limitations identical.
+  - Created a new commit to request GitHub's repository-page preview refresh; homepage browser rendering/cache is not directly observable through the repository API.
+- **Why it changed:** Improve predictable repository homepage rendering and refresh the README display without discarding the comprehensive documentation.
+- **Contract / database / API impact:** None; documentation only.
+- **Tests / verification:**
+  - GitHub root tree and `main` HEAD inspected — PASS — only one root `README.md` exists and `main` references the expected current commit.
+  - README text comparison — PASS — all existing content beyond the opening title block is byte-for-byte preserved.
+  - GitHub homepage browser-rendered cache — NOT VERIFIED — connector exposes repository files, not a browser view of this private repo.
+  - Runtime tests — NOT RUN — documentation/display-only update, no code changed.
+- **Data / model / ROI evidence:** Unchanged; synthetic/demo and hypothetical financial examples remain explicitly labeled.
+- **Known issues / blockers:** GitHub website/browser CDN cache invalidation cannot be guaranteed or independently observed via API.
+- **Next action / handoff:** Check the repository root view using a fresh/private browser session; if still stale, compare visible commit/branch and ask GitHub support for persistent repository homepage caching.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T20:53:46Z — Member 2 AI coding assistant — Emergency Prompt 34 reduced demo workflow and truthful handoff
 
 - **Workstream:** Part 2 / ML / Integration / QA / Docs
@@ -144,30 +217,27 @@ itself also requires a filled-in commit entry.
 - **Known issues / blockers:** Full preparation was stopped at 45/73 cutoffs; the predeclared reduced run ended at 7/25 and left zero prepared files. Its termination cause and exit diagnostic were not retained. No Prompt 34 model bundle, calibrators, held-out predictions, SHAP output, or replay exists. Read-after-write history in the replay example is process-mirrored until Member 1 exposes a reader. The local prediction bundle must remain not-ready for production.
 - **Next action / handoff:** If further work is authorized, retry from the preserved imported source using a fresh versioned private output root and the reduced cutoff policy; keep all per-horizon support gates unchanged and stop if any stage is insufficient. Member 1: expose authenticated prediction history/readback and clarify writer payload support. Member 2: only fit/calibrate/evaluate after a complete preparation manifest and mature-label support are verified. Members 3/4 must keep `MODEL_BUNDLE_NOT_READY` until real-data, calibration, and operational gates pass.
 - **Reviewer / pairing:** N/A
-### 2026-10-10T20:59:22Z — Member 2 AI coding assistant — Prompt 34 LightGBM artifact validation
 
-- **Workstream:** Prompt 34 / Track B / model persistence
-- **Branch:** `codex/prompt34-parallel`
-- **Commit subject:** `fix(member2): validate loaded LightGBM artifact contract`
-- **Issue / task:** Member 2 Prompt 34 delivery
-- **Files changed:** `src/retainiq_prediction/lightgbm_model.py`, `tests/test_lightgbm_model.py`, and this log.
-- **What changed:** Hardened persisted LightGBM loading to require a ready fit and validate horizon, configuration, vectorizer, estimator, feature-count and available label-policy/dataset-provenance metadata. Added a cross-horizon mismatch regression test. This does not claim training completion; training still requires finalized prepared artifacts and passing frozen support gates.
-- **Verification:** With the project virtual environment and repository-local pytest temp directory, `tests/test_lightgbm_model.py` passed (22 tests). A first invocation using pytest's default shared Windows temp directory hit the existing `WinError 5` setup failure; rerunning with `--basetemp .pytest-tmp-trackb` passed.
-- **Data / model evidence:** No training, calibration, TEST-label reads or private-artifact changes were performed in this commit.
-- **Known issues / next action:** Verify finalized reduced prepared artifacts and fixed support counts before invoking the existing three-horizon training command.
-- **Reviewer / pairing:** Track B agent implementation; root verification.
-### 2026-10-10T20:59:22Z — Member 2 AI coding assistant — Prompt 34 calibration and replay integration fixture
+### 2026-10-10T20:42:20Z — ChatGPT / Docs — Publish complete judging-ready LaiCai README
 
-- **Workstream:** Prompt 34 / Track C / calibration, SHAP and replay integration
-- **Branch:** `codex/prompt34-track-c`
-- **Commit subject:** `test(member2): cover saved calibrated model replay integration`
-- **Issue / task:** Member 2 Prompt 34 delivery
-- **Files changed:** `tests/test_prompt34_model_calibration_replay_integration.py` and this log.
-- **What changed:** Added an isolated integration fixture that fits and persists three horizon-specific LightGBM models and sigmoid calibrators, reloads them, and exercises T1/T2 replay, calibrated monotonic probabilities, SHAP explanations and persisted risk changes. The test validates existing components without reading the private SQLite database or real TEST outcomes.
-- **Verification:** `tests/test_prompt34_model_calibration_replay_integration.py` passed (1 test; six known SHAP binary-output shape warnings).
-- **Data / model evidence:** Fixture models are synthetic test-only artifacts. This commit does not supply or claim a Prompt 34 trained bundle.
-- **Known issues / next action:** Run the same integration path against the verified prepared bundle after Track B passes support gates; confirm bundle ID and horizon contracts before end-to-end replay.
-- **Reviewer / pairing:** Track C agent implementation; root verification.
+- **Workstream:** Docs / Track 1 Pitch & Integration
+- **Branch:** `main`
+- **Commit subject:** `docs: publish rubric-aligned LaiCai project README`
+- **Issue / task:** User-requested complete README aligned with RetainIQ v2 requirements, Track 1 judging rubric, and final three-minute pitch script.
+- **Files changed:** `README.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Replaced Part 1-only README with full project presentation: problem and verified Recurly/Unbounce sources, customer success personas, Connect–Predict–Decide–Learn flow, features, dashboard routes, and example journey.
+  - Documented multi-horizon modeling, personal baseline, reliability, human-governed MRR-prioritized review, break-even math, mature feedback, data integration, local setup, evidence standards, demo walkthrough, and rubric mapping.
+  - Separated specification/design, current synthetic UI/data foundation, unsupported real-data/model claims, and integration gates.
+- **Why it changed:** Provide a complete and understandable judge-facing project README consistent with the four-part requirements and actual repository boundaries.
+- **Contract / database / API impact:** Documentation only; no code, API schema, database, model, credential, or deployed service changed.
+- **Tests / verification:**
+  - README static content and Markdown section checks — PASS — core requirements, primary story, evidence caveats, documented routes, citations, and formulas included.
+  - GitHub `main` HEAD, `README.md`, `TEAM_LOG.md`, `DATASET_CARD.md`, `package.json`, frontend routes and services inspected — PASS — README reflects verified repository state.
+  - Runtime build/unit tests — NOT RUN — documentation-only remote GitHub update; prior reported results are not represented as newly executed.
+- **Data / model / ROI evidence:** Third-party cited statistics, local synthetic demonstration, arithmetic scenario assumptions, and existing DATASET_CARD limitations; no invented held-out metrics or causally saved revenue.
+- **Known issues / blockers:** Real-data acceptance, real measured LightGBM performance, production API/UI integration and complete deployment not established in main.
+- **Next action / handoff:** Team to validate demo/deployment and update measured evidence, links, and implementation status only when supported; maintain same-commit log discipline.
 
 ### 2026-10-10T19:21:18Z — Member 2 AI coding assistant — Operational inference and requirements traceability
 
@@ -284,6 +354,25 @@ itself also requires a filled-in commit entry.
 - **Known issues / blockers:** 60 sampled account-state disagreements (`not_eligible` vs `INSUFFICIENT_DATA`); no known-cancellation case sampled; no historical independent heartbeat/disconnection evidence; 25/28 eligible cases require abstention; only one positive account and zero TRAIN positives. Operational scoring and offline training remain blocked.
 - **Next action / handoff:** Agree eligibility semantics and request an API-backed lifecycle/source-health evidence contract with Member 1. Only afterward, request separate approval for a larger bounded STANDARD development sample. Prompt 29 is checkpointed locally in this commit; no push, merge, deployment, TEST inspection, or training.
 - **Reviewer / pairing:** N/A
+
+### 2026-10-10T18:03:37Z — Codex / AI coding agent — Update latest LaiCai presentation
+
+- **Workstream:** Documentation / Pitch
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `docs(pitch): update latest LaiCai presentation`
+- **Issue / task:** User-authorized request to publish only the latest HTML pitch presentation.
+- **Files changed:** `pitch/retainiq-3min-pitch.html`, `TEAM_LOG.md`.
+- **What changed:**
+  - Added the current seven-slide LaiCai presentation, including the latest typography update.
+  - Recorded this presentation-only commit and its verification.
+- **Why it changed:** Publish the latest approved presentation on the existing feature branch without including screenshots, reports, or other generated files.
+- **Contract / database / API impact:** None; presentation artifact only.
+- **Tests / verification:**
+  - `py -3.14 -` with Python `html.parser` — **PASS** — parsed the HTML, confirmed seven slide sections, one title, navigation script, and current typography.
+  - Unit tests — **NOT RUN** — presentation-only documentation change.
+- **Data / model / ROI evidence:** No new claims or evidence; existing illustrative values and implementation caveats are retained.
+- **Known issues / blockers:** None for this presentation-only commit.
+- **Next action / handoff:** Push the commit to `origin/feature/decision-engine` and verify the remote branch.
 
 ### 2026-10-10T17:23:08Z — Member 2 AI coding assistant — Audit authorized data access and FULL readiness
 
@@ -609,46 +698,70 @@ itself also requires a filled-in commit entry.
 - **Next action / handoff:** Member 1 should implement the real adapter and dataset evidence mapping; Member 2 can then replay the splitter on an authorized historical dataset before model work.
 - **Reviewer / pairing:** N/A
 
-### 2026-10-10T06:08:15Z — Member 2 AI coding assistant — Repository documentation setup
+### 2026-10-10T06:38:33Z — Member 2 AI coding assistant — 7/14/30-day churn label builder
 
-- **Workstream:** Part 2 / Integration / Docs
+- **Workstream:** Part 2 / Prediction Engine
 - **Branch:** `feature/prediction-engine`
-- **Commit subject:** `docs: set up prediction-engine repository documentation`
-- **Issue / task:** Repository documentation setup; no ticket
-- **Files changed:** `AGENTS.md`, `RetainIQ_v2_Complete_Requirements.md`, `TEAM_LOG.md`, `docs/RetainIQ_v2_Data_Foundation.md`, `docs/RetainIQ_v2_Part2_Prediction_Engine_Requirements.md`, `docs/RetainIQ_v2_Part3_Decision_Engine_Requirements.md`, `docs/RetainIQ_v2_Part4_Closed_Loop_Learning_and_Dashboard_Requirements.md`, `docs/MEMBER2_INTEGRATION_DEPENDENCIES.md`
+- **Commit subject:** Not committed; previous feature checkpoint is `f82a290`
+- **Issue / task:** Member 2 Prompt 06; no ticket
+- **Files changed:** `src/retainiq_prediction/label_builder.py`, `src/retainiq_prediction/__init__.py`, `tests/test_label_builder.py`, `docs/MEMBER2_LABEL_ENGINEERING.md`, `TEAM_LOG.md`
 - **What changed:**
-  - Copied the supplied canonical requirements, team guidance, and Part 1–4 specifications into the repository without content changes; created `AGENTS.md` as an exact copy of the available `AGENT.md`.
-  - Added the Member 2 integration dependency note covering confirmed prediction contracts, downstream handoffs, unresolved decisions, and blockers.
-- **Why it changed:** Establish the repository documentation baseline and make Member 2’s cross-part dependencies explicit before implementation.
-- **Contract / database / API impact:** No implementation or API/database changes. The canonical flat prediction payload and `prediction_id`/`prediction_run_id` distinction are documented as integration requirements.
+  - Added typed/versioned `ChurnLabel` records for independent 7-, 14-, and 30-day horizons with explicit positive, negative, unknown, excluded, and unsupported statuses.
+  - Added a replaceable lifecycle/outcome adapter and synthetic in-memory implementation that separates prediction `as_of` from later `evaluation_as_of`, enforces source availability, preserves evidence references, and reports late/unknown coverage.
+  - Implemented qualifying effective voluntary cancellation, non-renewal, and finalized involuntary termination semantics; payment failures, requests, inactivity, and missing events are not churn by themselves.
+  - Added conservative known-cancellation, already-terminated, right-censoring, multi-subscription, boundary, cross-tenant, late-outcome, and conflicting-lifecycle handling. No model training, temporal splitting, prediction API, or feature mutation was added.
+- **Why it changed:** Establish reproducible supervised-target generation without allowing future outcome evidence to enter prediction-time features or prospective eligibility.
+- **Contract / database / API impact:** No database or API schema changed. Member 1 can implement `LifecycleOutcomeAdapter` against canonical lifecycle storage and must supply effective timestamps, availability/received timestamps, account mapping, stable IDs, and observation coverage.
 - **Tests / verification:**
-  - Source/destination SHA-256 comparison — PASS — copied documents match their Downloads originals.
-  - Repository audit and `git diff --check` — PASS — clean formatting check; no implementation tests exist or were needed for documentation-only setup.
-- **Data / model / ROI evidence:** N/A; no dataset, model, prediction, or ROI result was created.
-- **Known issues / blockers:** Repository still has no backend, database, dependency manifest, tests, dataset, or Member 1 implementation. Account-level multi-subscription churn semantics and event-availability timestamp contract remain unresolved.
-- **Next action / handoff:** Member 1 should provide the canonical data/API contract and dataset evidence gate; Member 2 can then implement time-safe labels/features and prediction services.
+  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 82 tests passed in 0.40s.
+  - `PYTHONPATH=src` package import check — PASS — imported `retainiq_prediction` and label enums.
+  - `git diff --check` — PASS — no whitespace errors reported; Git emitted only normal LF/CRLF conversion warnings.
+- **Data / model / ROI evidence:** Synthetic lifecycle and observation fixtures only; no real dataset, labels from production data, trained model, prediction, performance metric, or ROI evidence.
+- **Known issues / blockers:** Member 1 must finalize canonical churn event mappings, source-availability precedence, observation-coverage semantics, account-level multi-subscription churn policy, source-correction handling, authorization boundary, and the real adapter. No authorized longitudinal dataset exists in the repository.
+- **Next action / handoff:** Review label policy and lifecycle/coverage mappings with Member 1 before allowing positive/negative labels into supervised training.
 - **Reviewer / pairing:** N/A
 
-### 2026-10-10T06:12:43Z — Member 2 AI coding assistant — Minimal prediction contract foundation
+### 2026-10-10T06:29:51Z — Member 2 AI coding assistant — Personalized behavioral feature foundation
+
+- **Workstream:** Part 2 / Prediction Engine
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; local checkpoint is `37df5de`
+- **Issue / task:** Member 2 Prompt 05; no ticket
+- **Files changed:** `src/retainiq_prediction/feature_builder.py`, `src/retainiq_prediction/__init__.py`, `tests/test_feature_builder.py`, `docs/MEMBER2_FEATURE_ENGINEERING.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added a versioned `FeatureSnapshot` with typed feature values, point-in-time cutoff metadata, coverage/missingness quality fields, and source evidence references.
+  - Added configurable session-event semantics and personalized four-week baseline features: 7/30-day sessions, inactivity days, recent trend, observed weeks, averages, deviations, ratio, variability, and explicit baseline availability status.
+  - Added optional explicit usage-coverage evidence so confirmed zero activity is distinct from unknown or incomplete history. No cohort baseline, labels, model training, prediction calculation, cancellation feature, or churn outcome was added.
+- **Why it changed:** Establish the first leakage-safe behavioral feature layer required before label building or model work.
+- **Contract / database / API impact:** No database, API, or Member 1 source contract changed. The builder consumes `PointInTimeDataAdapter`; Member 1 must later supply canonical session semantics, source coverage evidence, and availability timestamps through a replaceable adapter boundary.
+- **Tests / verification:**
+  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 62 tests passed in 0.37s.
+  - `git diff --check` — NOT RUN after this uncommitted feature edit; the checkpoint staged check reported preserved requirements-document trailing whitespace and an existing blank line at EOF. No requirement documents were rewritten to hide those source formatting issues.
+- **Data / model / ROI evidence:** Synthetic usage and coverage fixtures only; no real dataset, labels, trained model, prediction, performance metric, or ROI evidence.
+- **Known issues / blockers:** Member 1 must confirm session event semantics, period-level usage coverage/completeness representation, availability precedence, and production adapter mapping. Personalized baselines remain unavailable for sparse or unobserved histories; no cohort fallback is implemented.
+- **Next action / handoff:** Review the feature field names and coverage contract with Member 1, then connect the canonical adapter before implementing labels or models.
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:23:21Z — Member 2 AI coding assistant — Point-in-time adapter and eligibility foundation
 
 - **Workstream:** Part 2 / Integration
 - **Branch:** `feature/prediction-engine`
-- **Commit subject:** `feat: add canonical prediction contract foundation`
-- **Issue / task:** Member 2 Prompt 02; no ticket
-- **Files changed:** `pyproject.toml`, `src/retainiq_prediction/__init__.py`, `src/retainiq_prediction/contracts.py`, `tests/test_prediction_contract.py`, `docs/MEMBER2_PREDICTION_CONTRACT.md`, `TEAM_LOG.md`
+- **Commit subject:** Not committed; working tree change only
+- **Issue / task:** Member 2 Prompt 04; no ticket
+- **Files changed:** `src/retainiq_prediction/point_in_time.py`, `src/retainiq_prediction/eligibility.py`, `src/retainiq_prediction/__init__.py`, `tests/test_point_in_time.py`, `tests/test_eligibility.py`, `docs/MEMBER2_POINT_IN_TIME_AND_ELIGIBILITY.md`, `TEAM_LOG.md`
 - **What changed:**
-  - Added a minimal Python package with Pydantic v2 models for the canonical flat `PredictionOutput` payload and nested reliability, freshness, and non-quantified uncertainty contracts.
-  - Added validation for status-dependent probabilities, cumulative horizon ordering, non-empty/distinct IDs, timezone-aware timestamps, documented enum values, and JSON round trips.
-  - Added focused contract documentation and synthetic-only fixtures; no training, feature engineering, API, or database code was added.
-- **Why it changed:** Establish the shared Part 2 prediction interface before implementing feature building or model inference.
-- **Contract / database / API impact:** Defines the local validation contract for the integrated `prediction_id`/`prediction_run_id` distinction and flat `p_churn_7d`/`p_churn_14d`/`p_churn_30d` fields. No database or API implementation changed; unresolved cross-part questions remain documented.
+  - Added a typed, replaceable in-memory point-in-time adapter with exact tenant/customer scoping, timezone-aware cutoff validation, event/effective-time filtering, configurable source-availability precedence, provenance preservation, and explicit exclusion limitations.
+  - Added eligibility reconstruction for eligible, known cancellation, not eligible, and insufficient data states, including machine-readable reason codes, conservative lifecycle handling, payment-failure non-churn behavior, and explicit unresolved multi-subscription policy handling.
+  - Added synthetic-only focused tests and documented the Member 1 input contract. No database, ingestion API, feature engineering, labels, model training, or prediction calculations were added.
+- **Why it changed:** Establish the leakage-safe storage boundary and eligibility routing foundation before feature or label implementation.
+- **Contract / database / API impact:** No database or API implementation changed. The adapter expects dated subscription, usage, and billing facts with source provenance and an availability/received timestamp when available. Availability precedence remains configurable pending Member 1 agreement.
 - **Tests / verification:**
-  - `python -m pytest -q` — PASS — 21 tests passed in 0.31s.
-  - `git diff --check` — PASS — no whitespace errors.
-  - Python/Pydantic/pytest environment check — PASS — Python 3.14.4, Pydantic 2.13.5, pytest 8.4.2.
-- **Data / model / ROI evidence:** Synthetic contract fixtures only; no dataset, trained model, performance metric, prediction result, or ROI claim.
-- **Known issues / blockers:** Member 1’s canonical data/API contract, authorized longitudinal dataset, account-level multi-subscription churn semantics, source-availability timestamp semantics, and attribution shape remain unresolved.
-- **Next action / handoff:** Coordinate the unresolved contracts with Members 1 and 4, then implement time-safe features and labels only after the dataset evidence gate is available.
+  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 49 tests passed in 0.43s.
+  - `PYTHONPATH=src` source import check — PASS — `import retainiq_prediction`.
+  - `git diff --check` — PASS — no whitespace errors reported.
+- **Data / model / ROI evidence:** Synthetic fixtures only; no dataset, feature set, labels, trained model, performance metric, prediction result, or ROI claim.
+- **Known issues / blockers:** Member 1 must provide the real adapter/database mapping, source availability semantics, event availability timestamps, authoritative lifecycle history, account-level multi-subscription churn policy, and authorization boundary. Unknown availability is conservatively excluded and yields an explicit limitation.
+- **Next action / handoff:** Agree the availability precedence and account-level subscription policy with Member 1, then connect the real adapter without changing the eligibility business logic.
 - **Reviewer / pairing:** N/A
 
 ### 2026-10-10T06:17:45Z — Member 2 AI coding assistant — Historical dataset readiness gate
@@ -674,138 +787,47 @@ itself also requires a filled-in commit entry.
 - **Next action / handoff:** Member 1 should supply the canonical mapped records and provenance/evidence gate. Only after a real dataset passes should Member 2 implement features, labels, splits, or training.
 - **Reviewer / pairing:** N/A
 
-### 2026-10-10T06:23:21Z — Member 2 AI coding assistant — Point-in-time adapter and eligibility foundation
+### 2026-10-10T06:12:43Z — Member 2 AI coding assistant — Minimal prediction contract foundation
 
 - **Workstream:** Part 2 / Integration
 - **Branch:** `feature/prediction-engine`
-- **Commit subject:** Not committed; working tree change only
-- **Issue / task:** Member 2 Prompt 04; no ticket
-- **Files changed:** `src/retainiq_prediction/point_in_time.py`, `src/retainiq_prediction/eligibility.py`, `src/retainiq_prediction/__init__.py`, `tests/test_point_in_time.py`, `tests/test_eligibility.py`, `docs/MEMBER2_POINT_IN_TIME_AND_ELIGIBILITY.md`, `TEAM_LOG.md`
+- **Commit subject:** `feat: add canonical prediction contract foundation`
+- **Issue / task:** Member 2 Prompt 02; no ticket
+- **Files changed:** `pyproject.toml`, `src/retainiq_prediction/__init__.py`, `src/retainiq_prediction/contracts.py`, `tests/test_prediction_contract.py`, `docs/MEMBER2_PREDICTION_CONTRACT.md`, `TEAM_LOG.md`
 - **What changed:**
-  - Added a typed, replaceable in-memory point-in-time adapter with exact tenant/customer scoping, timezone-aware cutoff validation, event/effective-time filtering, configurable source-availability precedence, provenance preservation, and explicit exclusion limitations.
-  - Added eligibility reconstruction for eligible, known cancellation, not eligible, and insufficient data states, including machine-readable reason codes, conservative lifecycle handling, payment-failure non-churn behavior, and explicit unresolved multi-subscription policy handling.
-  - Added synthetic-only focused tests and documented the Member 1 input contract. No database, ingestion API, feature engineering, labels, model training, or prediction calculations were added.
-- **Why it changed:** Establish the leakage-safe storage boundary and eligibility routing foundation before feature or label implementation.
-- **Contract / database / API impact:** No database or API implementation changed. The adapter expects dated subscription, usage, and billing facts with source provenance and an availability/received timestamp when available. Availability precedence remains configurable pending Member 1 agreement.
+  - Added a minimal Python package with Pydantic v2 models for the canonical flat `PredictionOutput` payload and nested reliability, freshness, and non-quantified uncertainty contracts.
+  - Added validation for status-dependent probabilities, cumulative horizon ordering, non-empty/distinct IDs, timezone-aware timestamps, documented enum values, and JSON round trips.
+  - Added focused contract documentation and synthetic-only fixtures; no training, feature engineering, API, or database code was added.
+- **Why it changed:** Establish the shared Part 2 prediction interface before implementing feature building or model inference.
+- **Contract / database / API impact:** Defines the local validation contract for the integrated `prediction_id`/`prediction_run_id` distinction and flat `p_churn_7d`/`p_churn_14d`/`p_churn_30d` fields. No database or API implementation changed; unresolved cross-part questions remain documented.
 - **Tests / verification:**
-  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 49 tests passed in 0.43s.
-  - `PYTHONPATH=src` source import check — PASS — `import retainiq_prediction`.
-  - `git diff --check` — PASS — no whitespace errors reported.
-- **Data / model / ROI evidence:** Synthetic fixtures only; no dataset, feature set, labels, trained model, performance metric, prediction result, or ROI claim.
-- **Known issues / blockers:** Member 1 must provide the real adapter/database mapping, source availability semantics, event availability timestamps, authoritative lifecycle history, account-level multi-subscription churn policy, and authorization boundary. Unknown availability is conservatively excluded and yields an explicit limitation.
-- **Next action / handoff:** Agree the availability precedence and account-level subscription policy with Member 1, then connect the real adapter without changing the eligibility business logic.
+  - `python -m pytest -q` — PASS — 21 tests passed in 0.31s.
+  - `git diff --check` — PASS — no whitespace errors.
+  - Python/Pydantic/pytest environment check — PASS — Python 3.14.4, Pydantic 2.13.5, pytest 8.4.2.
+- **Data / model / ROI evidence:** Synthetic contract fixtures only; no dataset, trained model, performance metric, prediction result, or ROI claim.
+- **Known issues / blockers:** Member 1’s canonical data/API contract, authorized longitudinal dataset, account-level multi-subscription churn semantics, source-availability timestamp semantics, and attribution shape remain unresolved.
+- **Next action / handoff:** Coordinate the unresolved contracts with Members 1 and 4, then implement time-safe features and labels only after the dataset evidence gate is available.
 - **Reviewer / pairing:** N/A
 
-### 2026-10-10T06:29:51Z — Member 2 AI coding assistant — Personalized behavioral feature foundation
+### 2026-10-10T06:08:15Z — Member 2 AI coding assistant — Repository documentation setup
 
-- **Workstream:** Part 2 / Prediction Engine
+- **Workstream:** Part 2 / Integration / Docs
 - **Branch:** `feature/prediction-engine`
-- **Commit subject:** Not committed; local checkpoint is `37df5de`
-- **Issue / task:** Member 2 Prompt 05; no ticket
-- **Files changed:** `src/retainiq_prediction/feature_builder.py`, `src/retainiq_prediction/__init__.py`, `tests/test_feature_builder.py`, `docs/MEMBER2_FEATURE_ENGINEERING.md`, `TEAM_LOG.md`
+- **Commit subject:** `docs: set up prediction-engine repository documentation`
+- **Issue / task:** Repository documentation setup; no ticket
+- **Files changed:** `AGENTS.md`, `RetainIQ_v2_Complete_Requirements.md`, `TEAM_LOG.md`, `docs/RetainIQ_v2_Data_Foundation.md`, `docs/RetainIQ_v2_Part2_Prediction_Engine_Requirements.md`, `docs/RetainIQ_v2_Part3_Decision_Engine_Requirements.md`, `docs/RetainIQ_v2_Part4_Closed_Loop_Learning_and_Dashboard_Requirements.md`, `docs/MEMBER2_INTEGRATION_DEPENDENCIES.md`
 - **What changed:**
-  - Added a versioned `FeatureSnapshot` with typed feature values, point-in-time cutoff metadata, coverage/missingness quality fields, and source evidence references.
-  - Added configurable session-event semantics and personalized four-week baseline features: 7/30-day sessions, inactivity days, recent trend, observed weeks, averages, deviations, ratio, variability, and explicit baseline availability status.
-  - Added optional explicit usage-coverage evidence so confirmed zero activity is distinct from unknown or incomplete history. No cohort baseline, labels, model training, prediction calculation, cancellation feature, or churn outcome was added.
-- **Why it changed:** Establish the first leakage-safe behavioral feature layer required before label building or model work.
-- **Contract / database / API impact:** No database, API, or Member 1 source contract changed. The builder consumes `PointInTimeDataAdapter`; Member 1 must later supply canonical session semantics, source coverage evidence, and availability timestamps through a replaceable adapter boundary.
+  - Copied the supplied canonical requirements, team guidance, and Part 1–4 specifications into the repository without content changes; created `AGENTS.md` as an exact copy of the available `AGENT.md`.
+  - Added the Member 2 integration dependency note covering confirmed prediction contracts, downstream handoffs, unresolved decisions, and blockers.
+- **Why it changed:** Establish the repository documentation baseline and make Member 2’s cross-part dependencies explicit before implementation.
+- **Contract / database / API impact:** No implementation or API/database changes. The canonical flat prediction payload and `prediction_id`/`prediction_run_id` distinction are documented as integration requirements.
 - **Tests / verification:**
-  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 62 tests passed in 0.37s.
-  - `git diff --check` — NOT RUN after this uncommitted feature edit; the checkpoint staged check reported preserved requirements-document trailing whitespace and an existing blank line at EOF. No requirement documents were rewritten to hide those source formatting issues.
-- **Data / model / ROI evidence:** Synthetic usage and coverage fixtures only; no real dataset, labels, trained model, prediction, performance metric, or ROI evidence.
-- **Known issues / blockers:** Member 1 must confirm session event semantics, period-level usage coverage/completeness representation, availability precedence, and production adapter mapping. Personalized baselines remain unavailable for sparse or unobserved histories; no cohort fallback is implemented.
-- **Next action / handoff:** Review the feature field names and coverage contract with Member 1, then connect the canonical adapter before implementing labels or models.
+  - Source/destination SHA-256 comparison — PASS — copied documents match their Downloads originals.
+  - Repository audit and `git diff --check` — PASS — clean formatting check; no implementation tests exist or were needed for documentation-only setup.
+- **Data / model / ROI evidence:** N/A; no dataset, model, prediction, or ROI result was created.
+- **Known issues / blockers:** Repository still has no backend, database, dependency manifest, tests, dataset, or Member 1 implementation. Account-level multi-subscription churn semantics and event-availability timestamp contract remain unresolved.
+- **Next action / handoff:** Member 1 should provide the canonical data/API contract and dataset evidence gate; Member 2 can then implement time-safe labels/features and prediction services.
 - **Reviewer / pairing:** N/A
-
-### 2026-10-10T06:38:33Z — Member 2 AI coding assistant — 7/14/30-day churn label builder
-
-- **Workstream:** Part 2 / Prediction Engine
-- **Branch:** `feature/prediction-engine`
-- **Commit subject:** Not committed; previous feature checkpoint is `f82a290`
-- **Issue / task:** Member 2 Prompt 06; no ticket
-- **Files changed:** `src/retainiq_prediction/label_builder.py`, `src/retainiq_prediction/__init__.py`, `tests/test_label_builder.py`, `docs/MEMBER2_LABEL_ENGINEERING.md`, `TEAM_LOG.md`
-- **What changed:**
-  - Added typed/versioned `ChurnLabel` records for independent 7-, 14-, and 30-day horizons with explicit positive, negative, unknown, excluded, and unsupported statuses.
-  - Added a replaceable lifecycle/outcome adapter and synthetic in-memory implementation that separates prediction `as_of` from later `evaluation_as_of`, enforces source availability, preserves evidence references, and reports late/unknown coverage.
-  - Implemented qualifying effective voluntary cancellation, non-renewal, and finalized involuntary termination semantics; payment failures, requests, inactivity, and missing events are not churn by themselves.
-  - Added conservative known-cancellation, already-terminated, right-censoring, multi-subscription, boundary, cross-tenant, late-outcome, and conflicting-lifecycle handling. No model training, temporal splitting, prediction API, or feature mutation was added.
-- **Why it changed:** Establish reproducible supervised-target generation without allowing future outcome evidence to enter prediction-time features or prospective eligibility.
-- **Contract / database / API impact:** No database or API schema changed. Member 1 can implement `LifecycleOutcomeAdapter` against canonical lifecycle storage and must supply effective timestamps, availability/received timestamps, account mapping, stable IDs, and observation coverage.
-- **Tests / verification:**
-  - `& C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pytest -q` — PASS — 82 tests passed in 0.40s.
-  - `PYTHONPATH=src` package import check — PASS — imported `retainiq_prediction` and label enums.
-  - `git diff --check` — PASS — no whitespace errors reported; Git emitted only normal LF/CRLF conversion warnings.
-- **Data / model / ROI evidence:** Synthetic lifecycle and observation fixtures only; no real dataset, labels from production data, trained model, prediction, performance metric, or ROI evidence.
-- **Known issues / blockers:** Member 1 must finalize canonical churn event mappings, source-availability precedence, observation-coverage semantics, account-level multi-subscription churn policy, source-correction handling, authorization boundary, and the real adapter. No authorized longitudinal dataset exists in the repository.
-- **Next action / handoff:** Review label policy and lifecycle/coverage mappings with Member 1 before allowing positive/negative labels into supervised training.
-- **Reviewer / pairing:** N/A
-
-### 2026-10-10T21:23:45Z — Codex / Member 1 — Merge PostgreSQL and Supabase foundation into main
-
-- **Workstream:** Part 1 / Integration
-- **Branch:** `codex/member1-main-merge` targeting `main`
-- **Commit subject:** `merge: integrate Member 1 PostgreSQL and Supabase foundation`
-- **Issue / task:** User-authorized merge of `codex/member1-postgres-migration` into the latest `origin/main`, including conflict resolution.
-- **Files changed:** Member 1 PostgreSQL migrations, runtime/database configuration, RLS/security tooling, tenant-scoped import/API code, tests and documentation; merged `README.md` and `TEAM_LOG.md`.
-- **What changed:**
-  - Integrated the complete Member 1 PostgreSQL/Supabase history through source commit `2a4b205572e8b9f575bd97d373cd999aa1cade46` with the latest main frontend/documentation history.
-  - Resolved README and team-log conflicts by retaining main's judge-facing README, adding accurate PostgreSQL/Supabase first-bind status and Member 1 security documentation links, and preserving both branches' development records.
-  - Included the secure one-time Supabase first-bind and DPAPI-protected restricted backend/maintenance import wrappers. Operator-supplied remote evidence confirms migrations 001–007, forced RLS on 18 tables, two restricted logins without BYPASSRLS, and the approved tenant-01 dataset identity bind. STANDARD tenant rows are not yet imported.
-- **Why it changed:** Make the verified Member 1 Data Foundation available from `main` without discarding concurrent frontend or documentation work.
-- **Contract / database / API impact:** Adds SQLite/PostgreSQL dual-backend support, PostgreSQL migrations 001–007, RLS/capability roles, Supabase preflight/first-bind/import entry points, and authenticated history APIs. No remote database mutation was performed during this merge.
-- **Tests / verification:**
-  - `py -3.14 -B -m unittest tests.test_supabase_first_bind -v` — **PASS** — 16/16.
-  - `py -3.14 -B -m compileall -q retaniq tests` — **PASS**.
-  - Initial `npm run build` — **BLOCKED by missing local dependencies** (`tsc` unavailable); `npm ci` completed with 0 vulnerabilities, then `npm run build` — **PASS** — 46 modules transformed.
-  - `git diff --check` and conflict-marker scan — **PASS** before staging.
-- **Data / model / ROI evidence:** Approved synthetic STANDARD manifest only. Supabase first bind exists, but tenant-01 import/API smoke and any model/ROI evidence remain pending.
-- **Known issues / blockers:** Shared transaction-local tenant GUC remains a trusted-backend boundary rather than independent database authentication. Tenant-01 STANDARD import and bounded remote API smoke have not yet run.
-- **Next action / handoff:** Import only tenant-01 through the restricted backend/maintenance logins, verify expected counts and cross-tenant absence, then run the bounded authenticated API smoke.
-- **Reviewer / pairing:** N/A
-
-### 2026-10-10T20:57:28Z — ChatGPT / Docs — Refresh README homepage rendering
-
-- **Workstream:** Docs / GitHub Repository Presentation
-- **Branch:** `main`
-- **Commit subject:** `docs: refresh GitHub homepage README rendering`
-- **Issue / task:** User reported repository homepage README preview showing old content while opening the root README file displayed the new complete project document.
-- **Files changed:** `README.md`, `TEAM_LOG.md`
-- **What changed:**
-  - Replaced the README opening HTML alignment wrapper with a native GitHub Markdown H1 heading that prominently displays the LaiCai / RetainIQ v2 identity.
-  - Kept every subsequent README section, architecture flow, requirements discussion, demo details and evidence limitations identical.
-  - Created a new commit to request GitHub's repository-page preview refresh; homepage browser rendering/cache is not directly observable through the repository API.
-- **Why it changed:** Improve predictable repository homepage rendering and refresh the README display without discarding the comprehensive documentation.
-- **Contract / database / API impact:** None; documentation only.
-- **Tests / verification:**
-  - GitHub root tree and `main` HEAD inspected — PASS — only one root `README.md` exists and `main` references the expected current commit.
-  - README text comparison — PASS — all existing content beyond the opening title block is byte-for-byte preserved.
-  - GitHub homepage browser-rendered cache — NOT VERIFIED — connector exposes repository files, not a browser view of this private repo.
-  - Runtime tests — NOT RUN — documentation/display-only update, no code changed.
-- **Data / model / ROI evidence:** Unchanged; synthetic/demo and hypothetical financial examples remain explicitly labeled.
-- **Known issues / blockers:** GitHub website/browser CDN cache invalidation cannot be guaranteed or independently observed via API.
-- **Next action / handoff:** Check the repository root view using a fresh/private browser session; if still stale, compare visible commit/branch and ask GitHub support for persistent repository homepage caching.
-- **Reviewer / pairing:** N/A
-
-### 2026-10-10T20:42:20Z — ChatGPT / Docs — Publish complete judging-ready LaiCai README
-
-- **Workstream:** Docs / Track 1 Pitch & Integration
-- **Branch:** `main`
-- **Commit subject:** `docs: publish rubric-aligned LaiCai project README`
-- **Issue / task:** User-requested complete README aligned with RetainIQ v2 requirements, Track 1 judging rubric, and final three-minute pitch script.
-- **Files changed:** `README.md`, `TEAM_LOG.md`
-- **What changed:**
-  - Replaced Part 1-only README with full project presentation: problem and verified Recurly/Unbounce sources, customer success personas, Connect–Predict–Decide–Learn flow, features, dashboard routes, and example journey.
-  - Documented multi-horizon modeling, personal baseline, reliability, human-governed MRR-prioritized review, break-even math, mature feedback, data integration, local setup, evidence standards, demo walkthrough, and rubric mapping.
-  - Separated specification/design, current synthetic UI/data foundation, unsupported real-data/model claims, and integration gates.
-- **Why it changed:** Provide a complete and understandable judge-facing project README consistent with the four-part requirements and actual repository boundaries.
-- **Contract / database / API impact:** Documentation only; no code, API schema, database, model, credential, or deployed service changed.
-- **Tests / verification:**
-  - README static content and Markdown section checks — PASS — core requirements, primary story, evidence caveats, documented routes, citations, and formulas included.
-  - GitHub `main` HEAD, `README.md`, `TEAM_LOG.md`, `DATASET_CARD.md`, `package.json`, frontend routes and services inspected — PASS — README reflects verified repository state.
-  - Runtime build/unit tests — NOT RUN — documentation-only remote GitHub update; prior reported results are not represented as newly executed.
-- **Data / model / ROI evidence:** Third-party cited statistics, local synthetic demonstration, arithmetic scenario assumptions, and existing DATASET_CARD limitations; no invented held-out metrics or causally saved revenue.
-- **Known issues / blockers:** Real-data acceptance, real measured LightGBM performance, production API/UI integration and complete deployment not established in main.
-- **Next action / handoff:** Team to validate demo/deployment and update measured evidence, links, and implementation status only when supported; maintain same-commit log discipline.
 - **Reviewer / pairing:** N/A
 
 ### 2026-10-10T15:09:47Z — Codex — Add five-page RetainIQ frontend dashboard
@@ -1266,6 +1288,34 @@ itself also requires a filled-in commit entry.
 - **Next action / handoff:** Member 2 provisions a service principal with only the required source/purpose grants, uses the as-of APIs, and maps descriptive reliability text to stable reason codes. Member 4 may use the new operator health endpoint. Project owners still need to authorize a genuine historical dataset before training work.
 - **Reviewer / pairing:** N/A
 
+### 2026-10-10T07:42:00Z — Member 3 — Action execution tracking endpoint and actual cost audit trail
+
+- **Workstream:** Part 3 — Decision Engine
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `feat: add action execution endpoint, actual vs predicted cost tracking, and migration 004`
+- **Issue / task:** Spec §7.7 Action Execution & Cost Audit Trail (RetainIQ_v2_Complete_Requirements.md §7.7)
+- **Files changed:**
+  - `backend/decision/migrations/004_action_executions.sql` *(new)* — table `action_executions` with RLS, audit indexes, and separation of actual monetary/staff costs
+  - `backend/decision/models.py` *(modified)* — added `ExecutionStatus`, `ExecutionRequest`, `ExecutionResponse`, and `notes: list[str]` on `EvaluationResponse`
+  - `backend/decision/api.py` *(modified)* — implemented live `POST /v1/decisions/cases/{case_id}/execution` endpoint transitioning case status to EXECUTED / FOLLOW_UP_DUE / CLOSED
+  - `tests/decision/test_api_phase3.py` *(modified)* — added tests for live execution endpoint, failed execution status transition, and tenant header authorization
+  - `TEAM_LOG.md` *(this entry)*
+- **What changed:**
+  - `004_action_executions.sql`: Created schema for `action_executions` table separating actual monetary costs (`actual_monetary_cost_minor`) and staff effort (`actual_staff_minutes`) from initial predictions on `action_proposals`. Added tenant isolation with PostgreSQL RLS.
+  - `models.py`: Added Pydantic schemas `ExecutionRequest` and `ExecutionResponse` validating `execution_status` in `('EXECUTED', 'FAILED', 'CANCELLED')` and non-negative actual cost/time numbers.
+  - `api.py`: Implemented `POST /v1/decisions/cases/{case_id}/execution` endpoint that validates case status (must be `ASSIGNED` or `HUMAN_REVIEWED`), inserts the execution record, updates the case status to `EXECUTED` or `FOLLOW_UP_DUE` (when `follow_up_anchor` is provided), computes the 7/14/30d follow-up schedule, and logs an append-only `ACTION_EXECUTED` event to `case_history`.
+  - `test_api_phase3.py`: Added 3 tests validating successful execution recording, transition to `CLOSED` upon execution failure, and rejection of requests missing tenant identification.
+- **Why it changed:** Completes spec §7.7 requirement: "Record predicted action cost and actual monetary/staff effort separately" and provides execution lifecycle transitions.
+- **Contract / database / API impact:** Added `POST /v1/decisions/cases/{case_id}/execution`. Added `action_executions` table in migration 004.
+- **Tests / verification:**
+  - `pytest tests/decision/ -v` — PASS (91 passed, 0 failed in 0.60s).
+  - `pytest deepseek_python_20261010_dc4479.py deepseek_python_20261010_7837fa.py -v` — PASS (14 passed in 0.21s).
+  - `python deepseek_python_20261010_54466f.py` — PASS (39 passed, 0 failed).
+- **Data / model / ROI evidence:** Fully conforms to non-causal guardrails (§10.3) and separate actual vs predicted expense accounting (§7.7).
+- **Known issues / blockers:** None.
+- **Next action / handoff:** Provide status update to team and user, commit and push changes.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T07:41:34Z — Member 1 / Data & Backend Engineer — Real dataset gate and Member 2 handoff
 
 - **Workstream:** Part 1 / Data Foundation & Core Backend
@@ -1293,7 +1343,6 @@ itself also requires a filled-in commit entry.
 - **Next action / handoff:** Project owner to confirm source permission and provide an authorized longitudinal dataset. Then inspect and measure the files before implementing a reviewed canonical adapter; Member 2 owns feature/label construction and model evaluation.
 - **Reviewer / pairing:** N/A
 
-
 ### 2026-10-10T07:28:13Z — Member 1 / Data & Backend Engineer — Enforce point-in-time and purpose data contracts
 
 - **Workstream:** Part 1 / Data Foundation & Core Backend
@@ -1316,6 +1365,45 @@ itself also requires a filled-in commit entry.
 - **Known issues / blockers:** The local prototype still uses SQLite without production encryption/TLS/deployment controls or a PostgreSQL adapter; authorized historical data remains unavailable.
 - **Next action / handoff:** Member 2 may persist valuation-bearing features only through a principal with `billing_valuation`; prediction builders must use no source data later than the declared `as_of`.
 - **Reviewer / pairing:** Read-only code review; PIT, purpose-gating, and reliability-reason findings corrected.
+
+### 2026-10-10T07:18:00Z — Member 3 — Decision engine top-level adapter APIs and validation harness
+
+- **Workstream:** Part 3 — Decision Engine
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `feat: add top-level decision engine adapter APIs and pass validation test suite`
+- **Issue / task:** Part 3 validation — `deepseek_python_20261010_dc4479.py`, `deepseek_python_20261010_54466f.py`, `deepseek_python_20261010_7837fa.py`
+- **Files changed:**
+  - `backend/decision/enums.py` *(modified)* — exported `Route` and `HumanDecision` aliases
+  - `backend/decision/router_engine.py` *(modified)* — added `route_account` top-level adapter
+  - `backend/decision/ranker.py` *(modified)* — added `rank_top_k` top-level adapter
+  - `backend/decision/action_catalog.py` *(modified)* — added `propose_actions` top-level adapter
+  - `backend/decision/roi_calculator.py` *(modified)* — added `break_even_card` sensitivity analysis adapter
+  - `backend/decision/workflow.py` *(modified)* — added `approve_case` human decision workflow adapter
+  - `backend/decision/outcomes.py` *(modified)* — added `record_outcome` outcome observation adapter
+  - `backend/decision/evaluator.py` *(modified)* — added `evaluate_strategies` multi-strategy evaluation adapter
+  - `deepseek_python_20261010_54466f.py` *(modified)* — project ROOT path resolution supporting repo root or scripts dir
+  - `TEAM_LOG.md` *(this entry)*
+- **What changed:**
+  - Implemented top-level convenience adapter functions across the Decision Engine module:
+    - `route_account(case: dict | PredictionPayload) -> Route`
+    - `rank_top_k(accounts: list[dict], k: int = 10) -> list[dict]`
+    - `propose_actions(facts: dict | CustomerFacts) -> list[dict]`
+    - `break_even_card(...) -> dict` returning sensitivity metrics with strict guardrails
+    - `approve_case(...) -> dict` checking operational modes and enforcing budget/staff caps
+    - `record_outcome(...) -> dict` recording 7, 14, 30d outcomes with non-causal guardrail notes
+    - `evaluate_strategies(cohort: list, k: int = 10) -> dict` evaluating A, B, C strategies
+  - Fixed ROOT path resolution in `deepseek_python_20261010_54466f.py`.
+- **Why it changed:** Enables clean top-level integration testing and automated validation against Part 3 specifications.
+- **Contract / database / API impact:** None on existing FastAPI routes or PostgreSQL tables. Adapters provide clean programmatic access for third-party scripts and team members.
+- **Tests / verification:**
+  - `pytest deepseek_python_20261010_dc4479.py -v` — PASS (1 passed in 0.14s)
+  - `python deepseek_python_20261010_54466f.py --verbose` — PASS (Total: 39, PASS: 39, FAIL: 0)
+  - `pytest deepseek_python_20261010_7837fa.py -v` — PASS (13 passed in 0.16s)
+  - `pytest tests/decision/ -v` — PASS (88 passed in 0.55s)
+- **Data / model / ROI evidence:** All guardrails verified: SCENARIO_ONLY labels enforced, zero cost ROI is None, non-causal outcome notes preserved, no forbidden ROI claims.
+- **Known issues / blockers:** None. All 3 validation scripts pass 100%.
+- **Next action / handoff:** Part 3 is fully validated and ready for end-to-end integration with Members 1, 2, and 4.
+- **Reviewer / pairing:** N/A
 
 ### 2026-10-10T07:16:26Z — Member 1 / Data & Backend Engineer — Enforce purpose and valuation contracts
 
@@ -1362,6 +1450,158 @@ itself also requires a filled-in commit entry.
 - **Data / model / ROI evidence:** Synthetic engineering fixtures only. No real dataset was present; no model, churn, or ROI evidence was generated. Dataset gate remains `NOT_READY`.
 - **Known issues / blockers:** No authorized historical dataset/license, managed encrypted database, TLS termination, PostgreSQL adapter, external identity provider, or scheduled daily worker exists in this checkout. Currency validation checks three-uppercase-letter syntax, not full ISO registry membership.
 - **Next action / handoff:** Member 2 can consume tenant-scoped point-in-time histories and the shared feature/label/prediction contracts. Member 3 can consume as-of MRR, currency, valuation time, and factual billing/usage references. The team must verify dataset provenance and provision production storage/security before real scoring.
+
+### 2026-10-10T07:05:00Z — Member 3 — Phase 3: Human approval state machine, budget enforcement, outcomes, evaluation
+
+- **Workstream:** Part 3 — Decision Engine
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `feat: Phase 3 — human approval workflow, budget capacity safeguards, 7/14/30d outcomes, RevenueCaptured@K`
+- **Issue / task:** Phase 3 — Human Approval + Outcome Tracking (RetainIQ_v2_Complete_Requirements.md §7.5, §7.7, §7.8; rolemember.md §开发优先顺序)
+- **Files changed:**
+  - `backend/decision/workflow.py` *(new)* — human authority state machine & transactional budget/capacity cap guards (§7.5, §7.7)
+  - `backend/decision/outcomes.py` *(new)* — 7/14/30d outcome observation engine with unknown-status integrity checks (§7.7)
+  - `backend/decision/evaluator.py` *(new)* — frozen replay evaluation engine for Strategies A, B, and C with RevenueCaptured@K metric (§7.8)
+  - `backend/decision/migrations/003_human_decisions_and_outcomes.sql` *(new)* — human_decisions, outcome_observations, and case_history audit tables + RLS
+  - `backend/decision/models.py` *(modified)* — HistoryEvent, CaseHistoryResponse, EvaluationCohortAccount, EvaluationResponse; enhanced Approval & Outcome models
+  - `backend/decision/api.py` *(modified)* — live POST /cases/{case_id}/approve, GET /cases/{case_id}/history, POST /cases/{case_id}/outcomes, GET /evaluation endpoints
+  - `tests/decision/test_workflow.py` *(new)* — 9 unit tests for APPROVE/MODIFY/REJECT/NO_INTERVENTION, budget caps, overrides, idempotency
+  - `tests/decision/test_outcomes.py` *(new)* — 5 unit tests for 7/14/30d horizons, coverage, and unknown status guardrails
+  - `tests/decision/test_evaluator.py` *(new)* — 5 unit tests for Strategies A/B/C, RevenueCaptured@K, zero-denominator handling
+  - `tests/decision/test_api_phase3.py` *(new)* — 4 FastAPI integration tests for all live Phase 3 endpoints
+  - `TEAM_LOG.md` *(this entry)*
+- **What changed:**
+  - `workflow.py`: Implemented state machine transitions (PROPOSED -> ASSIGNED, REJECTED, CLOSED_NO_ACTION, HUMAN_REVIEWED). Preserved original system proposal vs final human choice. Enforced transactional budget and staff-minute capacity caps against double-spend, requiring authorized override with reason. Rejects attempts to execute simulation-only or disabled actions live on MODIFY. Anchors follow-up at decided_at with automated 7d/14d/30d due date calculation. Idempotent re-approvals safely return existing decision without double deduction.
+  - `outcomes.py`: Validates follow-up horizons (strictly 7, 14, 30 days) and observed statuses (active, churned, pending_cancellation, downgraded, unknown). Enforces §7.7 rule that unknown/incomplete observation is NOT a successful retention outcome. Emits strict non-causal guardrail note 'active_is_not_proof_of_retention_effectiveness'.
+  - `evaluator.py`: Implemented frozen historical replay evaluation comparing Strategy A (calibrated p30 descending), Strategy B (p30 * MRR exposure descending), and Strategy C (RetainIQ gated planning: reliability gating + cooldown + top-K + p30*MRR + p7 urgency tie-break). Computes RevenueCaptured@K (Subsequently Churned MRR Identified@K) and Recall@K. Zero churned MRR denominator cleanly yields N/A. Strictly labeled as historical identification coverage, never claiming causal revenue saved.
+  - `api.py`: Promoted remaining stubs (/approve, /history, /outcomes, /evaluation) to fully functional live handlers with database and demo fixture fallback paths.
+- **Why it changed:** Completes all Phase 3 requirements, closing Part 3 decision engine scope per §7.5, §7.7, §7.8, §7.9.
+- **Contract / database / API impact:** All 8 Decision API endpoints are now fully live and conformant with `shared/fixtures/decision_mock.json` and `shared/contracts/prediction_contract.md`. Migration 003 adds `human_decisions`, `outcome_observations`, and `case_history` tables.
+- **Tests / verification:**
+  - `pytest tests/decision/ -v` — PASS (88 passed, 0 failed in 0.57s).
+- **Data / model / ROI evidence:** Evaluation and outcomes strictly labeled with non-causal guardrails.
+- **Known issues / blockers:** None for Part 3. Ready for Part 1/2 real model/data integration and Part 4 frontend visualization.
+- **Next action / handoff:** Part 3 is complete and ready for end-to-end integration with Member 1 (data foundation), Member 2 (ML model), and Member 4 (frontend dashboard).
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:55:00Z — Member 3 — Phase 2: Action catalog engine, break-even ROI card, DB migration, live API, tests
+
+- **Workstream:** Part 3 — Decision Engine
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `feat: Phase 2 — action catalog rule engine, break-even ROI calculator, proposal migrations, live endpoints`
+- **Issue / task:** Phase 2 — Action Rules + ROI (RetainIQ_v2_Complete_Requirements.md §7.4, §7.5, §7.6; rolemember.md §开发优先顺序)
+- **Files changed:**
+  - `backend/decision/action_catalog.py` *(new)* — Next Best Action catalog & fact-based candidate generation (§7.4)
+  - `backend/decision/roi_calculator.py` *(new)* — one-month break-even sensitivity & scenario ROI calculation (§7.6)
+  - `backend/decision/migrations/002_action_proposals.sql` *(new)* — action_proposals & budget_config tables + RLS
+  - `backend/decision/models.py` *(modified)* — SupportingFactRef, ActionProposal, DisabledAction, CaseProposalsResponse, CustomerFacts, BudgetConfigRecord
+  - `backend/decision/router_engine.py` *(modified)* — populated reliability_status and data_freshness_status in RouteResult
+  - `backend/decision/database.py` *(modified)* — clean FastAPI generator dependency without contextmanager, fallback when pool is not initialized
+  - `backend/decision/api.py` *(modified)* — live GET /v1/decisions/cases/{case_id}/proposals & GET /v1/decisions/cases/{case_id}/roi endpoints
+  - `tests/decision/test_action_catalog.py` *(new)* — 15 unit tests covering eligibility, contraindications, suppression, data investigation
+  - `tests/decision/test_roi_calculator.py` *(new)* — 10 unit tests covering verified arithmetic, zero cost, bounds, pp vs % formatting
+  - `tests/decision/test_api_phase2.py` *(new)* — 2 FastAPI integration tests for live proposals and ROI calculation
+  - `TEAM_LOG.md` *(this entry)*
+- **What changed:**
+  - `action_catalog.py`: Catalog defined with canonical actions and strict modes (operational: ACCOUNT_CHECK_IN, PAYMENT_RECOVERY, DATA_INVESTIGATION, NO_INTERVENTION; conditional: PRODUCT_WALKTHROUGH; disabled/simulation: TECH_SUPPORT_ESCALATION, PLAN_REVIEW, PAUSE, DOWNGRADE, CONDITIONAL_DISCOUNT). Implemented fact-based candidate generator attaching source table IDs (usage_events, billing_events, feature_events). Discretionary contact suppressed when open action exists or active cooldown applies. When evidence is missing or stale, routes strictly to DATA_INVESTIGATION rather than fabricating incentives. Non-operational actions segregated into disabled_actions list.
+  - `roi_calculator.py`: Implements §7.6 break-even arithmetic: contribution_value = MRR * margin; break_even_abs = cost / contribution_value (in percentage points pp); break_even_share = break_even_abs / p30 (in percentage %). Zero cost produces ROI N/A. Break-even exceeding p30 marked break_even_achievable=False ("not achievable in this simplified scenario"). Clamps assumed reduction within [0, p30]. Strictly labeled SCENARIO_ONLY.
+  - `api.py`: Promoted GET /cases/{case_id}/proposals and GET /cases/{case_id}/roi from stubs to live calculation engines. Preserved real reliability_status and data_freshness_status in decision_cases insertion.
+- **Why it changed:** Fulfills Phase 2 requirements for Part 3 Decision Engine per §7.4, §7.5, §7.6.
+- **Contract / database / API impact:** Live response formats match frozen shared fixture `shared/fixtures/decision_mock.json` exactly. Migration 002 adds `action_proposals` and `budget_config` tables.
+- **Tests / verification:**
+  - `pytest tests/decision/ -v` — PASS (65 passed, 0 failed in 0.55s).
+- **Data / model / ROI evidence:** ROI calculation strictly enforces SCENARIO_ONLY sensitivity labeling. No causal uplift claimed.
+- **Known issues / blockers:** Part 1 SQL view `account_mrr_as_of` still pending from Member 1; inline MRR or default fallback used in the interim.
+- **Next action / handoff:** Phase 3 — Human approval state machine, transactional budget enforcement, 7/14/30d outcome tracking, and RevenueCaptured@K evaluation (§7.5, §7.7, §7.8).
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:42:00Z — Member 3 — Phase 1: Routing engine, ranker, DB migration, API, tests
+
+- **Workstream:** Part 3 — Decision Engine
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `feat: Phase 1 — routing engine, top-K ranker, decision_cases migration, FastAPI`
+- **Issue / task:** Phase 1 — Routing + Ranking (rolemember.md §开发优先顺序)
+- **Files changed:**
+  - `backend/requirements.txt` *(new)*
+  - `backend/decision/__init__.py` *(new)*
+  - `backend/decision/enums.py` *(new)* — all canonical route/status/action enums
+  - `backend/decision/models.py` *(new)* — Pydantic schemas for prediction, MRR, routing, cases, ROI, approvals
+  - `backend/decision/config.py` *(new)* — env-var settings
+  - `backend/decision/database.py` *(new)* — psycopg2 connection pool
+  - `backend/decision/router_engine.py` *(new)* — 5-gate routing logic (§7.2)
+  - `backend/decision/ranker.py` *(new)* — exposure proxy + Top-K sort (§7.3)
+  - `backend/decision/api.py` *(new)* — FastAPI handlers (Phase 1 live + Phase 2/3 stubs)
+  - `backend/decision/main.py` *(new)* — app entry point (uvicorn port 8003)
+  - `backend/decision/migrations/001_decision_cases.sql` *(new)* — decision_cases table + RLS + indexes
+  - `tests/__init__.py`, `tests/decision/__init__.py` *(new)*
+  - `tests/decision/test_router_engine.py` *(new)* — 23 routing unit tests
+  - `tests/decision/test_ranker.py` *(new)* — 15 ranking unit tests
+  - `TEAM_LOG.md` *(this entry)*
+- **What changed:**
+  - `router_engine.py`: Implements the 5-step gate in strict order (NOT_ELIGIBLE → KNOWN_CANCELLATION → HUMAN_REVIEW × 8 triggers → threshold → cooldown → PRIORITY_REVIEW). Pure function — no DB side effects, fully testable.
+  - `ranker.py`: Deterministic 4-level sort (exposure DESC, p7 DESC, oldest ASC, customer_id ASC). Currency-safe: filters by single currency before ranking.
+  - `models.py`: Pydantic v2 with validators — monotonicity check p7≤p14≤p30, mrr_missing→null guard.
+  - `api.py`: Phase 1 endpoints `POST /route`, `POST /cases/batch`, `GET /cases` are live. Phase 2/3 endpoints are working stubs returning `decision_mock.json` fixture.
+  - `001_decision_cases.sql`: Tenant-scoped table with `UNIQUE(tenant_id, customer_id, prediction_id)`, RLS policy, auto-updated_at trigger, 4 performance indexes.
+- **Why it changed:** Phase 1 priority per rolemember.md — routing and ranking core logic must be live before Phase 2 action catalog.
+- **Contract / database / API impact:**
+  - New table: `decision_cases`. FK: `prediction_id` references Member 2's `predictions` table. MRR data from Member 1's `account_mrr_as_of` view.
+  - New endpoints: `POST /v1/decisions/route`, `POST /v1/decisions/cases/batch`, `GET /v1/decisions/cases`.
+  - **Notify Member 4:** Phase 2/3 stubs are live — all 8 endpoints callable, returning `decision_mock.json`.
+  - **Notify Member 1:** Need `account_mrr_as_of` view available with fields from `mrr_contract.md`.
+  - **Notify Member 2:** `decision_cases.prediction_id` FK — must be a stable immutable `prediction_id` per account/cutoff.
+- **Tests / verification:**
+  - `pytest tests/decision/ -v --tb=short` — **38 passed, 0 failed** — `PASS`
+  - Exposure proxy arithmetic (Bob §7.3 example): `0.65 × 120000 = 78000` — `PASS`
+  - High risk never overrides limited_evidence gate — `PASS`
+  - Monotonicity validator p7>p14 raises — `PASS`
+  - mrr_missing + non-null mrr_minor raises — `PASS`
+  - Currency mixing prevention (MYR vs USD not ranked together) — `PASS`
+  - `psycopg2` DB not started (no local PostgreSQL) — DB-dependent endpoints NOT RUN in unit tests
+- **Data / model / ROI evidence:** Synthetic fixture only. No real prediction data consumed yet.
+- **Known issues / blockers:**
+  - `database.py` requires PostgreSQL at `DATABASE_URL`. Run migration `001_decision_cases.sql` before starting API.
+  - Phase 2/3 endpoints return mock fixture — real action catalog, ROI calculation, and human approval to be implemented in Phase 2 and 3.
+  - `reliability_status` and `data_freshness_status` stored as route_reason placeholder in `_store_decision_cases` — refine to store proper enum values in Phase 2.
+  - Member 1 `account_mrr_as_of` view not yet available — using inline MRR from request body for now.
+- **Next action / handoff:**
+  - Member 3: Phase 2 — action catalog + ROI card calculation
+  - Member 4: Stub endpoints are live — `GET /v1/decisions/cases` returns real sorted data when DB is up; other endpoints return fixture
+  - Member 1: Please confirm `account_mrr_as_of` view schema matches `mrr_contract.md`
+- **Reviewer / pairing:** N/A
+
+### 2026-10-10T06:30:00Z — Member 3 — Day 0 contract freeze: prediction + decision mock fixture
+
+- **Workstream:** Part 3 — Decision Engine / Integration
+- **Branch:** `feature/decision-engine`
+- **Commit subject:** `docs: freeze prediction contract and publish decision mock fixture`
+- **Issue / task:** Day 0 Integration Contract Freeze (rolemember.md §开发开始前)
+- **Files changed:**
+  - `shared/contracts/prediction_contract.md` *(new)*
+  - `shared/fixtures/decision_mock.json` *(new)*
+  - `TEAM_LOG.md` *(this entry)*
+- **What changed:**
+  - Created `prediction_contract.md`: frozen v1.0 prediction JSON schema agreed with Member 2. Covers all fields — `prediction_id`, `p_churn_7d/14d/30d`, `reliability.status`, `data_freshness.status`, `uncertainty`, `explanations_by_horizon`. Includes status enums, Part 3 consumption rules, and 7 mock fixture accounts.
+  - Created `decision_mock.json`: synthetic fixture for all 8 Decision API endpoints — `GET /cases`, `GET /proposals`, `GET /roi`, `POST /approve`, `GET /history`, `POST /outcomes`, `GET /evaluation`. Uses MRR values from `mrr_contract.md` (minor units + ISO currency). Clearly labeled `SYNTHETIC_FIXTURE`.
+- **Why it changed:** Member 4 cannot start frontend development without mock API responses. Member 3 cannot build routing without confirmed prediction payload shape. Freezing contracts Day 0 per rolemember.md workflow.
+- **Contract / database / API impact:**
+  - `prediction_id` confirmed as the FK linking `predictions → decision_cases → prediction_feedback`.
+  - `as_of` must match `mrr_as_of` for correct point-in-time MRR lookup (Option A: SQL view `account_mrr_as_of`).
+  - Prediction probabilities are Member 2's frozen output — Part 3 must NOT rewrite them.
+  - **Notify:** Member 2 to confirm `prediction_contract.md` matches actual model output shape before real model is ready. Member 4 can begin using `decision_mock.json` immediately.
+- **Tests / verification:**
+  - JSON fixture validated for structure — `PASS` (manual review)
+  - Arithmetic check: `exposure_proxy_30d` for cust_002: `0.65 × 120000 = 78000 minor MYR` — `PASS`
+  - ROI card check: `150/840 = 0.1786 = 17.86 pp`, `0.1786/0.65 = 27.47%`, `net = 84-150 = -66`, `ROI = -44%` — `PASS`
+  - Unit tests: `NOT RUN` — test scaffolding not yet created (Phase 1 next)
+- **Data / model / ROI evidence:** Synthetic fixture — not real model predictions. ROI numbers are the verified spec example from §7.6.
+- **Known issues / blockers:**
+  - Member 2 must confirm prediction payload shape matches `prediction_contract.md` when real model is ready.
+  - Member 1 must confirm `account_mrr_as_of` SQL view field names match `mrr_contract.md`.
+  - `RevenueCaptured@K` in evaluation mock returns `null` — requires real historical data from Member 1+2.
+- **Next action / handoff:**
+  - Member 3: begin Phase 1 — routing engine code + `decision_cases` table migration
+  - Member 4: start Strategy Lab UI using `shared/fixtures/decision_mock.json`
+  - Member 2: review `prediction_contract.md` and confirm or propose field changes
 - **Reviewer / pairing:** N/A
 
 ## 5. Team workstream directory — fill in before parallel development
