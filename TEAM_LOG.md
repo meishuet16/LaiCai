@@ -73,6 +73,25 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T22:32:01Z — Codex — Correct Render first deployment workflow
+
+- **Workstream:** Part 1 / Data Foundation / Docs
+- **Branch:** `codex/render-data-foundation-deploy`
+- **Commit subject:** `docs: correct Render first deployment workflow`
+- **Issue / task:** Final Render deployment review findings: initial environment setup and Blueprint auto sync
+- **Files changed:** `docs/RENDER_DEPLOYMENT.md` and this log.
+- **What changed:** Replaced the incorrect create-Blueprint-then-configure sequence with the new Web Service creation form, which accepts the selected backend environment values before its first deployment. Listed exact Render settings, explained optional initial Blueprint secret prompts, distinguished Git auto-deploy from Blueprint Auto Sync, and documented removing conflicting generic/SQLite targets when selecting Supabase.
+- **Why it changed:** Render starts provisioning immediately on Deploy Blueprint; the unchanged Blueprint has no database environment values and cannot start successfully as a new service until configured. The direct creation workflow supports both requested database modes before the first application start.
+- **Contract / database / API impact:** Documentation only. No application code, authentication, tenant scope, database schema, Decision Engine, migrations, dataset imports, or deployment state changed. The separate `853701e add vercel.json` commit remains intact.
+- **Tests / verification:**
+  - Verified creation-form environment configuration and Blueprint prompt/sync behavior against official Render Web Services, Blueprint specification, and infrastructure-as-code documentation.
+  - `python -m pytest tests/test_render_deployment.py tests/test_database_config.py tests/test_supabase_configuration.py -q --basetemp .pytest-tmp-render-review-fix` — **PASS** — 32 tests and 14 subtests passed in 1.81s.
+  - `git diff --check` — **PASS** — no whitespace errors.
+- **Data / model / ROI evidence:** Synthetic configuration and temporary SQLite test fixtures only. No production records, remote database connection, model metrics, or ROI evidence used.
+- **Known issues / blockers:** Actual Render provisioning and Supabase connection/schema checks remain unperformed; production requires a prepared database and protected restricted app credential.
+- **Next action / handoff:** Re-review the corrected operator instructions. Any push, merge, or deployment requires explicit user authorization.
+- **Reviewer / pairing:** Codex final review and correction agents
+
 ### 2026-10-10T22:27:04Z — Codex — Verify Render deployment configuration
 
 - **Workstream:** Part 1 / QA / Integration

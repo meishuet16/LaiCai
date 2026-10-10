@@ -6,11 +6,49 @@ does not apply database migrations or import a dataset during build or start.
 
 ## Configure the backend before the first deploy
 
-Create the web service from `render.yaml`, then set exactly one of the
-database configurations below in the service's protected Environment
-settings before starting a manual deploy. The Blueprint leaves database
-selection to the operator so the same application code can run against either
-backend.
+For the first deployment, use **New → Web Service** in the Render Dashboard
+and connect the repository and the approved deployment branch. Configure the
+creation form with the settings from `render.yaml`:
+
+| Setting | Value |
+| --- | --- |
+| Name | `laicai-api` |
+| Language / runtime | Python |
+| Region | Singapore (`singapore`) |
+| Root directory | Repository root (leave the Dashboard field empty; Blueprint `rootDir: .`) |
+| Build command | `pip install -r requirements-render.txt` |
+| Start command | `gunicorn render_wsgi:application --bind 0.0.0.0:$PORT` |
+| Health check path | `/healthz` |
+| Auto-deploy | Off |
+
+In the creation form's **Advanced** section, enter exactly one database
+configuration below, including the restricted app DSN for Supabase, **before
+clicking Create Web Service**. For Supabase, first complete the authorized
+database preparation described below. Create Web Service immediately starts
+the first build and deployment with those values; auto-deploy being off does
+not prevent this initial deployment. See [Render Web Services](https://render.com/docs/web-services).
+
+The checked-in Blueprint intentionally has no database environment variables.
+Do not use **Deploy Blueprint** to create a new service from it unchanged:
+that action immediately provisions and starts the service, leaving no interval
+to supply database settings before startup. If initial Blueprint creation is
+preferred, first add an `envVars` entry with `sync: false` for **each** variable
+in the selected mode below, under the `laicai-api` service. Render then prompts
+for those values during initial Blueprint creation; supply all of them before
+Deploy Blueprint. Include only the selected mode's keys and commit no values
+or credentials. See [Blueprint secret prompts](https://render.com/docs/blueprint-spec#prompting-for-secret-values).
+
+`autoDeployTrigger: "off"` disables deployments triggered by Git commits.
+Blueprint configuration sync is separate: for any Blueprint you create or
+adopt, also set **Blueprint Settings → Auto Sync → No**. Apply later Blueprint
+changes only with an authorized Manual Sync. See [Render Blueprint sync settings](https://render.com/docs/infrastructure-as-code#disabling-automatic-sync).
+
+For later backend changes, update the service's protected **Environment**
+settings and perform an authorized deployment. The same application code runs
+against either backend. Remove `RETAINIQ_SQLITE_PATH` and
+`RETAINIQ_DATABASE_URL` entirely when selecting Supabase; even empty values
+conflict with its configuration. Leave `RETAINIQ_DATABASE_URL` unset for the
+SQLite settings below so the stated path is used.
 
 ## Temporary SQLite staging
 
