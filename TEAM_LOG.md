@@ -72,6 +72,30 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T08:27:02Z — Member 2 AI coding assistant — Human approval, promotion and rollback governance
+
+- **Workstream:** Part 2 / Part 4 governance
+- **Branch:** `feature/prediction-engine`
+- **Commit subject:** Not committed; Prompt 18 checkpoint is `f5872a5`
+- **Issue / task:** Member 2 Prompt 19; no ticket
+- **Files changed:** `src/retainiq_prediction/model_approval.py`, `src/retainiq_prediction/model_promotion.py`, `src/retainiq_prediction/model_rollback.py`, `src/retainiq_prediction/__init__.py`, `tests/test_model_approval.py`, `tests/test_model_promotion.py`, `tests/test_model_rollback.py`, `docs/MEMBER2_MODEL_APPROVAL_PROMOTION_ROLLBACK.md`, `TEAM_LOG.md`
+- **What changed:**
+  - Added typed, append-only approval records with request idempotency, preserved `APPROVE`/`REJECT` rationale, immutable audit events, and a replaceable external authorization verifier. Caller role strings, booleans and synthetic verifier evidence fail closed for production approval.
+  - Added separate promotion consideration/technical eligibility/activation checks and a process-local compare-and-swap active bundle reference with generation checks, prior-bundle history and explicit non-production limitations. No prediction pipeline mutation or automatic deployment is performed.
+  - Added rollback request validation for authorized human actions, compatible approved targets, stale active-state rejection, process-local simulation, chain preservation and audit evidence. Added 30 synthetic structural governance scenarios and documented implemented versus unavailable production controls.
+- **Why it changed:** Establish an explicit human-governed release boundary after candidate training/evaluation while preventing synthetic evidence, caller claims, stale pointers, changed artifacts and metadata-only statuses from activating or rolling back a model.
+- **Contract / database / API impact:** No database, API, model-training, calibration, prediction-pipeline, Part 3, or dashboard behavior changed. New interfaces consume existing `ModelBundleMetadata` and frozen candidate-evaluation manifests. Member 1/backend must later provide trusted authorization, durable append-only audit, artifact integrity, deployment compatibility and durable atomic active-bundle storage.
+- **Tests / verification:**
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_model_approval.py tests/test_model_promotion.py tests/test_model_rollback.py --basetemp .pytest-tmp-p19` — PASS — 30 tests passed.
+  - `.venv\Scripts\python.exe -m pytest -q tests/test_model_registry.py tests/test_candidate_training.py tests/test_candidate_evaluation.py tests/test_model_approval.py tests/test_model_promotion.py tests/test_model_rollback.py --basetemp .pytest-tmp-p19` — PASS — 55 tests passed.
+  - `.venv\Scripts\python.exe -m pytest -q --basetemp .pytest-tmp-p19` — PASS — 317 tests passed, 24 known SHAP warnings.
+  - `.venv\Scripts\python.exe -c "import retainiq_prediction; ..."` — PASS — Python 3.14.4 and new governance exports imported.
+  - `git diff --check` — PASS — no whitespace errors; only normal LF/CRLF conversion warnings.
+- **Data / model / ROI evidence:** Synthetic structural fixtures and process-local simulation only; no authorized production actor, dataset, artifact, deployment, model metric, retention result or ROI evidence.
+- **Known issues / blockers:** The included audit and active pointer are not durable, distributed or production-safe. Real production activation/rollback remains blocked. Prompt 18's original 28 candidate-training/evaluation scenarios still require a final scenario-to-test coverage review; that review was not performed here.
+- **Next action / handoff:** Member 1/backend should provide the trusted authorization and durable deployment/audit interfaces. Member 2 should perform the deferred Prompt 18 scenario coverage review before any real release integration.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T07:02:28Z — Member 2 AI coding assistant — Multi-horizon LightGBM candidate
 
 - **Workstream:** Part 2 / Prediction Engine
