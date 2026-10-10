@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "retainiq-prediction"
+version = "0.1.0"
+description = "RetainIQ v2 prediction contract foundation"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.7,<3",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8,<9",
+]
+ml = [
+    "lightgbm>=4.6,<5",
+    "scikit-learn>=1.7,<2",
+]
+explainability = [
+    "shap>=0.53,<0.54",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

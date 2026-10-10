@@ -1,0 +1,3 @@
+# Optional PostgreSQL connection support for RetainIQ 06B.
+# SQLite remains the zero-dependency local backend.
+psycopg[binary]>=3.2,<4
