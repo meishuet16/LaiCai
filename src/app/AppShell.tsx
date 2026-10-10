@@ -62,7 +62,7 @@ function RouteDrawer({ eyebrow, title, onClose, children, centered = false }: { 
 }
 
 export function AppShell() {
-  const { route, navigate, closeDrawer, query, setQuery, role, setRole, horizon, setHorizon, currency, setCurrency, dataMode, setDataMode } = useApp();
+  const { route, navigate, closeDrawer, role, setRole, horizon, setHorizon, currency, setCurrency, dataMode, setDataMode } = useApp();
   const mainRef = useRef<HTMLElement>(null);
   const previousPageKey = useRef('');
   const scrollByPage = useRef<Record<string, number>>({});
@@ -103,13 +103,10 @@ export function AppShell() {
       <header className="topbar">
         <div className="page-heading"><h1>{title}</h1>{subtitles[activePage] && <p className="subtitle">{subtitles[activePage]}</p>}</div>
         <div className="topbar-tools">
-          <div className="search"><span aria-hidden="true">⌕</span><input aria-label="Search account ID" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search account ID" /></div>
           <label className="header-control">Data source<select value={dataMode} onChange={event => setDataMode(event.target.value as DataMode)}><option value="connected">Connected · unavailable</option><option value="demo_fixture">Sample data</option></select></label>
-          <span className="demo-tag tenant-tag">Tenant <b>{dataMode === 'connected' ? 'Server context required' : 'Not supplied'}</b></span>
-          <label className="header-control">Role preview<select aria-label="Role preview (not authentication)" value={role} onChange={event => setRole(event.target.value as Role)}><option>Manager</option><option>CSM</option><option>Admin</option><option>Viewer</option></select></label>
-          <span className="demo-tag asof-tag">As-of / model <b>Not connected</b></span>
-          {activePage !== 'command-center' && <label className="header-control">Currency<select value={currency} onChange={event => setCurrency(event.target.value as Currency | 'All')}><option>All</option><option>MYR</option><option>USD</option><option>SGD</option></select></label>}
-          {activePage !== 'command-center' && <div className="horizon-control"><span>Horizon</span><div className="seg" aria-label="Prediction horizon">{([7, 14, 30] as Horizon[]).map(days => <button aria-pressed={horizon === days} className={horizon === days ? 'on' : ''} onClick={() => setHorizon(days)} key={days}>{days}d</button>)}</div></div>}
+          {activePage === 'predictions' || activePage === 'cases' ? <label className="header-control">Currency<select value={currency} onChange={event => setCurrency(event.target.value as Currency | 'All')}><option>All</option><option>MYR</option><option>USD</option><option>SGD</option></select></label> : null}
+          {activePage === 'predictions' || activePage === 'timeline' ? <div className="horizon-control"><span>Horizon</span><div className="seg" aria-label="Prediction horizon">{([7, 14, 30] as Horizon[]).map(days => <button aria-pressed={horizon === days} className={horizon === days ? 'on' : ''} onClick={() => setHorizon(days)} key={days}>{days}d</button>)}</div></div> : null}
+          {activePage === 'cases' || activePage === 'timeline' ? <label className="header-control">Role preview<select aria-label="Role preview (not authentication)" value={role} onChange={event => setRole(event.target.value as Role)}><option>Manager</option><option>CSM</option><option>Admin</option><option>Viewer</option></select></label> : null}
         </div>
       </header>
       <main ref={mainRef}>

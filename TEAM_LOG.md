@@ -72,6 +72,26 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T18:01:53Z — Codex — Show only useful page controls in the header
+
+- **Workstream:** Frontend / QA
+- **Branch:** `member4`
+- **Commit subject:** `fix: simplify contextual dashboard controls`
+- **Issue / task:** Make the shared filter bar intuitive and remove fields that do not change the current view.
+- **Files changed:** `src/app/AppShell.tsx`, `src/index.css`, and this log.
+- **What changed:** Removed the noninteractive Tenant and As-of/model chips and the duplicate global account search. Search remains in the Churn Prediction and Retention Actions tables. The Data source selector remains available on every page; Currency appears only in Churn Prediction and Retention Actions; Horizon only in Churn Prediction and Customer Insights; Role preview only in Retention Actions and Customer Insights. Removed obsolete header styles.
+- **Why it changed:** Several header controls were static or had no effect on the page showing them, while account search duplicated table filters.
+- **Contract / database / API impact:** None; source mode, currency, horizon, and role state remain unchanged.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript and Vite production bundle.
+  - `node --experimental-strip-types --test src/app/routes.test.ts src/services/retainIQService.test.ts src/services/integrationService.test.ts src/services/decisionService.test.ts src/domain/scenario.test.ts src/domain/dashboard.test.ts src/domain/overview.test.ts src/domain/timeline.test.ts src/domain/predictionPresentation.test.ts src/domain/customerFilters.test.ts src/domain/format.test.ts` — PASS — 38 tests.
+  - Safari local Vite check (all five primary pages on port 5180) — PASS — each page shows only relevant controls; Customer Insights header layout was visually checked.
+  - `git diff --check` — PASS — no whitespace errors.
+- **Data / model / ROI evidence:** Data source still says `Sample data`; no backend or model outputs changed.
+- **Known issues / blockers:** No connected tenant/as-of context is available yet; those static placeholders were removed rather than presented as filters.
+- **Next action / handoff:** Review on `member4`; do not push or merge without approval.
+- **Reviewer / pairing:** `N/A`
+
 ### 2026-10-10T17:54:55Z — Codex — Remove repeated demo indicators across pages
 
 - **Workstream:** Frontend / QA

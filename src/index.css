@@ -76,14 +76,8 @@ body { background: var(--canvas); color: var(--ink); }
 .page-heading h1 { color: #20271f; font-size: 31px; font-weight: 700; line-height: 1.15; letter-spacing: -.045em; }
 .page-heading .subtitle { margin: 6px 0 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
 .topbar-tools { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px 10px; min-width: 0; }
-.topbar .search { flex: 1 1 210px; max-width: 260px; min-width: 180px; }
-.topbar .search span { top: 4px; color: #858980; }
-.topbar .search input { height: 38px; padding: 7px 11px 7px 32px; border-radius: 12px; background: #fbfaf7; }
-.topbar .demo-tag { padding: 8px 10px; color: #70766f; background: #faf9f5; border: 1px solid var(--line); border-radius: 11px; white-space: nowrap; }
-.topbar .demo-tag b { color: var(--forest); font-weight: 650; }
 .topbar .header-control { display: grid; align-items: start; gap: 3px; color: var(--muted); font-size: 10px; font-weight: 650; letter-spacing: .01em; }
 .topbar .header-control select { min-width: 75px; height: 34px; padding: 5px 24px 5px 9px; border-radius: 10px; font-size: 12px; }
-.topbar .asof-tag { font-size: 11px; }
 .topbar .seg { gap: 1px; padding: 3px; background: #f7f6f1; border-color: var(--line); border-radius: 12px; }
 .topbar .seg button { min-width: 37px; padding: 6px 8px; color: #737970; font-size: 12px; border-radius: 9px; }
 .topbar .seg .on { color: #fff; background: var(--forest); }
@@ -161,15 +155,11 @@ tbody tr:hover { background: #fbfaf7; }
   .page-heading { min-width: 100%; }
   .page-heading h1 { font-size: 27px; }
   .topbar-tools { width: 100%; gap: 8px; }
-  .topbar .search { flex: 1 1 100%; max-width: none; }
-  .topbar .tenant-tag { order: 4; }
-  .topbar .asof-tag { order: 5; }
   .main > main { padding: 17px 16px 30px; overflow: visible; }
   .split { grid-template-columns: 1fr; }
 }
 @media (max-width: 520px) {
   .page-heading h1 { font-size: 24px; }
-  .topbar .demo-tag { font-size: 10px; }
   .topbar .header-control { font-size: 9px; }
   .topbar .header-control select { min-width: 68px; }
   .main > main { padding-right: 12px; padding-left: 12px; }
