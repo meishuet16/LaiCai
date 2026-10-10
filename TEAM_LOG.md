@@ -72,6 +72,31 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T20:53:46Z — Member 2 AI coding assistant — Emergency Prompt 34 reduced demo workflow and truthful handoff
+
+- **Workstream:** Part 2 / ML / Integration / QA / Docs
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `feat(member2): add reduced synthetic training workflow`
+- **Issue / task:** Member 2 Prompt 34 emergency continuation; no ticket
+- **Files changed:** `examples/member2_prompt34_demo.py`, `src/retainiq_prediction/historical_dataset_preparation.py`, `tests/test_member2_prompt34_demo.py`, `docs/MEMBER2_PROMPT34_CALIBRATED_DEMO_REPORT.md`, and this log.
+- **What changed:**
+  - Added an opt-in reduced preparation workflow that reuses the existing synthetic Prompt 34 source dataset and authenticated SQLite import, selecting 25 fixed weekly cutoffs evenly within the four frozen stages before label reads; class-support thresholds remain unchanged.
+  - Added model/calibration/comparison/SHAP/replay orchestration to the Prompt 34 example and changed VALIDATION comparison/coherence diagnostics to raw scores only, avoiding backward application of parameters fitted on the later CALIBRATION stage.
+  - Changed replay to write through Member 1's existing prediction writer against a private SQLite copy, preserving the imported source copy for source-event reads; documented the in-memory prediction-history mirror and safe-payload limitations.
+  - Added reduced-cutoff structural tests and an emergency report that clearly separates completed source artifacts, incomplete preparation progress, compatibility smoke checks, and unrun Prompt 34 training/evaluation.
+- **Why it changed:** The exhaustive 5,000-account × 73-cutoff preparation was stopped at the user's direction. The reduced workflow makes a predeclared lower-cost attempt possible without regenerating/reimporting STANDARD data, using outcome-selected dates, or weakening support gates. The report prevents partial in-memory counts or unrelated prior models from being represented as Prompt 34 results.
+- **Contract / database / API impact:** No shared PredictionOutput fields, database schema, migration, or API path changed. Preparation continues through the authenticated Member 1 reader and canonical tenant scope. The successful reduced preparation did not finalize, so no replay database clone or prediction row write was produced. Service-principal provisioning may update local authorization metadata in the imported SQLite file; no event/customer rows were intentionally changed. Member 1 still owns authenticated prediction history/readback and support for full SHAP/reliability-reason payloads.
+- **Tests / verification:**
+  - `& .\.venv\Scripts\python.exe -B -m py_compile examples\member2_prompt34_demo.py src\retainiq_prediction\historical_dataset_preparation.py tests\test_member2_prompt34_demo.py` — **PASS**.
+  - `& .\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p34-final tests\test_member2_prompt34_demo.py tests\test_calibration.py tests\test_explainability.py tests\test_prediction_pipeline.py tests\test_operational_inference.py tests\test_historical_evaluation.py` — **PASS** — 79 passed, 0 failed/errors/skipped; 24 existing SHAP output-shape warnings were not suppressed.
+  - Prompt 34 focused test module — **PASS** — 9 passed. Repository-local imports — **PASS**. `git diff --check` — **PASS** (Git reported only an LF-to-CRLF conversion warning).
+  - Private synthetic-fixture smoke loaded existing Prompt 31 STANDARD 14d/30d LightGBM artifacts, produced raw uncalibrated inference, and passed SHAP additivity (errors `5.329070518200751e-15` and `0.0`). This is artifact compatibility evidence only, not Prompt 34 training or performance evidence.
+  - Full repository suite and Prompt 34 end-to-end train/calibrate/TEST/replay — **NOT RUN / BLOCKED** because neither exhaustive nor reduced historical preparation finalized any feature/label artifacts.
+- **Data / model / ROI evidence:** Synthetic-only source: `synthetic-saas-v1-2-prompt34_demo-s2034-316bec2deb46`, seed 2034, manifest SHA-256 `75a687071f3fee639e3ce057b59404834accb2fc01ec39a7cb122cb9883e5aac`, one tenant, 5,000 fictional accounts, 363,562 canonical events, and 814,446 coverage records. No Prompt 34 model was trained/calibrated and no held-out metric, replay result, real-world performance, retention, revenue, or ROI claim is made. No private customer-level rows or model artifacts were added to Git.
+- **Known issues / blockers:** Full preparation was stopped at 45/73 cutoffs; the predeclared reduced run ended at 7/25 and left zero prepared files. Its termination cause and exit diagnostic were not retained. No Prompt 34 model bundle, calibrators, held-out predictions, SHAP output, or replay exists. Read-after-write history in the replay example is process-mirrored until Member 1 exposes a reader. The local prediction bundle must remain not-ready for production.
+- **Next action / handoff:** If further work is authorized, retry from the preserved imported source using a fresh versioned private output root and the reduced cutoff policy; keep all per-horizon support gates unchanged and stop if any stage is insufficient. Member 1: expose authenticated prediction history/readback and clarify writer payload support. Member 2: only fit/calibrate/evaluate after a complete preparation manifest and mature-label support are verified. Members 3/4 must keep `MODEL_BUNDLE_NOT_READY` until real-data, calibration, and operational gates pass.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T19:21:18Z — Member 2 AI coding assistant — Operational inference and requirements traceability
 
 - **Workstream:** Part 2 / Integration / Docs / QA

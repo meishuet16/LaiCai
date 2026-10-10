@@ -149,6 +149,33 @@ def label_evaluation_cutoff(
     )
 
 
+def select_predeclared_cutoffs(
+    schedule: Sequence[Cutoff],
+    counts_by_split: Mapping[SplitName, int],
+) -> tuple[Cutoff, ...]:
+    """Select evenly spaced real cutoffs per split, without inspecting outcomes."""
+
+    if set(counts_by_split) != set(SplitName):
+        raise ValueError("cutoff counts must explicitly cover all four chronological splits")
+    selected: list[Cutoff] = []
+    for split_name in SplitName:
+        stage = tuple(item for item in schedule if item.split is split_name)
+        count = counts_by_split[split_name]
+        if isinstance(count, bool) or not isinstance(count, int) or not 1 <= count <= len(stage):
+            raise ValueError(f"invalid predeclared cutoff count for {split_name.value}")
+        if count == 1:
+            indexes = (len(stage) // 2,)
+        else:
+            indexes = tuple(round(index * (len(stage) - 1) / (count - 1)) for index in range(count))
+        if len(set(indexes)) != count:
+            raise ValueError(f"predeclared cutoff selection duplicated a date for {split_name.value}")
+        selected.extend(stage[index] for index in indexes)
+    result = tuple(sorted(selected, key=lambda item: item.as_of))
+    if len({item.as_of for item in result}) != len(result):
+        raise ValueError("predeclared cutoff schedule contains duplicate timestamps")
+    return result
+
+
 class _CachedLifecycleOutcomeAdapter:
     """Reuse point-in-time reads and filter later outcomes by each label cutoff."""
 
@@ -533,8 +560,10 @@ def prepare_historical_dataset(
     *,
     reader_api_call_counts: Counter | None = None,
     progress_callback=None,
+    cutoff_schedule: Sequence[Cutoff] | None = None,
+    cutoff_policy_version: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Read and freeze the tenant-scoped STANDARD synthetic training data."""
+    """Read and freeze tenant-scoped synthetic training data."""
 
     started = time_module.perf_counter()
     dataset_path = Path(dataset_path).resolve()
@@ -559,7 +588,20 @@ def prepare_historical_dataset(
             or manifest.get("no_real_customer_data") is not True):
         raise ValueError("dataset identity, manifest, target policy, or synthetic provenance mismatch")
 
-    schedule = build_cutoff_schedule(manifest, split_spec)
+    full_schedule = build_cutoff_schedule(manifest, split_spec)
+    schedule = tuple(cutoff_schedule) if cutoff_schedule is not None else full_schedule
+    full_by_timestamp = {item.as_of: item for item in full_schedule}
+    if not schedule or any(
+        item.as_of not in full_by_timestamp or full_by_timestamp[item.as_of] != item
+        for item in schedule
+    ):
+        raise ValueError("selected cutoffs must be exact members of the canonical source schedule")
+    if tuple(sorted(schedule, key=lambda item: item.as_of)) != schedule:
+        raise ValueError("selected cutoffs must remain in chronological order")
+    if {item.split for item in schedule} != set(SplitName):
+        raise ValueError("selected cutoffs must include all four chronological splits")
+    if cutoff_policy_version is not None and not cutoff_policy_version.strip():
+        raise ValueError("cutoff policy version must be non-empty")
     first_cutoff = schedule[0].as_of
     freeze_by_split: dict[SplitName, datetime] = {}
     for item in schedule:
@@ -758,9 +800,14 @@ def prepare_historical_dataset(
                 "eligible_snapshots": len(run.records),
             })
 
+    split_policy_version = (
+        f"synthetic-saas-v1.2-{cutoff_policy_version}-maturity-v1"
+        if cutoff_policy_version
+        else "synthetic-saas-v1.2-weekly-maturity-v1"
+    )
     split_config = TemporalSplitConfig(
         boundaries=boundaries,
-        split_policy_version="synthetic-saas-v1.2-weekly-maturity-v1",
+        split_policy_version=split_policy_version,
         dataset_identifier=adapter.provenance.dataset_id,
         authorized_dataset=False,
         maturity_gap=timedelta(0),
@@ -916,9 +963,17 @@ def prepare_historical_dataset(
             "post_cutoff_outcomes_used_for_features": False,
         },
         "historical_cutoff_policy": {
-            "frequency": "weekly",
+            "frequency": "weekly" if len(schedule) == len(full_schedule) else "predeclared_subset_of_weekly",
             "cutoff_utc": "Monday 12:00:00Z",
             "warmup_days": split_spec["sampling_policy"]["warmup_days"],
+            "policy_version": cutoff_policy_version or "source-weekly-schedule-v1",
+            "source_schedule_cutoff_count": len(full_schedule),
+            "selected_cutoff_count": len(schedule),
+            "selection_rule": (
+                "all source weekly cutoffs"
+                if len(schedule) == len(full_schedule)
+                else "evenly spaced by chronological index within each frozen split; no outcome values inspected"
+            ),
             "cutoff_windows": windows_by_stage,
             "source_split_manifest_sha256": hashlib.sha256((dataset_path / "split_manifest.json").read_bytes()).hexdigest(),
         },
@@ -1079,4 +1134,5 @@ __all__ = [
     "build_cutoff_schedule",
     "label_evaluation_cutoff",
     "prepare_historical_dataset",
+    "select_predeclared_cutoffs",
 ]
