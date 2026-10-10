@@ -1,10 +1,9 @@
 """Typed, non-secret database target configuration.
 
 This module only parses and validates database targets.  It never opens a
-connection or creates a SQLite file.  The current Data Foundation remains
-SQLite-schema-only; PostgreSQL configuration is accepted for the generic
-connection layer and is deliberately rejected by the SQLite repository until
-the 06C schema work is complete.
+connection or creates a SQLite file. PostgreSQL schema migrations are
+available through the explicit 06C migration command; the existing Data
+Foundation repository remains SQLite-query-only until 06D compatibility work.
 """
 
 from __future__ import annotations

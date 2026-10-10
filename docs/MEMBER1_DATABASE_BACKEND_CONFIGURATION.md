@@ -33,6 +33,10 @@ appropriate to its managed database:
 postgresql://<user>:<password>@db.example.com:5432/retaniq?sslmode=verify-full
 ```
 
+Schema changes run only from the explicit `init-db` command. A TLS-disabled
+loopback test server additionally requires
+`--allow-insecure-local-postgresql`; this flag does not relax remote TLS rules.
+
 The optional psycopg 3 driver is declared in
 [`requirements-postgresql.txt`](../requirements-postgresql.txt):
 
@@ -72,21 +76,18 @@ an approved secret store or runtime environment, and avoid printing it.
 - SQLite query parameters continue to use `?`; direct PostgreSQL calls use
   psycopg's `%s` placeholders. Shared repository query adaptation belongs to
   06D rather than an unsafe string-rewrite layer in 06B.
-- SQLite migration scripts are intentionally rejected for PostgreSQL. No
-  PostgreSQL migration runner, schema, RLS policy, or Supabase integration is
-  included in this milestone.
+- SQLite migration scripts are intentionally rejected for PostgreSQL. The
+  PostgreSQL-specific schema and explicit migration runner were added in 06C;
+  RLS and Supabase integration remain outside this milestone.
 
-The existing Data Foundation repository is still SQLite-schema-only. Passing a
-PostgreSQL `DatabaseConfig` to `initialize_database` or another repository
-operation raises an explicit readiness error instead of sending SQLite SQL to
-PostgreSQL or silently opening another backend. This boundary prevents a
-connection primitive from being mistaken for feature parity.
+The existing Data Foundation repository remains SQLite-query-only. The
+explicit `init-db` command applies PostgreSQL schema migrations, while other
+repository operations reject PostgreSQL until 06D rather than sending SQLite
+SQL to PostgreSQL or silently opening another backend.
 
-`POSTGRESQL_CONNECTION_READY` therefore means only that a validated DSN and
-connection lifecycle exist. It does not mean
-`POSTGRESQL_FEATURE_PARITY`: that requires the PostgreSQL schema, migrations,
-query compatibility, tenant isolation, and regression evidence planned for
-06C/06D.
+`POSTGRESQL_CONNECTION_READY` and `POSTGRESQL_SCHEMA_VERIFIED` do not mean
+`POSTGRESQL_FEATURE_PARITY`. Query compatibility, tenant isolation, and
+application regression evidence remain planned for 06D.
 
 ## Verification and limitations
 
@@ -98,11 +99,9 @@ python -B -m compileall -q retaniq tests
 git diff --check
 ```
 
-06B adds parser, lifecycle, rollback, explicit PostgreSQL rejection, and
-missing-driver tests. No PostgreSQL smoke test is claimed for this checkout:
-there is no safe configured PostgreSQL instance or DSN, psycopg 3 is not
-installed in the bundled runtime, and no database service was started.
-
-Next work is 06C PostgreSQL schema and migrations, followed by 06D query and
-repository parity. Supabase remains deferred to the later infrastructure phase
-and is not configured by this foundation.
+06B added parser, lifecycle, rollback, explicit PostgreSQL rejection, and
+missing-driver tests. In 06C, the PostgreSQL driver and local cluster were
+installed/created in temporary paths; the real disposable-server results are
+recorded in `docs/MEMBER1_POSTGRESQL_SCHEMA_AND_MIGRATIONS.md` and
+`TEAM_LOG.md`. Next work is 06D query and repository parity. Supabase remains
+deferred to the later infrastructure phase and is not configured here.

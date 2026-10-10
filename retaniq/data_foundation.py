@@ -191,7 +191,7 @@ def _db(path: str | Path | DatabaseConfig):
     config = resolve_database_config(path)
     if not config.is_sqlite:
         raise PostgreSQLSchemaNotReady(
-            "RetainIQ Data Foundation operations require the PostgreSQL schema from 06C/06D",
+            "RetainIQ Data Foundation repository operations require PostgreSQL query compatibility from 06D",
         )
     connection = connect_database(config)
     try:
@@ -203,12 +203,25 @@ def _db(path: str | Path | DatabaseConfig):
         connection.close()
 
 
-def initialize_database(path: str | Path | DatabaseConfig) -> None:
-    config = resolve_database_config(path)
+def initialize_database(
+    path: str | Path | DatabaseConfig,
+    *,
+    migrate_postgresql: bool = False,
+    allow_insecure_local_postgresql: bool = False,
+) -> None:
+    config = resolve_database_config(
+        path,
+        allow_insecure_local_postgresql=allow_insecure_local_postgresql,
+    )
     if not config.is_sqlite:
-        raise PostgreSQLSchemaNotReady(
-            "RetainIQ PostgreSQL schema migrations are deferred to 06C",
-        )
+        if not migrate_postgresql:
+            raise PostgreSQLSchemaNotReady(
+                "PostgreSQL repository operations are deferred to 06D; use the explicit init-db command for schema migrations",
+            )
+        from .postgresql_migrations import run_postgresql_migrations
+
+        run_postgresql_migrations(config)
+        return
     if config.sqlite_path != ":memory:":
         Path(config.sqlite_path).parent.mkdir(parents=True, exist_ok=True)
     migrations_dir = Path(__file__).resolve().parent.parent / "migrations"

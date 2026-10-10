@@ -72,6 +72,30 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T14:47:40Z — Member 1 / Data & Backend Engineer — PostgreSQL schema and migrations
+
+- **Workstream:** Part 1 / Data Foundation, PostgreSQL Schema & Migrations
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `feat(member1): implement PostgreSQL schema and migration runner`
+- **Issue / task:** Milestone 06C — implement the PostgreSQL schema and explicit migration runner; stop before 06D.
+- **Files changed:** `migrations/postgresql/001_data_foundation.sql` through `004_dataset_identity_and_observation_coverage.sql`, `retaniq/postgresql_migrations.py`, `retaniq/data_foundation.py`, `retaniq/database.py`, `retaniq/database_config.py`, `retaniq/__main__.py`, `tests/test_postgresql_migrations.py`, `docs/MEMBER1_POSTGRESQL_SCHEMA_AND_MIGRATIONS.md`, `docs/MEMBER1_DATABASE_BACKEND_CONFIGURATION.md`, `docs/MEMBER1_DATA_CONTRACT_COMPLIANCE.md`, `docs/MEMBER1_TO_MEMBER2_DATA_HANDOFF.md`, `README.md`, and `TEAM_LOG.md`.
+- **What changed:**
+  - Added four PostgreSQL migrations for the canonical 18-table Data Foundation schema, tenant-composite keys, constraints, indexes, identity sequence, timestamps, integration grants/owners, and dataset identity/coverage. Serialized payload text stays `TEXT`; PostgreSQL uses `BIGINT`, `DOUBLE PRECISION`, and `TIMESTAMPTZ` where appropriate.
+  - Added ordered/checksummed migration discovery, history validation, session advisory locking, per-migration atomic transactions, schema targeting, and actionable safe errors. `init-db` explicitly applies the PostgreSQL migrations; ordinary repository operations remain SQLite-only pending 06D.
+  - Documented the schema compatibility matrix, runner and disposable test procedure, status/limitations, and Member 2 database handoff. No SQLite data-copy or query-adaptation work was included.
+- **Why it changed:** 06C provides a verifiable PostgreSQL schema and repeatable migration lifecycle after the 06B backend foundation, without implying repository/query parity or production readiness.
+- **Contract / database / API impact:** New PostgreSQL schema matches the logical SQLite table/column contract with native PostgreSQL types, named constraints, tenant-scoped foreign keys, and indexes. PostgreSQL initialization is available only through the explicit migration path. No RLS, Supabase, application query parity, data migration, production service, or remote database changes.
+- **Tests / verification:**
+  - Full suite with temporary PostgreSQL 16.15 cluster and psycopg 3.3.6, guarded by the disposable loopback test target — **PASS** — 104 tests, 0 failures, 0 errors, 0 skips; all five live catalog/constraint/transaction/checksum/concurrency integration tests ran.
+  - Focused PostgreSQL migration tests — **PASS** — 20 tests, including all five live-server integration tests.
+  - `python -B -m compileall -q retaniq tests` using the isolated test runtime — **PASS**.
+  - `git diff --check` — **PASS** — no whitespace errors; Git noted LF-to-CRLF normalization for existing text files.
+  - Bundled-runtime full suite without psycopg/test DSN — **PASS** — 104 tests, 99 passed and the five live-PostgreSQL tests skipped by their safety guard; 0 failures/errors.
+- **Data / model / ROI evidence:** Only synthetic test fixtures and an empty, task-created disposable PostgreSQL database. No real customer data, model, or ROI analysis used.
+- **Known issues / blockers:** Complete requirements and `AGENT.md`/`AGENTS.md` were not present in this checkout; the compliance record points to requirements under inaccessible `D:\dunno\dormathon`. PostgreSQL stores timestamps as `TIMESTAMPTZ`, unlike SQLite text; query/repository compatibility and any data conversion remain unverified until 06D. No production isolation/RLS or deployment claim is made.
+- **Next action / handoff:** Member 1 proceeds to 06D-1 PostgreSQL ingestion/identity/auth parity, then 06D-2 historical query and coverage parity. This checkpoint is local only; no push or merge. The disposable database was dropped and its task-created PostgreSQL cluster stopped. The environment rejected recursive deletion of the two exact temporary directories (`retaniq-06c-postgres-runtime` and `retaniq-06c-psycopg-venv`), so their stopped cluster files and isolated driver environment remain on disk. The pre-existing Windows PostgreSQL service was not targeted.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T14:18:47Z — Member 1 / Data & Backend Engineer — Configurable database backend foundation
 
 - **Workstream:** Part 1 / Data Foundation, Database Configuration & Transactions

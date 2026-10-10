@@ -1,10 +1,10 @@
 """Backend-aware connection and transaction primitives.
 
 The generic connection layer can open SQLite and, when the optional psycopg 3
-dependency is installed, PostgreSQL.  The existing RetainIQ Data Foundation
-repository deliberately uses only the SQLite-schema path until 06C/06D; it
-must call :meth:`DatabaseConnection.require_sqlite_schema_support` rather than
-silently sending SQLite SQL to PostgreSQL.
+dependency is installed, PostgreSQL. PostgreSQL schema migrations are
+implemented separately; the existing RetainIQ Data Foundation repository
+remains SQLite-query-only until 06D and must reject PostgreSQL rather than
+silently sending SQLite SQL to it.
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ class UnsupportedDatabaseOperation(DatabaseError):
 
 
 class PostgreSQLSchemaNotReady(UnsupportedDatabaseOperation):
-    """The PostgreSQL connection exists, but the RetainIQ schema is not 06C-ready."""
+    """The current SQLite repository operations are not PostgreSQL-compatible."""
 
 
 def _safe_driver_error(message: str, error: BaseException | None = None) -> DatabaseError:
@@ -208,7 +208,7 @@ class DatabaseConnection:
     def require_sqlite_schema_support(self) -> None:
         if self.backend == POSTGRESQL_BACKEND:
             raise PostgreSQLSchemaNotReady(
-                "RetainIQ PostgreSQL schema operations are deferred to 06C/06D",
+                "RetainIQ PostgreSQL repository compatibility is deferred to 06D",
             )
 
     def close(self) -> None:
