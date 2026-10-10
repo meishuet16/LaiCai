@@ -7,8 +7,10 @@ export function RiskPill({ band }: { band: RiskBand }) {
   return <span className={`pill risk-pill risk-${band}`}>{band === 'no_score' ? 'No score' : label(band)}</span>;
 }
 
-export function EvidencePills({ reliability, freshness }: { reliability?: Reliability | null; freshness?: Freshness | null }) {
+export function EvidencePills({ reliability, freshness, compact = false }: { reliability?: Reliability | null; freshness?: Freshness | null; compact?: boolean }) {
   const reliabilityTone = reliability === 'sufficient_evidence' ? 'good' : reliability === 'limited_evidence' ? 'amber' : reliability === 'insufficient_evidence' ? 'red' : 'neutral';
   const freshnessTone = freshness === 'fresh' ? 'good' : freshness === 'partially_stale' ? 'amber' : freshness === 'stale' ? 'red' : 'neutral';
-  return <span className="evidence-pills"><span className={`pill ${reliabilityTone}`} title="Evidence sufficiency; not probability of correctness">{label(reliability ?? 'unknown')}</span><span className={`pill ${freshnessTone}`}>{label(freshness ?? 'unknown')} data</span></span>;
+  const reliabilityLabel = compact ? reliability === 'sufficient_evidence' ? 'Sufficient' : reliability === 'limited_evidence' ? 'Limited' : reliability === 'insufficient_evidence' ? 'Insufficient' : 'Unknown' : label(reliability ?? 'unknown');
+  const freshnessLabel = compact ? freshness === 'fresh' ? 'Fresh' : freshness === 'partially_stale' ? 'Partial' : freshness === 'stale' ? 'Stale' : 'Unknown' : `${label(freshness ?? 'unknown')} data`;
+  return <span className={`evidence-pills${compact ? ' compact' : ''}`}><span className={`pill ${reliabilityTone}`} title={`${label(reliability ?? 'unknown')}: evidence sufficiency; not probability of correctness`}>{reliabilityLabel}</span><span className={`pill ${freshnessTone}`} title={`${label(freshness ?? 'unknown')} data`}>{freshnessLabel}</span></span>;
 }

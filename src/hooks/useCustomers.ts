@@ -5,7 +5,7 @@ import { retainIQService } from '../services/retainIQService';
 import { matchesCurrencyFilter } from '../domain/customerFilters';
 
 type Result = { status: 'loading' | 'ready' | 'error'; rows: AccountRecord[]; error: string | null };
-export function useCustomers(): Result {
+export function useCustomers({ ignoreGlobalFilters = false }: { ignoreGlobalFilters?: boolean } = {}): Result {
   const { query, currency } = useApp();
   const [result, setResult] = useState<Result>({ status: 'loading', rows: [], error: null });
   useEffect(() => {
@@ -17,7 +17,7 @@ export function useCustomers(): Result {
     });
     return () => controller.abort();
   }, []);
-  const filtered = result.rows.filter(row =>
+  const filtered = ignoreGlobalFilters ? result.rows : result.rows.filter(row =>
     matchesCurrencyFilter(row, currency) &&
     `${row.name} ${row.customer_id}`.toLowerCase().includes(query.toLowerCase())
   );

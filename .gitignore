@@ -1,12 +1,18 @@
+.venv/
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+.pytest-tmp/
+.pytest-tmp*/
+*.egg-info/
 .coverage
 htmlcov/
 *.log
 .env
-.venv
+.env.*
+!.env.example
+!.env.supabase.example
 env/
 venv/
 data/
@@ -15,3 +21,6 @@ data/
 *.sqlite3-wal
 node_modules/
 dist/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts

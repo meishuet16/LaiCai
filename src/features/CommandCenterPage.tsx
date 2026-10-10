@@ -9,9 +9,9 @@ import { useDashboard } from '../hooks/useDashboard';
 const horizons: Horizon[] = [7, 14, 30];
 const currencies: Currency[] = ['MYR', 'SGD'];
 const riskBands = [
-  { band: 'low', label: 'Low risk', color: 'var(--forest)', threshold: '<30%' },
-  { band: 'medium', label: 'Medium risk', color: '#bd9859', threshold: '30–59%' },
-  { band: 'high', label: 'High risk', color: 'var(--terracotta)', threshold: '≥60%' },
+  { band: 'low', label: 'Low risk', color: 'var(--chart-sage)', threshold: '<30%' },
+  { band: 'medium', label: 'Medium risk', color: 'var(--chart-sand)', threshold: '30–59%' },
+  { band: 'high', label: 'High risk', color: 'var(--chart-coral)', threshold: '≥60%' },
 ] as const;
 
 const inputFreshnessLabels: Record<Freshness, string> = {
