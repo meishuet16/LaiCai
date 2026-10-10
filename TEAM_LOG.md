@@ -73,6 +73,22 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T22:09:39Z — Codex — Render Data Foundation deployment design
+
+- **Workstream:** Part 1 / Integration / Docs
+- **Branch:** `codex/render-data-foundation-deploy`
+- **Commit subject:** `docs: specify Render Data Foundation deployment`
+- **Issue / task:** User-requested Render deployment preparation
+- **Files changed:** `docs/superpowers/specs/2026-10-11-render-data-foundation-deployment-design.md` and `TEAM_LOG.md`.
+- **What changed:** Recorded the approved design for environment-selected SQLite/Supabase WSGI startup, Render service configuration, health checks, and deployment documentation boundaries.
+- **Why it changed:** Keep the agreed implementation scope and verification expectations reviewable before implementation.
+- **Contract / database / API impact:** Design only. No API, schema, migration, authentication, tenant-isolation, or Decision Engine behavior changed.
+- **Tests / verification:** `python -m unittest tests.test_database_config tests.test_supabase_configuration -v` — **PASS** — 29 tests passed in 0.099s as the clean-branch baseline.
+- **Data / model / ROI evidence:** N/A. No data or model evidence used.
+- **Known issues / blockers:** None known. No Render service or database was accessed.
+- **Next action / handoff:** Review the design document before the implementation plan and code changes.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T21:37:17Z — Member 2 AI coding assistant — Merge final Member 2 integration with current main
 
 - **Workstream:** Part 2 / Integration / Delivery
