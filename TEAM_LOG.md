@@ -72,6 +72,29 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T18:39:45Z — Member 2 AI coding assistant — Final prediction readiness and downstream handoff
+
+- **Workstream:** Part 2 / Integration / Docs / QA
+- **Branch:** `integration/member2-main-sqlite`
+- **Commit subject:** `docs(member2): publish final prediction readiness handoff`
+- **Issue / task:** Member 2 Prompt 30; no ticket
+- **Files changed:** `docs/MEMBER2_FINAL_PREDICTION_HANDOFF.md` and this log.
+- **What changed:**
+  - Published the canonical downstream payload/status/reliability semantics and the existing internal `PredictionPipeline.run(PredictionRequest)` integration seam, explicitly stating that the model bundle and scored forecasts are unavailable.
+  - Recorded the aggregate 60-pair eligibility mismatch as missing subscription history (`MISSING_SUBSCRIPTION_HISTORY`), with no unsafe remapping or Member 1 worktree change.
+  - Recorded frozen synthetic-only TRAIN/VALIDATION/CALIBRATION support blockers and the exact Member 1/3/4 handoffs; no TEST outcomes, data reads, training or model fitting were added.
+- **Why it changed:** Prompt 30 requires a truthful final delivery state and usable downstream contract when the frozen evidence gates do not support training.
+- **Contract / database / API impact:** Documentation only; no canonical schema, status, database, API, split, or feature contract changed. Member 1 must resolve the missing-versus-terminal historical subscription response; Members 3/4 should consume the existing canonical contract without assuming a scored model is available.
+- **Tests / verification:**
+  - `& .\.venv\Scripts\python.exe -B -m pytest -q --basetemp .pytest-tmp-p30-focused tests\test_authenticated_standard_pilot.py tests\test_eligibility.py tests\test_prediction_pipeline.py tests\test_candidate_training.py tests\test_dataset_readiness.py tests\test_retraining_readiness.py` — **PASS** — 65 passed; 15 known SHAP/LightGBM output-shape warnings, unsuppressed.
+  - Repository-local imports of canonical contracts, pipeline, candidate trainer, and eligibility — **PASS**.
+  - Prompt 29 one-account/one-cutoff authenticated API smoke — **PASS**, reused as recent integration evidence; not rerun because this change is documentation-only and no new API reads were needed. Prompt 29 full suite result remains 463 passed, 0 failures/errors/skips, 24 known SHAP warnings; not repeated per Prompt 30.
+  - `git diff --check` — **PASS** after the final documentation edits.
+- **Data / model / ROI evidence:** Synthetic-only tenant-01 STANDARD v1.2 evidence; no model fit, scored predictions, TEST-outcome use, held-out metric, real-world validation, retention effect, or ROI claim.
+- **Known issues / blockers:** CALIBRATION fails frozen support at all horizons; 7d also fails TRAIN and VALIDATION positive-row support. The 60-pair missing-subscription-history mismatch is unresolved. Operational scoring remains blocked by missing model artifacts and inadequate/unknown live evidence.
+- **Next action / handoff:** Member 1 to resolve historical eligibility and source-health/evidence fields. Members 3/4 can integrate the schema and explicit not-ready state; do not rank or learn from synthetic/unavailable probabilities. Any future fitting requires authorized data and all frozen maturity/support gates to pass.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T18:30:11Z — Member 2 AI coding assistant — Execute authenticated STANDARD historical pilot
 
 - **Workstream:** Part 2 / Part 1 integration / QA / Docs
