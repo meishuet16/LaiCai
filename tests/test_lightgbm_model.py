@@ -394,6 +394,21 @@ def test_artifact_save_and_reload_preserves_metadata(tmp_path):
     assert prediction.status is BaselineStatus.READY
 
 
+def test_artifact_reload_rejects_horizon_mismatch(tmp_path):
+    fitted = model()
+    fitted.fit(split_for_training(), horizon_days=14)
+    path = tmp_path / "lightgbm-model.pkl"
+    fitted.save(path)
+    with path.open("rb") as handle:
+        artifact = pickle.load(handle)
+    artifact["horizon_days"] = 7
+    with path.open("wb") as handle:
+        pickle.dump(artifact, handle)
+
+    with pytest.raises(ValueError, match="horizon does not match fit metadata"):
+        LightGBMModel.load(path, trusted_root=tmp_path)
+
+
 def test_missing_or_incompatible_artifacts_fail_safely(tmp_path):
     with pytest.raises(ValueError, match="trusted root"):
         LightGBMModel.load(tmp_path / "missing.pkl", trusted_root=tmp_path)

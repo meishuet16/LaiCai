@@ -112,6 +112,18 @@ itself also requires a filled-in commit entry.
 - **Known issues / blockers:** Full preparation was stopped at 45/73 cutoffs; the predeclared reduced run ended at 7/25 and left zero prepared files. Its termination cause and exit diagnostic were not retained. No Prompt 34 model bundle, calibrators, held-out predictions, SHAP output, or replay exists. Read-after-write history in the replay example is process-mirrored until Member 1 exposes a reader. The local prediction bundle must remain not-ready for production.
 - **Next action / handoff:** If further work is authorized, retry from the preserved imported source using a fresh versioned private output root and the reduced cutoff policy; keep all per-horizon support gates unchanged and stop if any stage is insufficient. Member 1: expose authenticated prediction history/readback and clarify writer payload support. Member 2: only fit/calibrate/evaluate after a complete preparation manifest and mature-label support are verified. Members 3/4 must keep `MODEL_BUNDLE_NOT_READY` until real-data, calibration, and operational gates pass.
 - **Reviewer / pairing:** N/A
+### 2026-10-10T20:59:22Z — Member 2 AI coding assistant — Prompt 34 LightGBM artifact validation
+
+- **Workstream:** Prompt 34 / Track B / model persistence
+- **Branch:** `codex/prompt34-parallel`
+- **Commit subject:** `fix(member2): validate loaded LightGBM artifact contract`
+- **Issue / task:** Member 2 Prompt 34 delivery
+- **Files changed:** `src/retainiq_prediction/lightgbm_model.py`, `tests/test_lightgbm_model.py`, and this log.
+- **What changed:** Hardened persisted LightGBM loading to require a ready fit and validate horizon, configuration, vectorizer, estimator, feature-count and available label-policy/dataset-provenance metadata. Added a cross-horizon mismatch regression test. This does not claim training completion; training still requires finalized prepared artifacts and passing frozen support gates.
+- **Verification:** With the project virtual environment and repository-local pytest temp directory, `tests/test_lightgbm_model.py` passed (22 tests). A first invocation using pytest's default shared Windows temp directory hit the existing `WinError 5` setup failure; rerunning with `--basetemp .pytest-tmp-trackb` passed.
+- **Data / model evidence:** No training, calibration, TEST-label reads or private-artifact changes were performed in this commit.
+- **Known issues / next action:** Verify finalized reduced prepared artifacts and fixed support counts before invoking the existing three-horizon training command.
+- **Reviewer / pairing:** Track B agent implementation; root verification.
 
 ### 2026-10-10T19:21:18Z — Member 2 AI coding assistant — Operational inference and requirements traceability
 

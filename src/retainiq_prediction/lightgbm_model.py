@@ -480,14 +480,54 @@ class LightGBMModel:
         fit_result = artifact["fit_result"]
         if not isinstance(fit_result, LightGBMFitResult) or fit_result.metadata is None:
             raise ValueError("LightGBM artifact has incompatible fit metadata")
+        if fit_result.status is not BaselineStatus.READY:
+            raise ValueError("LightGBM artifact does not contain a ready fit")
         if fit_result.metadata.model_family != "lightgbm":
             raise ValueError("LightGBM artifact has incompatible model family")
         if fit_result.metadata.calibration_status != "not_calibrated":
             raise ValueError("LightGBM artifact has unsupported calibration status")
-        model = cls(artifact["config"], vectorizer=artifact["vectorizer"])
-        model._model = artifact["model"]
+
+        config = artifact["config"]
+        vectorizer = artifact["vectorizer"]
+        estimator = artifact["model"]
+        horizon = artifact["horizon_days"]
+        metadata = fit_result.metadata
+        if not isinstance(config, LightGBMConfig):
+            raise ValueError("LightGBM artifact has incompatible configuration")
+        if not isinstance(vectorizer, FeatureVectorizer):
+            raise ValueError("LightGBM artifact has incompatible vectorizer")
+        if not callable(getattr(estimator, "predict_proba", None)):
+            raise ValueError("LightGBM artifact has incompatible estimator")
+        if horizon not in SUPPORTED_HORIZONS or horizon != fit_result.horizon_days:
+            raise ValueError("LightGBM artifact horizon does not match fit metadata")
+        if metadata.prediction_horizon_days != horizon:
+            raise ValueError("LightGBM artifact horizon does not match model metadata")
+        if (
+            metadata.model_version != config.model_version
+            or metadata.feature_version != config.feature_version
+            or metadata.tenant_scope != config.tenant_id
+            or metadata.feature_names != vectorizer.allowlist
+            or vectorizer.allowlist != config.allowlist
+        ):
+            raise ValueError("LightGBM artifact configuration does not match fit metadata")
+        if (
+            config.label_policy_version is not None
+            and metadata.label_policy_version != config.label_policy_version
+        ):
+            raise ValueError("LightGBM artifact label policy does not match configuration")
+        if (
+            config.dataset_provenance is not None
+            and metadata.training_dataset_provenance != config.dataset_provenance
+        ):
+            raise ValueError("LightGBM artifact dataset provenance does not match configuration")
+        fitted_feature_count = getattr(estimator, "n_features_in_", len(metadata.feature_names))
+        if fitted_feature_count != len(metadata.feature_names):
+            raise ValueError("LightGBM artifact estimator feature count does not match metadata")
+
+        model = cls(config, vectorizer=vectorizer)
+        model._model = estimator
         model._fit_result = fit_result
-        model._horizon_days = artifact["horizon_days"]
+        model._horizon_days = horizon
         return model
 
 
