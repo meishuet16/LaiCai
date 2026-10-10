@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Any, Iterable
 from contextlib import contextmanager
 from .currency_codes import ISO4217_CURRENT_CODES
+from .database import DatabaseConnection, PostgreSQLSchemaNotReady, connect_database
+from .database_config import DatabaseConfig, resolve_database_config
 
 
 SCHEMA_VERSION = "1.0"
@@ -184,23 +186,33 @@ def normalize_timestamp(value: Any) -> str:
 
 
 @contextmanager
-def _db(path: str | Path):
-    connection = sqlite3.connect(str(path), timeout=30)
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA foreign_keys = ON")
-    connection.execute("PRAGMA busy_timeout = 30000")
+def _db(path: str | Path | DatabaseConfig):
+    """Open the current SQLite-schema repository through the shared boundary."""
+    config = resolve_database_config(path)
+    if not config.is_sqlite:
+        raise PostgreSQLSchemaNotReady(
+            "RetainIQ Data Foundation operations require the PostgreSQL schema from 06C/06D",
+        )
+    connection = connect_database(config)
     try:
         with connection:
             yield connection
     finally:
+        # ``with connection`` already closes on the normal path.  close() is
+        # intentionally idempotent for failures during __enter__/__exit__.
         connection.close()
 
 
-def initialize_database(path: str | Path) -> None:
-    db_path = Path(path)
-    db_path.parent.mkdir(parents=True, exist_ok=True)
+def initialize_database(path: str | Path | DatabaseConfig) -> None:
+    config = resolve_database_config(path)
+    if not config.is_sqlite:
+        raise PostgreSQLSchemaNotReady(
+            "RetainIQ PostgreSQL schema migrations are deferred to 06C",
+        )
+    if config.sqlite_path != ":memory:":
+        Path(config.sqlite_path).parent.mkdir(parents=True, exist_ok=True)
     migrations_dir = Path(__file__).resolve().parent.parent / "migrations"
-    with _db(db_path) as connection:
+    with _db(config) as connection:
         connection.execute(
             "CREATE TABLE IF NOT EXISTS schema_migrations "
             "(version TEXT PRIMARY KEY, applied_at TEXT NOT NULL)"
@@ -653,7 +665,7 @@ def authenticate_service_principal(path: str | Path, token: str | None) -> Servi
     )
 
 
-def _assert_principal(connection: sqlite3.Connection, principal: IntegrationPrincipal) -> sqlite3.Row:
+def _assert_principal(connection: DatabaseConnection, principal: IntegrationPrincipal) -> sqlite3.Row:
     if not isinstance(principal, IntegrationPrincipal):
         raise DataFoundationError("unauthorized")
     row = connection.execute(
@@ -677,7 +689,7 @@ def _assert_principal(connection: sqlite3.Connection, principal: IntegrationPrin
     return row
 
 
-def _assert_service_principal(connection: sqlite3.Connection, principal: ServicePrincipal) -> sqlite3.Row:
+def _assert_service_principal(connection: DatabaseConnection, principal: ServicePrincipal) -> sqlite3.Row:
     if not isinstance(principal, ServicePrincipal):
         raise DataFoundationError("unauthorized")
     row = connection.execute(
@@ -702,7 +714,7 @@ def _assert_service_principal(connection: sqlite3.Connection, principal: Service
     return row
 
 
-def _assert_read_principal(connection: sqlite3.Connection, principal: ReadPrincipal) -> tuple[str, ...]:
+def _assert_read_principal(connection: DatabaseConnection, principal: ReadPrincipal) -> tuple[str, ...]:
     if isinstance(principal, IntegrationPrincipal):
         _assert_principal(connection, principal)
         return (principal.source,)
@@ -916,7 +928,7 @@ def _event_hash(event: dict[str, Any]) -> str:
 
 
 def _claim_subscription_owner(
-    connection: sqlite3.Connection,
+    connection: DatabaseConnection,
     tenant_id: str,
     subscription_id: str,
     customer_id: str,
@@ -936,7 +948,7 @@ def _claim_subscription_owner(
 
 
 def _record_subscription_event(
-    connection: sqlite3.Connection,
+    connection: DatabaseConnection,
     tenant_id: str,
     event_id: int,
     customer_id: str,
@@ -978,7 +990,7 @@ def _fold_subscription_rows(rows: Iterable[sqlite3.Row], subscription_id: str, c
 
 
 def _rebuild_subscription_projection(
-    connection: sqlite3.Connection,
+    connection: DatabaseConnection,
     tenant_id: str,
     customer_id: str,
     subscription_id: str,
@@ -1873,7 +1885,7 @@ def list_eligible_accounts_as_of(
     return [snapshot for snapshot in snapshots if snapshot["eligible"]]
 
 
-def _assert_customer(connection: sqlite3.Connection, principal: ReadPrincipal, customer_id: str) -> None:
+def _assert_customer(connection: DatabaseConnection, principal: ReadPrincipal, customer_id: str) -> None:
     authorized_sources = _assert_read_principal(connection, principal)
     if isinstance(principal, ServicePrincipal):
         if principal.role != "analyst":

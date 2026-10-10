@@ -72,6 +72,30 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T14:18:47Z — Member 1 / Data & Backend Engineer — Configurable database backend foundation
+
+- **Workstream:** Part 1 / Data Foundation, Database Configuration & Transactions
+- **Branch:** `codex/member1-postgres-migration`
+- **Commit subject:** `feat: add configurable database backend foundation`
+- **Issue / task:** Milestone 06B — implement a configurable database connection and transaction foundation.
+- **Files changed:** `retaniq/database_config.py`, `retaniq/database.py`, `retaniq/data_foundation.py`, `retaniq/__main__.py`, `requirements-postgresql.txt`, `tests/test_database_config.py`, `tests/test_database_connection.py`, `docs/MEMBER1_DATABASE_BACKEND_CONFIGURATION.md`, `README.md`, and `TEAM_LOG.md`.
+- **What changed:**
+  - Added typed SQLite/PostgreSQL target parsing with explicit backend selection, environment configuration, TLS policy for remote PostgreSQL, local insecure-test opt-in, and redacted representations/errors.
+  - Added SQLite and optional psycopg 3 connection lifecycle primitives with commit/rollback ownership, explicit nested-transaction rejection, SQLite foreign-key/busy-timeout setup, and migration-operation guards.
+  - Routed the existing SQLite Data Foundation through the shared boundary and made PostgreSQL repository use fail explicitly until 06C/06D schema and parity work; no schema, RLS, Supabase, contract-field, or tenant-auth changes were made.
+- **Why it changed:** 06B requires a backend-aware foundation that preserves current SQLite behavior while making future PostgreSQL migration and repository work explicit, testable, and free of silent SQLite fallback.
+- **Contract / database / API impact:** Existing SQLite behavior and public contracts remain unchanged. PostgreSQL configuration and connection support are available as a foundation only; existing Data Foundation operations reject PostgreSQL with a readiness error. No PostgreSQL migration or production database was changed.
+- **Tests / verification:**
+  - Bundled Python `-B -m unittest discover -s tests -p 'test_database_config.py' -v` — **PASS** — 12 focused configuration tests.
+  - Bundled Python `-B -m unittest discover -s tests -p 'test_database_connection.py' -v` — **PASS** — 8 focused connection/transaction tests.
+  - Bundled Python `-B -m compileall -q retaniq tests` — **PASS**.
+  - Bundled Python `-B -m unittest discover -s tests -v` — **PASS** — 84 tests in 13.257 seconds.
+  - Bundled Python `-B -m compileall -q retaniq tests` — **PASS**; `git diff --check` — **PASS** — no whitespace errors, with only Git line-ending normalization notices.
+- **Data / model / ROI evidence:** No data, model, prediction, or ROI evidence was generated. Existing synthetic-only status is unchanged.
+- **Known issues / blockers:** `POSTGRES_CONNECTION_SMOKE_NOT_RUN` — no safe PostgreSQL instance/DSN was available; psycopg 3 is not installed in the bundled runtime; `psql`, `postgres`, and `pg_ctl` are absent; Docker was not started. PostgreSQL feature parity remains unimplemented.
+- **Next action / handoff:** Member 1 next implements 06C PostgreSQL schema and migrations, then 06D query/repository parity. Keep Supabase deferred to the later infrastructure phase. No commit, push, or merge is part of this handoff.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T13:44:03Z — Member 1 / Data & Backend Engineer — Complete Synthetic SaaS v1.2 remediation
 
 - **Workstream:** Part 1 / Data Foundation, Synthetic QA, Integration & Docs

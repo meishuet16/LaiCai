@@ -11,7 +11,7 @@ python -m retaniq.synthetic import --dataset 'C:\Users\User\RetainIQ-private\syn
 
 Generated files and local SQLite imports stay outside Git. To generate a fresh immutable profile, see the full v1.2 CLI options in [the dataset guide](docs/SYNTHETIC_SAAS_DATASET.md); use the resulting exact dataset ID and its separate database path. The v1.2 daily-window, account-level coverage, dataset identity, and Member 2 import/smoke commands are documented in [the synthetic handoff](docs/MEMBER1_TO_MEMBER2_SYNTHETIC_HANDOFF.md).
 
-Part 1 uses Python's standard library, WSGI, and SQLite so the data contracts can be exercised without adding dependencies. The SQL files are SQLite migrations for this local MVP; they are not production PostgreSQL migrations.
+Part 1 uses Python's standard library, WSGI, and SQLite so the data contracts can be exercised without adding dependencies. The 06B database foundation adds typed backend configuration and optional psycopg 3 connection/transaction primitives, but the SQL files remain SQLite migrations for this local MVP; they are not production PostgreSQL migrations.
 
 The implementation provides authenticated, tenant-scoped event ingestion; explicit account identity mapping; allowlisted usage, billing, and subscription normalization; append-only subscription history; point-in-time, source-scoped queries; account MRR; CSV import/replay; source-scoped integration health; separately authorized tenant health; and shared feature, label, and prediction storage contracts. It does not implement Member 2's feature engineering, label builder, or model, or Member 3's routing and ROI logic.
 
@@ -20,7 +20,7 @@ See [DATASET_CARD.md](DATASET_CARD.md) for the evidence gate. No empirical custo
 ## Requirements and local setup
 
 - Python 3.10 or newer (verified here with Python 3.14.3).
-- No third-party Python packages.
+- No third-party Python packages are required for SQLite mode. Optional PostgreSQL connection support is declared in [requirements-postgresql.txt](requirements-postgresql.txt).
 
 Run commands from this directory:
 
@@ -163,7 +163,7 @@ The 52-week and 365-day factors define the v1 average-month convention. `amount_
 
 `migrations/001_data_foundation.sql` creates the initial tenant-aware data tables. `migrations/002_authorized_services_and_subscription_owners.sql` adds separately scoped service principals and a tenant-scoped subscription-owner registry with composite foreign keys from billing events, subscription history, and the current projection. `migrations/003_integration_event_categories.sql` stores per-integration usage, billing, and subscription category grants. It backfills categories present in legacy canonical events; legacy integrations with no event history receive only the safe `usage` grant. Existing integration tokens remain valid for categories granted by that migration. A legacy integration that needs a category not represented in its prior event history must be explicitly updated by a trusted local operator with `set-integration-categories`. Initialization backfills owner records from existing data and refuses to guess if a subscription ID is already associated with multiple customers. Subscription current state remains a projection; historical state and price are rebuilt from available subscription events. Prediction storage keeps one `prediction_id` per account/cutoff, a separate `prediction_run_id`, and flat `p_churn_7d`, `p_churn_14d`, and `p_churn_30d` fields.
 
-This is a local reference implementation, not a deployed service. It has no scheduled daily worker, external identity provider, managed database, encryption-at-rest integration, production TLS, or PostgreSQL adapter. Those infrastructure capabilities remain unverified. No real dataset exists in this checkout, so imports/replay and tests can demonstrate engineering behavior only.
+This is a local reference implementation, not a deployed service. It has no scheduled daily worker, external identity provider, managed database, encryption-at-rest integration, production TLS, PostgreSQL schema/migration parity, or Supabase integration. The 06B PostgreSQL connection layer is not a PostgreSQL feature-parity claim; existing Data Foundation repository operations reject PostgreSQL until 06C/06D. Those infrastructure capabilities remain unverified. No real dataset exists in this checkout, so imports/replay and tests can demonstrate engineering behavior only.
 
 ## Verification
 
@@ -173,4 +173,4 @@ python -m compileall retaniq tests
 python -m retaniq --help
 ```
 
-The repository has no configured linter, formatter, type checker, frontend build, or PostgreSQL integration-test command. The test suite uses only clearly synthetic fixtures and makes no model-performance claim.
+The repository has no configured linter, formatter, type checker, frontend build, or PostgreSQL integration-test command. The test suite uses only clearly synthetic fixtures and makes no model-performance claim. PostgreSQL connection smoke is not run without a safe configured instance and DSN.

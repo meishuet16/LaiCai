@@ -9,6 +9,8 @@ import sys
 from wsgiref.simple_server import make_server
 
 from .api import create_app
+from .database import DatabaseError
+from .database_config import DatabaseConfigurationError
 from .data_foundation import (
     DataFoundationError,
     authenticate_integration,
@@ -172,6 +174,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     except DataFoundationError as error:
         print(json.dumps({"error": error.code, "message": str(error)}), file=sys.stderr)
+        return 2
+    except (DatabaseError, DatabaseConfigurationError) as error:
+        print(json.dumps({"error": "database_error", "message": str(error)}), file=sys.stderr)
         return 2
     except (OSError, json.JSONDecodeError):
         print(json.dumps({"error": "invalid_command_input"}), file=sys.stderr)
