@@ -22,18 +22,18 @@ python -m retaniq.synthetic import --dataset 'C:\Users\User\RetainIQ-private\syn
 
 The importer normalizes through `ingest_event`, checks tenant/source/category authorization and subscription ownership, stores dataset identity and account-level source-coverage intervals, and uses bounded transactions with a resumable checkpoint. Measured imports took 6.719 seconds for QUICK, 60.555 seconds for STANDARD (730,944 event-plus-coverage rows), and 478.985 seconds for FULL (4,810,778 combined rows). FULL accepted all 1,547,420 event rows and 3,263,358 coverage rows, verified the identity, and denied a cross-tenant read. Its Member 2 smoke also passed.
 
-Provision a one-time analyst credential separately for each tenant. It is restricted to the dataset's exact usage, billing, and subscription sources, with `retention_inference` and `model_artifact_write`. Add billing valuation only for a task that needs monetary amounts. Do not put the emitted token in source control or logs:
+The P0 reader is only for the approved STANDARD `tenant-01` pilot. It uses a protected working copy because the original imported database is immutable. Its role is `analyst`; its three exact sources are restricted by their existing usage, billing, and subscription category grants; its only purpose is `retention_inference`. It has no artifact-write or billing-valuation purpose. The token is written under the current Windows user to DPAPI-protected storage and is never printed:
 
 ```powershell
-$dataset = 'C:\Users\User\RetainIQ-private\synthetic_saas_v1_2\full\synthetic-saas-v1-2-full-s2026-33ac24d7f094'
-$db = 'C:\Users\User\RetainIQ-private\synthetic_saas_v1_2\db\synthetic-saas-v1-2-full-s2026-33ac24d7f094.sqlite3'
-python -m retaniq.synthetic provision-reader --dataset $dataset --db $db --tenant-id tenant-01
-# Store the one-time token in the local secret manager, then:
-$env:RETAINIQ_MODEL_TOKEN = '<one-time tenant-scoped token>'
-python .\examples\member2_synthetic_smoke.py --db $db --dataset $dataset --tenant-id tenant-01
+$python = 'C:\Users\User\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+$dataset = 'C:\Users\User\RetainIQ-private\synthetic_saas_v1_2\standard\synthetic-saas-v1-2-standard-s2026-970a9d231e68'
+$db = 'C:\Users\User\RetainIQ-private\synthetic_saas_v1_2\working\member1-p0\synthetic-saas-v1-2-standard-s2026-970a9d231e68-tenant-01-reader.sqlite3'
+$secret = 'C:\Users\User\RetainIQ-private\synthetic_saas_v1_2\standard-tenant-01-reader-p0.dpapi'
+& $python -m retaniq.synthetic provision-reader --dataset $dataset --db $db --tenant-id tenant-01 --secret-file $secret
+& $python -m retaniq.secret_store run --file $secret -- $python -m examples.member1_p0_authenticated_reader_smoke --db $db
 ```
 
-The smoke reads a cutoff snapshot, usage/billing/subscription evidence and source coverage. It checks dataset identity and grants. It compares features to the isolated synthetic oracle solely to verify mechanics; it does not persist production labels or train a model. Repeat provisioning per tenant rather than granting one principal every tenant.
+The secure handoff document records the source and working-copy checksums, lifecycle commands, and the bounded Member 2 API pilot. The prior `examples/member2_synthetic_smoke.py` scans many accounts and cutoffs; do not use it for this bounded P0 pilot. The DPAPI file is decryptable only by the Windows user who created it. If Member 2 runs under another Windows identity, provision under that identity or transfer through an approved secret manager; do not copy plaintext through chat, command history, or reports.
 
 ## Usage evidence and feature windows
 

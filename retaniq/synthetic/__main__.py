@@ -11,6 +11,7 @@ from .canonical_adapter import import_dataset, provision_member2_reader
 from .config import SyntheticConfig
 from .generator import generate_dataset
 from .validator import validate_dataset
+from retaniq.secret_store import store_dpapi_secret
 
 
 def _default_output() -> Path:
@@ -46,7 +47,8 @@ def _parser() -> argparse.ArgumentParser:
     reader.add_argument("--dataset", type=Path, required=True)
     reader.add_argument("--db", type=Path, required=True)
     reader.add_argument("--tenant-id", required=True)
-    reader.add_argument("--billing-valuation", action="store_true")
+    reader.add_argument("--secret-file", type=Path, required=True,
+                        help="destination for the current-user DPAPI-protected token")
     return parser
 
 
@@ -94,8 +96,9 @@ def main(argv: list[str] | None = None) -> int:
         else:
             result = provision_member2_reader(
                 args.dataset, args.db, args.tenant_id,
-                include_billing_valuation=args.billing_valuation,
+                deliver_token=lambda token: store_dpapi_secret(args.secret_file, token),
             )
+            result["secret_file"] = str(args.secret_file.expanduser().resolve())
         print(json.dumps(result, ensure_ascii=True, sort_keys=True))
         return 0 if result.get("status") not in {"FAIL", "PARTIAL"} else 1
     except (OSError, ValueError) as exc:

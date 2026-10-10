@@ -56,6 +56,7 @@ SAFE_RELIABILITY_REASON_CODES = frozenset({
     "feature_quality_limited", "model_applicability_limited",
 })
 SERVICE_ROLES = frozenset({"analyst", "admin", "operator"})
+P0_STANDARD_DATASET_ID = "synthetic-saas-v1-2-standard-s2026-970a9d231e68"
 PURPOSES = frozenset({
     "retention_inference", "billing_valuation", "operational_contact", "identity_mapping",
     "integration_health", "model_artifact_write",
@@ -163,6 +164,16 @@ class ServicePrincipal:
 
 
 ReadPrincipal = IntegrationPrincipal | ServicePrincipal
+
+
+def _p0_immutable_source_path() -> Path:
+    return (Path.home() / "RetainIQ-private" / "synthetic_saas_v1_2" / "db"
+            / f"{P0_STANDARD_DATASET_ID}.sqlite3").resolve()
+
+
+def _reject_p0_immutable_source(config: DatabaseConfig) -> None:
+    if config.is_sqlite and Path(config.sqlite_path).resolve() == _p0_immutable_source_path():
+        raise DataFoundationError("invalid_contract")
 
 
 def _utc_now() -> str:
@@ -305,6 +316,10 @@ def initialize_database(
             (
                 "004_dataset_identity_and_observation_coverage",
                 migrations_dir / "004_dataset_identity_and_observation_coverage.sql",
+            ),
+            (
+                "005_service_principal_credential_audit",
+                migrations_dir / "005_service_principal_credential_audit.sql",
             ),
         )
         for version, migration in migrations:
@@ -792,6 +807,123 @@ def create_service_principal(
              json.dumps(purposes, separators=(",", ":")), _database_timestamp(connection, _utc_now())),
         )
     return token
+
+
+def provision_member2_reader_principal(
+    path: str | Path,
+    *,
+    service_principal_id: str,
+    tenant_id: str,
+    authorized_sources: tuple[str, ...] | list[str],
+    deliver_token: Any,
+) -> dict[str, Any]:
+    """Create or rotate the single fixed-ID, inference-only Member 2 reader.
+
+    This is a trusted local operator operation. ``deliver_token`` must store
+    the one-time bearer securely; it is called inside the database transaction
+    so a delivery failure rolls back the credential digest change.
+    """
+    service_principal_id = _validate_id(service_principal_id)
+    tenant_id = _validate_id(tenant_id)
+    config = resolve_database_config(path)
+    _reject_p0_immutable_source(config)
+    if not config.is_sqlite:
+        raise DataFoundationError("invalid_contract")
+    if not callable(deliver_token):
+        raise DataFoundationError("invalid_contract")
+    if not isinstance(authorized_sources, (tuple, list)) or not authorized_sources:
+        raise DataFoundationError("invalid_contract")
+    sources = tuple(sorted({_validate_id(source) for source in authorized_sources}))
+    purposes = ("retention_inference",)
+    if tenant_id != "tenant-01" or service_principal_id != "member2-standard-tenant-01-reader":
+        raise DataFoundationError("invalid_contract")
+    token = secrets.token_urlsafe(32)
+    digest = hashlib.sha256(token.encode("ascii")).hexdigest()
+    with _db(config) as connection:
+        _begin_write(connection)
+        tenant = connection.execute(
+            "SELECT 1 FROM tenants WHERE tenant_id = ?", (tenant_id,),
+        ).fetchone()
+        if tenant is None:
+            raise DataFoundationError("not_found")
+        grants = connection.execute(
+            "SELECT source, category FROM integration_event_categories WHERE tenant_id=? "
+            "AND source IN (" + ",".join("?" for _ in sources) + ") ORDER BY source, category",
+            (tenant_id, *sources),
+        ).fetchall()
+        by_source: dict[str, list[str]] = {}
+        for row in grants:
+            by_source.setdefault(row["source"], []).append(row["category"])
+        if set(by_source) != set(sources) or len(sources) != 3 or sorted(
+            category for categories in by_source.values() for category in categories
+        ) != ["billing", "subscription", "usage"] or any(len(items) != 1 for items in by_source.values()):
+            raise DataFoundationError("source_not_authorized")
+        existing = connection.execute(
+            "SELECT tenant_id, role, authorized_sources_json, authorized_purposes_json "
+            "FROM service_principals WHERE service_principal_id = ?", (service_principal_id,),
+        ).fetchone()
+        if existing is not None:
+            if (existing["tenant_id"] != tenant_id or existing["role"] != "analyst"
+                    or tuple(json.loads(existing["authorized_sources_json"])) != sources
+                    or tuple(json.loads(existing["authorized_purposes_json"])) != purposes):
+                raise DataFoundationError("contract_conflict")
+            action = "rotate"
+            connection.execute(
+                "UPDATE service_principals SET token_digest = ? WHERE service_principal_id = ?",
+                (digest, service_principal_id),
+            )
+        else:
+            action = "provision"
+            connection.execute(
+                "INSERT INTO service_principals(service_principal_id, tenant_id, token_digest, role, "
+                "authorized_sources_json, authorized_purposes_json, created_at) VALUES (?, ?, ?, 'analyst', ?, ?, ?)",
+                (service_principal_id, tenant_id, digest, json.dumps(sources, separators=(",", ":")),
+                 json.dumps(purposes, separators=(",", ":")), _database_timestamp(connection, _utc_now())),
+            )
+        connection.execute(
+            "INSERT INTO service_principal_credential_audit(service_principal_id, tenant_id, operation, acted_at) "
+            "VALUES (?, ?, ?, ?)",
+            (service_principal_id, tenant_id, action, _database_timestamp(connection, _utc_now())),
+        )
+        try:
+            deliver_token(token)
+        except Exception:
+            raise DataFoundationError("invalid_contract") from None
+    return {
+        "service_principal_id": service_principal_id,
+        "tenant_id": tenant_id,
+        "role": "analyst",
+        "authorized_sources": list(sources),
+        "authorized_purposes": list(purposes),
+        "credential_operation": action,
+    }
+
+
+def revoke_service_principal(path: str | Path, service_principal_id: str) -> None:
+    """Revoke the fixed Member 2 reader and retain a non-secret audit record."""
+    service_principal_id = _validate_id(service_principal_id)
+    config = resolve_database_config(path)
+    _reject_p0_immutable_source(config)
+    if not config.is_sqlite:
+        raise DataFoundationError("invalid_contract")
+    if service_principal_id != "member2-standard-tenant-01-reader":
+        raise DataFoundationError("invalid_contract")
+    with _db(config) as connection:
+        _begin_write(connection)
+        row = connection.execute(
+            "SELECT tenant_id FROM service_principals WHERE service_principal_id = ?",
+            (service_principal_id,),
+        ).fetchone()
+        if row is None:
+            raise DataFoundationError("not_found")
+        connection.execute(
+            "DELETE FROM service_principals WHERE service_principal_id = ?", (service_principal_id,),
+        )
+        connection.execute(
+            "INSERT INTO service_principal_credential_audit(service_principal_id, tenant_id, operation, acted_at) "
+            "VALUES (?, ?, 'revoke', ?)",
+            (service_principal_id, row["tenant_id"], _database_timestamp(connection, _utc_now())),
+        )
 
 
 def authenticate_service_principal(path: str | Path, token: str | None) -> ServicePrincipal:

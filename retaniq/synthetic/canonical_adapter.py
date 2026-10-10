@@ -6,6 +6,7 @@ import csv
 import gzip
 import hashlib
 import json
+import sqlite3
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,7 @@ from retaniq.data_foundation import (
     initialize_database,
     provision_synthetic_identities,
     provision_synthetic_integration_token,
+    provision_member2_reader_principal,
     record_observation_coverage_batch,
     get_observation_coverage_as_of,
 )
@@ -52,30 +54,60 @@ def provision_member2_reader(
     database_path: DatabaseConfig | Path | str,
     tenant_id: str,
     *,
-    include_billing_valuation: bool = False,
+    deliver_token: Any,
 ) -> dict[str, Any]:
-    """Create a tenant/source-scoped analyst principal after a complete import.
-
-    The bearer token is returned once to the local caller and is never written
-    to the database in plaintext, dataset files, or logs.
-    """
+    """Provision a tenant-01 retention-only principal after a verified import."""
     dataset = Path(dataset_path).resolve()
     database = _database_target(database_path)
     manifest = _load_manifest(dataset)
     dataset_id = manifest["dataset_id"]
-    expected_events = int(manifest["actual_counts"]["canonical_events"])
-    expected_coverage = int(manifest["actual_counts"]["observation_coverage"])
-    event_checkpoint = get_synthetic_import_checkpoint(
-        database, dataset_id=dataset_id, stream_name="canonical-events",
-    )
-    coverage_checkpoint = get_synthetic_import_checkpoint(
-        database, dataset_id=dataset_id, stream_name="observation-coverage",
-    )
-    if (event_checkpoint["last_row_number"] != expected_events
-            or event_checkpoint["database_event_count"] != expected_events
-            or coverage_checkpoint["last_row_number"] != expected_coverage
-            or coverage_checkpoint["database_coverage_count"] != expected_coverage):
-        raise ValueError("the database does not contain the complete dataset import")
+    if (tenant_id != "tenant-01"
+            or dataset_id != "synthetic-saas-v1-2-standard-s2026-970a9d231e68"):
+        raise ValueError("the P0 reader only supports the approved STANDARD tenant-01 dataset")
+    database_config = resolve_database_config(database)
+    if not database_config.is_sqlite:
+        raise ValueError("the P0 reader requires the approved SQLite working copy")
+    expected_database = (
+        Path.home() / "RetainIQ-private" / "synthetic_saas_v1_2" / "working" / "member1-p0"
+        / f"{dataset_id}-tenant-01-reader.sqlite3"
+    ).resolve()
+    if Path(database_config.sqlite_path).resolve() != expected_database:
+        raise ValueError("the P0 reader may only be provisioned in its dedicated working copy")
+    initialize_database(database_config)
+    manifest_digest = hashlib.sha256((dataset / "dataset_manifest.json").read_bytes()).hexdigest()
+    expected_identity = {
+        "dataset_id": dataset_id,
+        "dataset_version": manifest["dataset_version"],
+        "dataset_type": "synthetic_saas",
+        "target_policy_version": manifest["target_policy_version"],
+        "generator_version": manifest["generator_code_version"],
+        "manifest_sha256": manifest_digest,
+    }
+    try:
+        read_only = sqlite3.connect(Path(database_config.sqlite_path).as_uri() + "?mode=ro", uri=True)
+        read_only.row_factory = sqlite3.Row
+        identity = read_only.execute(
+            "SELECT dataset_id, dataset_version, dataset_type, target_policy_version, "
+            "generator_version, manifest_sha256 FROM dataset_identity WHERE singleton_id=1",
+        ).fetchone()
+        if identity is None or dict(identity) != expected_identity:
+            raise ValueError("working database dataset identity does not match the approved manifest")
+        expected_events = int(manifest["actual_counts"]["canonical_events"])
+        expected_coverage = int(manifest["actual_counts"]["observation_coverage"])
+        event_count = read_only.execute("SELECT COUNT(*) FROM canonical_events").fetchone()[0]
+        coverage_count = read_only.execute("SELECT COUNT(*) FROM observation_coverage").fetchone()[0]
+        if event_count != expected_events or coverage_count != expected_coverage:
+            raise ValueError("working database does not contain the complete STANDARD import")
+        imported_sources = {
+            row["source"]: row["category"] for row in read_only.execute(
+                "SELECT i.source, c.category FROM integrations i JOIN integration_event_categories c "
+                "ON c.tenant_id=i.tenant_id AND c.source=i.source WHERE i.tenant_id=? ORDER BY i.source",
+                (tenant_id,),
+            )
+        }
+        read_only.close()
+    except sqlite3.Error:
+        raise ValueError("working database import verification failed") from None
 
     sources_by_category: dict[str, str] = {}
     with (dataset / "customer_identities.csv").open(encoding="utf-8", newline="") as stream:
@@ -88,32 +120,14 @@ def provision_member2_reader(
                 raise ValueError("one tenant has multiple source IDs for a category")
     if set(sources_by_category) != {"usage", "billing", "subscription"}:
         raise ValueError("the selected tenant does not have the complete synthetic source grant set")
-
-    purposes = ["retention_inference", "model_artifact_write"]
-    if include_billing_valuation:
-        purposes.append("billing_valuation")
-    token = create_service_principal(
-        database, tenant_id, role="analyst",
-        authorized_sources=tuple(sorted(sources_by_category.values())),
-        authorized_purposes=tuple(purposes),
+    expected_sources = dict(sources_by_category)
+    if imported_sources != {source: category for category, source in expected_sources.items()}:
+        raise ValueError("working database source/category grants do not match dataset metadata")
+    principal_info = provision_member2_reader_principal(
+        database, service_principal_id="member2-standard-tenant-01-reader", tenant_id=tenant_id,
+        authorized_sources=tuple(expected_sources.values()), deliver_token=deliver_token,
     )
-    principal = authenticate_service_principal(database, token)
-    identity = get_dataset_identity(database, principal)
-    expected_manifest_digest = hashlib.sha256((dataset / "dataset_manifest.json").read_bytes()).hexdigest()
-    if (identity["dataset_id"] != dataset_id
-            or identity["dataset_version"] != manifest["dataset_version"]
-            or identity["target_policy_version"] != manifest["target_policy_version"]
-            or identity["generator_version"] != manifest["generator_code_version"]
-            or identity["manifest_sha256"] != expected_manifest_digest):
-        raise ValueError("database dataset identity does not match the selected manifest")
-    return {
-        "status": "PROVISIONED",
-        "dataset_id": dataset_id,
-        "tenant_id": tenant_id,
-        "authorized_sources": list(principal.authorized_sources),
-        "authorized_purposes": list(principal.authorized_purposes),
-        "token": token,
-    }
+    return {"status": "PROVISIONED", "dataset_id": dataset_id, **principal_info}
 
 
 def import_dataset(

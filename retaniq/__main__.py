@@ -20,6 +20,7 @@ from .data_foundation import (
     create_tenant,
     initialize_database,
     map_customer_identity,
+    revoke_service_principal,
     set_integration_event_categories,
 )
 from .importer import import_csv, iter_replay_events
@@ -78,6 +79,11 @@ def _parser() -> argparse.ArgumentParser:
                          choices=("retention_inference", "billing_valuation", "operational_contact",
                                   "identity_mapping", "integration_health", "model_artifact_write"),
                          help="explicitly grant one purpose; repeat to grant multiple purposes")
+
+    revoke_reader = commands.add_parser(
+        "revoke-member2-reader", help="revoke the fixed tenant-01 Member 2 reader credential",
+    )
+    revoke_reader.add_argument("--db", required=True)
 
     customer = commands.add_parser("create-customer", help="create a paying account (trusted local operator only)")
     customer.add_argument("--db", required=True)
@@ -157,6 +163,9 @@ def main(argv: list[str] | None = None) -> int:
                 "authorized_sources": sorted(set(args.source)), "token": token,
                 "store_this_token_securely": True,
             }))
+        elif args.command == "revoke-member2-reader":
+            revoke_service_principal(args.db, "member2-standard-tenant-01-reader")
+            print(json.dumps({"status": "revoked", "service_principal_id": "member2-standard-tenant-01-reader"}))
         elif args.command == "create-customer":
             create_customer(args.db, args.tenant_id, args.customer_id,
                             account_status="inactive" if args.inactive else "active")
