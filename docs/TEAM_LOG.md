@@ -65,6 +65,26 @@ Copy the block below **for each commit** and replace every bracketed placeholder
 
 ## 4. Commit history — newest first
 
+### 2026-10-10T19:22:00Z — Florence / Member 4 — rename frontend product branding
+
+- **Workstream:** Part 4 / Frontend
+- **Branch:** `main`
+- **Commit subject:** `chore: rename frontend branding to LaiCai`
+- **Issue / task:** `N/A`
+- **Files changed:** `index.html`, `src/app/AppShell.tsx`
+- **What changed:**
+  - Replaced the visible RetainIQ product name and mark with LaiCai in the sidebar and document metadata.
+  - Updated the accessible product label and browser title/description to match the new name.
+- **Why it changed:** The product should be presented as LaiCai throughout the user-facing frontend.
+- **Contract / database / API impact:** None.
+- **Tests / verification:**
+  - `npm run build` — PASS — TypeScript compilation and Vite production build completed successfully.
+  - `rg -n "RetainIQ|LaiCai" src/app/AppShell.tsx index.html` — PASS — visible frontend branding is LaiCai.
+- **Data / model / ROI evidence:** N/A.
+- **Known issues / blockers:** Internal service/type names and historical documentation retain RetainIQ identifiers for compatibility and traceability.
+- **Next action / handoff:** None.
+- **Reviewer / pairing:** `N/A`
+
 ### 2026-10-10T19:17:08Z — Florence / Member 4 — consolidate RetainIQ frontend UX
 
 - **Workstream:** Part 4 / Frontend

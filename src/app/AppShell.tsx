@@ -91,7 +91,7 @@ export function AppShell() {
 
   return <div className={`app${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
     <aside className="sidebar">
-      <a className="logo" href="/command-center" aria-label="RetainIQ — Business Overview" onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navigate('/command-center'); } }}><span>R</span><b>RetainIQ</b></a>
+      <a className="logo" href="/command-center" aria-label="LaiCai — Business Overview" onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navigate('/command-center'); } }}><span>L</span><b>LaiCai</b></a>
       <button type="button" className="sidebar-toggle" onClick={() => setSidebarCollapsed(value => !value)} aria-label={sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'} aria-expanded={!sidebarCollapsed}><span aria-hidden="true">{sidebarCollapsed ? '›' : '‹'}</span></button>
       <nav aria-label="Main navigation">
         {navItems.map(item => {
