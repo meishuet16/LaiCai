@@ -64,6 +64,20 @@ from .temporal_splits import (
     TemporalSplitResult,
     TemporalSplitter,
 )
+from .baselines import (
+    BaselineFitResult,
+    BaselinePrediction,
+    BaselineScoreKind,
+    BaselineStatus,
+    FeatureVectorizer,
+    LogisticBaselineConfig,
+    LogisticRegressionBaseline,
+    MODEL_FEATURE_ALLOWLIST,
+    RuleBasedBaseline,
+    RuleBaselineConfig,
+    SKLEARN_AVAILABLE,
+    SKLEARN_VERSION,
+)
 from .point_in_time import (
     AvailabilityPolicy,
     BillingFact,
@@ -138,4 +152,16 @@ __all__ = [
     "TemporalSplitManifest",
     "TemporalSplitResult",
     "TemporalSplitter",
+    "BaselineFitResult",
+    "BaselinePrediction",
+    "BaselineScoreKind",
+    "BaselineStatus",
+    "FeatureVectorizer",
+    "LogisticBaselineConfig",
+    "LogisticRegressionBaseline",
+    "MODEL_FEATURE_ALLOWLIST",
+    "RuleBasedBaseline",
+    "RuleBaselineConfig",
+    "SKLEARN_AVAILABLE",
+    "SKLEARN_VERSION",
 ]
