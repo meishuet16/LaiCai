@@ -293,7 +293,7 @@ def assess_reliability(
     freshness_by_source = {
         item.source: item.status for item in freshness.source_assessments
     }
-    for source in selected_policy.essential_freshness_sources:
+    for source in sorted(selected_policy.essential_freshness_sources):
         status = freshness_by_source.get(source, FreshnessStatus.UNKNOWN)
         if status is FreshnessStatus.STALE:
             _add(codes, ReliabilityReasonCode.ESSENTIAL_FRESHNESS_STALE)

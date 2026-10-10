@@ -297,7 +297,11 @@ def _evidence_availability(
                 "observed_from": item.observed_from.isoformat().replace("+00:00", "Z"),
                 "observed_through": item.observed_through.isoformat().replace("+00:00", "Z"),
                 "available_at": item.available_at.isoformat().replace("+00:00", "Z"),
+                "source_category": item.source_category,
                 "complete": item.complete,
+                "coverage_status": item.coverage_status,
+                "coverage_completeness": item.coverage_completeness,
+                "observation_policy_version": item.observation_policy_version,
             }
     used = set(feature_snapshot.source_evidence_refs)
     for label in label_evidence:
@@ -384,6 +388,8 @@ def _horizon_summary(
     eligibility_counts: Mapping[str, Counter],
     split_result: TemporalSplitResult,
     minimums: Mapping[str, int],
+    label_reasons: Mapping[str, Counter] | None = None,
+    outcome_coverage: Mapping[str, Counter] | None = None,
 ) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for horizon in (7, 14, 30):
@@ -442,6 +448,10 @@ def _horizon_summary(
             "unknown_or_incomplete": status_counts.get(LabelStatus.UNKNOWN.value, 0),
             "excluded_or_ineligible_labels": status_counts.get(LabelStatus.EXCLUDED.value, 0),
             "unsupported_labels": status_counts.get(LabelStatus.UNSUPPORTED.value, 0),
+            "label_reason_counts": _enum_counts((label_reasons or {}).get(str(horizon), Counter())),
+            "outcome_coverage_record_counts_by_source_and_status": _enum_counts(
+                (outcome_coverage or {}).get(str(horizon), Counter())
+            ),
             "usable_supervised_train_samples": len(split_result.partition(SplitName.TRAIN).supervised_snapshot_ids_by_horizon.get(horizon, ())),
             "confirmed_label_prevalence": len(positives) / len(confirmed) if confirmed else None,
             "unique_eligible_accounts_with_feature_snapshots": len(unique_accounts),
@@ -498,6 +508,8 @@ class _PreparedRun:
         self.cutoff_eligibility: dict[str, Counter] = defaultdict(Counter)
         self.overall_eligibility: Counter = Counter()
         self.label_statuses: dict[str, Counter] = {str(h): Counter() for h in (7, 14, 30)}
+        self.label_reasons: dict[str, Counter] = {str(h): Counter() for h in (7, 14, 30)}
+        self.outcome_coverage: dict[str, Counter] = {str(h): Counter() for h in (7, 14, 30)}
         self.reliability: Counter = Counter()
         self.freshness: Counter = Counter()
         self.freshness_by_source: Counter = Counter()
@@ -678,11 +690,17 @@ def prepare_historical_dataset(
                 selected = next(item for item in built if item.horizon_days == horizon)
                 labels.append(selected)
                 run.label_statuses[str(horizon)][selected.label_status.value] += 1
+                for reason in selected.reason_codes:
+                    run.label_reasons[str(horizon)][reason.value] += 1
                 if selected.label_status is LabelStatus.UNKNOWN:
                     run.label_evidence_missingness[selected.reason_codes[0].value if selected.reason_codes else "unknown_reason"] += 1
                 label_outcomes.append(cached.outcome_snapshot_for(
                     tenant_id, customer_id, cutoff.as_of, eval_cutoffs[horizon]
                 ))
+                for observation in label_outcomes[-1].observations:
+                    run.outcome_coverage[str(horizon)][
+                        f"{observation.source_category}:{observation.coverage_status}"
+                    ] += 1
 
             if feature_snapshot is None:
                 continue
@@ -757,6 +775,8 @@ def prepare_historical_dataset(
         run.cutoff_eligibility,
         split_result,
         class_minimums,
+        run.label_reasons,
+        run.outcome_coverage,
     )
     if any(run.overall_eligibility.get(key, 0) for key in (
         EligibilityState.KNOWN_CANCELLATION.value,

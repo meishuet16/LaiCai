@@ -164,6 +164,33 @@ def test_complete_valid_evidence_is_sufficient():
     assert ReliabilityReasonCode.IDENTITY_CONFIRMED in result.reason_codes
 
 
+def test_essential_freshness_reason_order_is_deterministic():
+    sources = frozenset({
+        FreshnessSource.SUBSCRIPTION_LIFECYCLE.value,
+        FreshnessSource.USAGE_COVERAGE.value,
+    })
+    policy = ReliabilityPolicy(essential_freshness_sources=sources)
+    result = assess_reliability(
+        eligibility(),
+        feature(coverage=UsageCoverageStatus.PARTIAL),
+        freshness(stale_subscription=True, usage_complete=False),
+        policy=policy,
+    )
+    freshness_reasons = [
+        reason.value
+        for reason in result.reason_codes
+        if reason in {
+            ReliabilityReasonCode.ESSENTIAL_FRESHNESS_STALE,
+            ReliabilityReasonCode.ESSENTIAL_FRESHNESS_LIMITED,
+        }
+    ]
+
+    assert freshness_reasons == [
+        ReliabilityReasonCode.ESSENTIAL_FRESHNESS_STALE.value,
+        ReliabilityReasonCode.ESSENTIAL_FRESHNESS_LIMITED.value,
+    ]
+
+
 def test_missing_optional_billing_evidence_is_not_blocking():
     result = assess_reliability(eligibility(), feature(), freshness())
 

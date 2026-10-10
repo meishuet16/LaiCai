@@ -76,16 +76,29 @@ class OutcomeObservation(_LabelModel):
 
     observation_id: str = Field(min_length=1)
     source: str = Field(min_length=1)
+    source_category: Literal["subscription", "usage", "billing"] = "subscription"
     observed_from: AwareDatetime
     observed_through: AwareDatetime
     available_at: AwareDatetime
     subscription_id: str | None = Field(default=None, min_length=1)
     complete: bool = True
+    coverage_status: str | None = None
+    coverage_completeness: float | None = Field(default=None, ge=0.0, le=1.0)
+    observation_policy_version: str | None = None
 
     @model_validator(mode="after")
     def validate_observation_range(self) -> "OutcomeObservation":
         if self.observed_through < self.observed_from:
             raise ValueError("observed_through must not precede observed_from")
+        if self.coverage_status is not None:
+            status_is_complete = (
+                self.coverage_status == "complete"
+                and self.coverage_completeness == 1.0
+            )
+            if self.complete != status_is_complete:
+                raise ValueError(
+                    "complete must agree with source coverage status and completeness"
+                )
         return self
 
 
@@ -165,7 +178,11 @@ class ChurnEventSemantics:
         )
     )
     terminal_statuses: FrozenSet[str] = field(
-        default_factory=lambda: frozenset({"cancelled", "terminated", "expired"})
+        # Member 1's canonical lifecycle fold uses "ended" for all three
+        # effective termination event types.
+        default_factory=lambda: frozenset(
+            {"cancelled", "terminated", "expired", "ended"}
+        )
     )
 
 
@@ -312,6 +329,7 @@ class InMemoryLifecycleOutcomeAdapter:
 class _QualifyingEvent:
     fact: SubscriptionFact
     churn_type: ChurnType
+    evidence_refs: tuple[str, ...] = ()
 
 
 class ChurnLabelBuilder:
@@ -466,7 +484,9 @@ class ChurnLabelBuilder:
                 LabelReasonCode.CONFLICTING_LIFECYCLE_EVIDENCE,
             )
 
-        selected = self._select_account_event(candidates, active_ids)
+        selected = self._select_account_event(
+            candidates, active_ids, outcome_facts
+        )
         if selected == "conflict":
             return self._unknown_label(
                 tenant_id,
@@ -493,7 +513,10 @@ class ChurnLabelBuilder:
                 label_observed_through=evaluation_as_of,
                 label_policy_version=self.config.label_policy_version,
                 source_evidence_refs=tuple(
-                    dict.fromkeys(base_refs + (selected.fact.record_id,))
+                    dict.fromkeys(
+                        base_refs
+                        + (selected.evidence_refs or (selected.fact.record_id,))
+                    )
                 ),
                 label_generated_at=generated_at,
                 reason_codes=(LabelReasonCode.QUALIFYING_CHURN_OBSERVED,),
@@ -593,17 +616,20 @@ class ChurnLabelBuilder:
         return tuple(events)
 
     def _select_account_event(
-        self, candidates: Sequence[_QualifyingEvent], active_ids: set[str]
+        self,
+        candidates: Sequence[_QualifyingEvent],
+        active_ids: set[str],
+        facts: Sequence[SubscriptionFact],
     ) -> _QualifyingEvent | str | None:
-        by_subscription: dict[str, list[_QualifyingEvent]] = {}
+        candidate_signatures: dict[tuple[str, datetime | None], set[tuple[str, ChurnType]]] = {}
         for candidate in candidates:
-            by_subscription.setdefault(candidate.fact.subscription_id, []).append(candidate)
-        for values in by_subscription.values():
-            if len({(item.fact.record_id, item.fact.effective_at, item.churn_type) for item in values}) > 1:
-                return "conflict"
+            key = (candidate.fact.subscription_id, candidate.fact.effective_at)
+            candidate_signatures.setdefault(key, set()).add(
+                (candidate.fact.record_id, candidate.churn_type)
+            )
+        if any(len(signatures) > 1 for signatures in candidate_signatures.values()):
+            return "conflict"
 
-        if len(active_ids) <= 1:
-            return candidates[0] if candidates else None
         policy = self.eligibility_policy.account_churn_policy
         if policy == "any_subscription_end":
             return min(candidates, key=lambda item: item.fact.effective_at or item.fact.point_in_time()) if candidates else None
@@ -611,13 +637,68 @@ class ChurnLabelBuilder:
             "all_subscriptions_end",
             "effective-account-churn-v1.2-synthetic-only",
         }:
-            if set(by_subscription) == active_ids and all(by_subscription.values()):
-                selected = min(
-                    (values[0] for values in by_subscription.values()),
-                    key=lambda item: item.fact.effective_at or item.fact.point_in_time(),
+            # Reconstruct the account's subscription state at each candidate
+            # termination. A prior end followed by reactivation is not final
+            # entitlement loss; an account-level churn timestamp is the first
+            # instant at which no subscription remains paying.
+            facts_by_subscription: dict[str, list[SubscriptionFact]] = {}
+            for fact in facts:
+                facts_by_subscription.setdefault(fact.subscription_id, []).append(fact)
+            for candidate_time in sorted({
+                item.fact.effective_at for item in candidates
+                if item.fact.effective_at is not None
+            }):
+                latest_by_subscription: dict[str, SubscriptionFact] = {}
+                ambiguous = False
+                for subscription_id, history in facts_by_subscription.items():
+                    visible = [fact for fact in history if fact.point_in_time() <= candidate_time]
+                    if not visible:
+                        continue
+                    latest_time = max(fact.point_in_time() for fact in visible)
+                    latest = [fact for fact in visible if fact.point_in_time() == latest_time]
+                    states = {(fact.status.strip().lower(), fact.is_paying) for fact in latest}
+                    if len(states) != 1:
+                        ambiguous = True
+                        break
+                    latest_by_subscription[subscription_id] = sorted(
+                        latest, key=lambda fact: fact.record_id
+                    )[-1]
+                if ambiguous:
+                    return "conflict"
+                if not latest_by_subscription:
+                    continue
+                has_paying_entitlement = any(
+                    fact.is_paying is True
+                    and fact.status.strip().lower() not in self.config.churn_events.terminal_statuses
+                    for fact in latest_by_subscription.values()
                 )
-                return selected
+                if has_paying_entitlement:
+                    continue
+                final_facts = [
+                    item for item in candidates
+                    if item.fact.effective_at == candidate_time
+                    and latest_by_subscription.get(item.fact.subscription_id) is not None
+                    and latest_by_subscription[item.fact.subscription_id].record_id == item.fact.record_id
+                ]
+                if final_facts:
+                    selected = sorted(
+                        final_facts,
+                        key=lambda item: (item.fact.subscription_id, item.fact.record_id),
+                    )[-1]
+                    evidence_refs = tuple(
+                        sorted(fact.record_id for fact in latest_by_subscription.values())
+                    )
+                    return _QualifyingEvent(
+                        fact=selected.fact,
+                        churn_type=selected.churn_type,
+                        evidence_refs=evidence_refs,
+                    )
             return None
+        if len(active_ids) <= 1:
+            return min(
+                candidates,
+                key=lambda item: item.fact.effective_at or item.fact.point_in_time(),
+            ) if candidates else None
         return "conflict"
 
     @staticmethod
@@ -631,7 +712,9 @@ class ChurnLabelBuilder:
             if (fact.subscription_id, fact.effective_at) in candidate_keys:
                 if fact.event_type.strip().lower() not in {
                     event.fact.event_type.strip().lower() for event in candidates
-                } and fact.status.strip().lower() not in {"cancelled", "terminated", "expired"}:
+                } and fact.status.strip().lower() not in {
+                    "cancelled", "terminated", "expired", "ended"
+                }:
                     return True
         return False
 
@@ -645,18 +728,47 @@ class ChurnLabelBuilder:
         relevant = [
             observation
             for observation in observations
+            if observation.source_category == "subscription"
             if observation.complete
-            and observation.observed_from <= as_of
-            and observation.observed_through >= horizon_end
             and (
                 observation.subscription_id is None
                 or observation.subscription_id in active_ids
             )
         ]
-        if any(observation.subscription_id is None for observation in relevant):
+        if not active_ids:
+            return False
+
+        def interval_union_covers(items: Sequence[OutcomeObservation]) -> bool:
+            cursor = as_of
+            for observation in sorted(
+                items, key=lambda item: (item.observed_from, item.observed_through)
+            ):
+                if observation.observed_from > cursor:
+                    return False
+                if observation.observed_through > cursor:
+                    cursor = observation.observed_through
+                if cursor >= horizon_end:
+                    return True
+            return False
+
+        # Account-level coverage (subscription_id=None) applies to every
+        # active entitlement and may be assembled from adjacent source windows.
+        if interval_union_covers(
+            [item for item in relevant if item.subscription_id is None]
+        ):
             return True
-        return active_ids and active_ids.issubset(
-            {observation.subscription_id for observation in relevant}
+
+        # When coverage is subscription-specific, every subscription active
+        # at the prediction cutoff must have a complete, continuous interval.
+        return all(
+            interval_union_covers(
+                [
+                    item
+                    for item in relevant
+                    if item.subscription_id in {None, subscription_id}
+                ]
+            )
+            for subscription_id in active_ids
         )
 
     def _non_prospective_label(

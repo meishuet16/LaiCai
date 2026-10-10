@@ -374,8 +374,12 @@ class SQLiteDataAdapter:
             complete = row.get("coverage_status") == "complete" and float(row.get("coverage_completeness", 0)) == 1.0
             observations.append(OutcomeObservation(
                 observation_id=str(row["coverage_id"]), source=str(row["source"]),
+                source_category=str(row["source_category"]),
                 observed_from=start, observed_through=end, available_at=available,
                 complete=complete,
+                coverage_status=str(row["coverage_status"]),
+                coverage_completeness=float(row["coverage_completeness"]),
+                observation_policy_version=str(row["observation_policy_version"]),
             ))
         return LifecycleOutcomeSnapshot(
             tenant_id=tenant_id, customer_id=customer_id,
