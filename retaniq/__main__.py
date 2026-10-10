@@ -9,6 +9,8 @@ import sys
 from wsgiref.simple_server import make_server
 
 from .api import create_app
+from .database import DatabaseError
+from .database_config import DatabaseConfigurationError, resolve_database_config
 from .data_foundation import (
     DataFoundationError,
     authenticate_integration,
@@ -18,6 +20,7 @@ from .data_foundation import (
     create_tenant,
     initialize_database,
     map_customer_identity,
+    revoke_service_principal,
     set_integration_event_categories,
 )
 from .importer import import_csv, iter_replay_events
@@ -27,8 +30,13 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m retaniq", description="RetainIQ Part 1 data foundation")
     commands = parser.add_subparsers(dest="command", required=True)
 
-    init = commands.add_parser("init-db", help="create or migrate the local SQLite database")
-    init.add_argument("--db", required=True)
+    init = commands.add_parser("init-db", help="explicitly initialize or migrate the configured database")
+    init.add_argument("--db", help="SQLite path or PostgreSQL DSN (defaults to RETAINIQ_DATABASE_URL)")
+    init.add_argument(
+        "--allow-insecure-local-postgresql",
+        action="store_true",
+        help="TEST ONLY: allow TLS-disabled PostgreSQL on localhost",
+    )
 
     tenant = commands.add_parser("create-tenant", help="create a tenant (trusted local operator only)")
     tenant.add_argument("--db", required=True)
@@ -72,6 +80,11 @@ def _parser() -> argparse.ArgumentParser:
                                   "identity_mapping", "integration_health", "model_artifact_write"),
                          help="explicitly grant one purpose; repeat to grant multiple purposes")
 
+    revoke_reader = commands.add_parser(
+        "revoke-member2-reader", help="revoke the fixed tenant-01 Member 2 reader credential",
+    )
+    revoke_reader.add_argument("--db", required=True)
+
     customer = commands.add_parser("create-customer", help="create a paying account (trusted local operator only)")
     customer.add_argument("--db", required=True)
     customer.add_argument("--tenant-id", required=True)
@@ -109,8 +122,16 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         if args.command == "init-db":
-            initialize_database(args.db)
-            print(json.dumps({"status": "ready", "database": args.db}))
+            initialize_database(
+                args.db,
+                migrate_postgresql=True,
+                allow_insecure_local_postgresql=args.allow_insecure_local_postgresql,
+            )
+            database_target = resolve_database_config(
+                args.db,
+                allow_insecure_local_postgresql=args.allow_insecure_local_postgresql,
+            ).redacted_target
+            print(json.dumps({"status": "ready", "database": database_target}))
         elif args.command == "create-tenant":
             initialize_database(args.db)
             create_tenant(args.db, args.tenant_id)
@@ -142,6 +163,9 @@ def main(argv: list[str] | None = None) -> int:
                 "authorized_sources": sorted(set(args.source)), "token": token,
                 "store_this_token_securely": True,
             }))
+        elif args.command == "revoke-member2-reader":
+            revoke_service_principal(args.db, "member2-standard-tenant-01-reader")
+            print(json.dumps({"status": "revoked", "service_principal_id": "member2-standard-tenant-01-reader"}))
         elif args.command == "create-customer":
             create_customer(args.db, args.tenant_id, args.customer_id,
                             account_status="inactive" if args.inactive else "active")
@@ -172,6 +196,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     except DataFoundationError as error:
         print(json.dumps({"error": error.code, "message": str(error)}), file=sys.stderr)
+        return 2
+    except (DatabaseError, DatabaseConfigurationError) as error:
+        print(json.dumps({"error": "database_error", "message": str(error)}), file=sys.stderr)
         return 2
     except (OSError, json.JSONDecodeError):
         print(json.dumps({"error": "invalid_command_input"}), file=sys.stderr)

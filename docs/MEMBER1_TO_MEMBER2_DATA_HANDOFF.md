@@ -2,7 +2,7 @@
 
 **Status:** Canonical query/API contract is available; real historical dataset is **NOT_READY**. Synthetic SaaS v1.2 has a separate verified handoff for synthetic development.
 **Purpose:** Retention inference.
-**Database in this checkout:** Local SQLite prototype, not the production PostgreSQL requirement. `python -m retaniq init-db --db ...` applies all recorded migrations through `004_dataset_identity_and_observation_coverage`.
+**Database in this checkout:** SQLite remains the only supported Data Foundation query/runtime backend. PostgreSQL schema migrations 001–004 are implemented and verified on a disposable PostgreSQL 16.15 database, but query/repository compatibility remains pending 06D; the migrations do not copy an SQLite database or authorize production use. `python -m retaniq init-db --db ...` applies migrations for the explicitly selected backend.
 
 ## Synthetic development handoff
 

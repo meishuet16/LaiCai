@@ -1,0 +1,25 @@
+import type { IntegrationOverview } from '../domain/integration';
+
+const fixtureOverview: IntegrationOverview = {
+  evidence_kind: 'synthetic',
+  sources: [
+    { source: 'product_app', status: 'healthy', event_types: ['session_started', 'feature_used'], last_success_at: '2026-10-10T08:58:00Z', last_attempt_at: '2026-10-10T08:58:00Z', latest_occurred_at: '2026-10-10T08:54:00Z', latest_available_at: '2026-10-10T08:58:00Z', processed_count: 12840, rejected_count: 3, error_count: 0, freshness: 'fresh', mapping_version: 'map_v1', available_from: '2026-07-01', available_through: '2026-10-10' },
+    { source: 'billing', status: 'warning', event_types: ['payment_failed', 'invoice_paid'], last_success_at: '2026-10-09T02:00:00Z', last_attempt_at: '2026-10-10T08:30:00Z', latest_occurred_at: '2026-10-09T01:42:00Z', latest_available_at: '2026-10-09T02:00:00Z', processed_count: 4230, rejected_count: 0, error_count: 1, freshness: 'stale', mapping_version: 'map_v1', available_from: '2026-07-01', available_through: '2026-10-09' },
+    { source: 'subscriptions', status: 'healthy', event_types: ['subscription_started', 'cancellation_requested'], last_success_at: '2026-10-10T08:48:00Z', last_attempt_at: '2026-10-10T08:48:00Z', latest_occurred_at: '2026-10-10T08:46:00Z', latest_available_at: '2026-10-10T08:48:00Z', processed_count: 1940, rejected_count: 1, error_count: 0, freshness: 'fresh', mapping_version: 'map_v2', available_from: '2026-06-15', available_through: '2026-10-10' },
+  ],
+  coverage: { accounts_mapped: 1142, accounts_unmatched: 8, active_paying: 1098, missing_mrr: 14, incomplete_subscription_history: 26, usage_percent: 96, billing_percent: 91, subscription_percent: 99 },
+  rejected_events: [
+    { id: 'reject_01', at: '2026-10-10T08:40:00Z', source: 'product_app', source_event_id: 'evt_901', reason: 'Unknown account mapping', schema_version: '1.0', mapping_version: 'map_v1', redacted_metadata: 'event_type=session_started; identifiers redacted' },
+    { id: 'reject_02', at: '2026-10-10T08:32:00Z', source: 'subscriptions', source_event_id: 'evt_455', reason: 'Conflicting account identity', schema_version: '1.0', mapping_version: 'map_v2', redacted_metadata: 'event_type=subscription_started; identifiers redacted' },
+  ],
+  alerts: [
+    { id: 'alert_billing', severity: 'warning', title: 'Billing source is stale', detail: 'Last successful sync was over 30 hours ago in this synthetic example.', source: 'billing' },
+    { id: 'alert_identity', severity: 'warning', title: 'Identity conflicts need review', detail: 'Unmatched records remain quarantined; no account merge was inferred.', source: 'subscriptions' },
+    { id: 'alert_outcome', severity: 'warning', title: 'Outcome coverage is incomplete', detail: 'Historical subscription gaps can leave forecast feedback pending or incomplete.', source: 'subscriptions' },
+  ],
+};
+
+export interface IntegrationDataSource { getOverview(signal?: AbortSignal): Promise<IntegrationOverview> }
+export const integrationService: IntegrationDataSource = {
+  async getOverview(signal) { if (signal?.aborted) throw new DOMException('Aborted', 'AbortError'); return fixtureOverview; },
+};
