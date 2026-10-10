@@ -72,6 +72,22 @@ in this initial template. When first committed, this documentation change
 itself also requires a filled-in commit entry.
 -->
 
+### 2026-10-10T21:35:16Z — Member 2 AI coding assistant — Final Track A/B/C integration and blocked artifact handoff
+
+- **Workstream:** Part 2 / Integration / QA / Docs
+- **Branch:** `codex/member2-final-integration`
+- **Commit subject:** `docs(member2): record final integration blocker`
+- **Issue / task:** Member 2 final integration delivery
+- **Files changed:** `docs/MEMBER2_FINAL_INTEGRATION_REPORT.md` and this log; integration branch also contains Track B/C changes cherry-picked before this commit.
+- **What changed:** Integrated Track A (`74b0340`, already ancestral), Track B (`3a295f0` → `a8948d5`) and Track C (`5119e89` → `43425c3`), preserving all concurrent log entries. Added the final artifact inventory, supported-horizon state, bounded verification result, smoke status and Member 3/4 handoff.
+- **Why it changed:** Deliver the verified integration promptly without regenerating data, fitting models/calibrators, opening held-out evaluation, or representing Prompt 31 artifacts as Prompt 34 evidence.
+- **Contract / database / API impact:** None. No dataset, database, model, calibrator, prediction, API, schema or production bundle was changed.
+- **Tests / verification:** One focused pytest invocation with a 90-second timeout — **PASS, 3 passed in 4.94s** — safe artifact load failure, monotonic adjustment, and chronological replay/persistence. Track B's reported 22-test pass and Track C's reported one-test synthetic fitted replay pass were reused and not rerun. End-to-end fitted-artifact smoke — **BLOCKED / SKIPPED** because the required Prompt 34 artifacts do not exist. No other tests were run.
+- **Data / model / ROI evidence:** Synthetic-only source manifest available with recorded SHA-256 `75a687071f3fee639e3ce057b59404834accb2fc01ec39a7cb122cb9883e5aac`. The reduced prepared directory is incomplete and lacks `preparation_manifest.json`; no Prompt 34 7/14/30 models, calibrators, shared bundle ID, fitted-artifact hashes or finalized compatible feature schema exist. Prompt 31's uncalibrated 14d/30d models were not substituted.
+- **Known issues / blockers:** Prompt 34 supports no fitted horizon. Model-backed Load → Predict → Calibrate → SHAP → Replay → Persist remains blocked. Production scoring must remain `MODEL_BUNDLE_NOT_READY`.
+- **Next action / handoff:** Member 3 must not rank/route on absent or uncalibrated scores. Member 4 must not display Prompt 34 score/calibration/replay claims. Enable scored workflows only after a separately authorized complete three-horizon bundle passes the existing provenance, compatibility and approval gates.
+- **Reviewer / pairing:** N/A
+
 ### 2026-10-10T21:32:02Z — Member 2 AI coding assistant — Prompt 34 deadline status correction
 
 - **Workstream:** Part 2 / Prompt 34 / Docs / handoff
